@@ -12,7 +12,7 @@
     get strength() {
         let s = 0;
         if (this.password.length >= 8) s++;
-        if (/[A-Z]/.test(this.password)) s++;
+        if (/[a-z]/.test(this.password) && /[A-Z]/.test(this.password)) s++;
         if (/[0-9]/.test(this.password)) s++;
         if (/[^A-Za-z0-9]/.test(this.password)) s++;
         return s;
@@ -106,7 +106,7 @@
             <input id="password" name="password" :type="showPassword ? 'text' : 'password'" required
                 x-model="password"
                 class="block w-full pl-10 pr-10 py-2.5 border rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('password') border-red-300 @else border-gray-300 @enderror"
-                placeholder="Minimum 8 characters">
+                placeholder="Create a strong password">
             <button type="button" @click="showPassword = !showPassword" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
                 <i :class="showPassword ? 'fa-eye-slash' : 'fa-eye'" class="fas text-sm"></i>
             </button>
@@ -118,12 +118,35 @@
                     <div class="h-1 flex-1 rounded-full transition-all" :class="i <= strength ? strengthColor : 'bg-gray-200'"></div>
                 </template>
             </div>
-            <p class="text-xs mt-1" :class="{
+            <p class="text-xs mt-1 font-medium" :class="{
                 'text-red-500': strength === 1,
                 'text-yellow-600': strength === 2,
                 'text-blue-600': strength === 3,
                 'text-green-600': strength === 4
             }" x-text="strengthLabel"></p>
+            {{-- Complexity requirements checklist --}}
+            <div class="mt-2 space-y-0.5">
+                <div class="flex items-center gap-1.5">
+                    <i class="fas text-[10px]" :class="password.length >= 8 ? 'fa-check-circle text-green-500' : 'fa-circle text-gray-300'"></i>
+                    <span class="text-xs" :class="password.length >= 8 ? 'text-green-600' : 'text-gray-400'">At least 8 characters</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <i class="fas text-[10px]" :class="/[A-Z]/.test(password) ? 'fa-check-circle text-green-500' : 'fa-circle text-gray-300'"></i>
+                    <span class="text-xs" :class="/[A-Z]/.test(password) ? 'text-green-600' : 'text-gray-400'">One uppercase letter (A-Z)</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <i class="fas text-[10px]" :class="/[a-z]/.test(password) ? 'fa-check-circle text-green-500' : 'fa-circle text-gray-300'"></i>
+                    <span class="text-xs" :class="/[a-z]/.test(password) ? 'text-green-600' : 'text-gray-400'">One lowercase letter (a-z)</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <i class="fas text-[10px]" :class="/[0-9]/.test(password) ? 'fa-check-circle text-green-500' : 'fa-circle text-gray-300'"></i>
+                    <span class="text-xs" :class="/[0-9]/.test(password) ? 'text-green-600' : 'text-gray-400'">One number (0-9)</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <i class="fas text-[10px]" :class="/[^A-Za-z0-9]/.test(password) ? 'fa-check-circle text-green-500' : 'fa-circle text-gray-300'"></i>
+                    <span class="text-xs" :class="/[^A-Za-z0-9]/.test(password) ? 'text-green-600' : 'text-gray-400'">One special character (!@#$%&*)</span>
+                </div>
+            </div>
         </div>
         @error('password')
             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>

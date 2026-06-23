@@ -19,7 +19,7 @@ class ChangePasswordController extends Controller
     {
         $request->validate([
             'current_password' => ['required', 'current_password'],
-            'password' => ['required', 'confirmed', Password::min(8)],
+            'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
         ]);
 
         Auth::user()->update([

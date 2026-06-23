@@ -31,7 +31,7 @@ class RegisterController extends Controller
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'phone' => ['nullable', 'string', 'max:20'],
-            'password' => ['required', 'confirmed', Password::min(8)],
+            'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
             'captcha' => ['required', 'integer'],
             'captcha_answer' => ['required', 'string'],
             'privacy_agreement' => ['required', 'accepted'],
