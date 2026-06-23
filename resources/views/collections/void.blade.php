@@ -94,7 +94,7 @@
         </div>
         <form method="POST" action="{{ route('collections.void.process') }}" class="p-6 space-y-5">
             @csrf
-            <input type="hidden" name="collection_id" value="{{ $collection->id }}">
+            <input type="hidden" name="or_number" value="{{ $collection->or_number }}">
 
             {{-- Reason --}}
             <div>
