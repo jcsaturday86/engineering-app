@@ -1,50 +1,178 @@
 @extends('layouts.guest')
 
 @section('title', 'Register')
-@section('subtitle', 'Create your account to apply online')
+@section('subtitle', 'Create your account to apply for permits online')
 
 @section('content')
-<form method="POST" action="{{ route('register') }}" class="space-y-4">
+<form method="POST" action="{{ route('register') }}" class="space-y-5" x-data="{
+    password: '',
+    password_confirmation: '',
+    showPassword: false,
+    showConfirm: false,
+    get strength() {
+        let s = 0;
+        if (this.password.length >= 8) s++;
+        if (/[A-Z]/.test(this.password)) s++;
+        if (/[0-9]/.test(this.password)) s++;
+        if (/[^A-Za-z0-9]/.test(this.password)) s++;
+        return s;
+    },
+    get strengthLabel() {
+        return ['', 'Weak', 'Fair', 'Good', 'Strong'][this.strength];
+    },
+    get strengthColor() {
+        return ['', 'bg-red-500', 'bg-yellow-500', 'bg-blue-500', 'bg-green-500'][this.strength];
+    },
+    get passwordsMatch() {
+        return this.password_confirmation.length > 0 && this.password === this.password_confirmation;
+    }
+}">
     @csrf
 
-    <div class="grid grid-cols-2 gap-4">
-        <div>
-            <label for="first_name" class="block text-sm font-medium text-gray-700">First Name</label>
-            <input id="first_name" name="first_name" type="text" required value="{{ old('first_name') }}"
-                class="mt-1 block w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+    {{-- Honeypot (hidden from humans, bots fill it) --}}
+    <div style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true" tabindex="-1">
+        <label for="website">Website</label>
+        <input type="text" name="website" id="website" value="" autocomplete="off" tabindex="-1">
+        <label for="full_name">Full Name</label>
+        <input type="text" name="full_name" id="full_name" value="" autocomplete="off" tabindex="-1">
+    </div>
+
+    {{-- Name --}}
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Full Name <span class="text-red-500">*</span></label>
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-user text-gray-400 text-sm"></i>
+                    </div>
+                    <input id="first_name" name="first_name" type="text" required value="{{ old('first_name') }}"
+                        class="block w-full pl-10 pr-3 py-2.5 border rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('first_name') border-red-300 @else border-gray-300 @enderror"
+                        placeholder="First name">
+                </div>
+                @error('first_name')
+                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+            <div>
+                <input id="last_name" name="last_name" type="text" required value="{{ old('last_name') }}"
+                    class="block w-full px-3 py-2.5 border rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('last_name') border-red-300 @else border-gray-300 @enderror"
+                    placeholder="Last name">
+                @error('last_name')
+                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
         </div>
-        <div>
-            <label for="last_name" class="block text-sm font-medium text-gray-700">Last Name</label>
-            <input id="last_name" name="last_name" type="text" required value="{{ old('last_name') }}"
-                class="mt-1 block w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+    </div>
+
+    {{-- Email --}}
+    <div>
+        <label for="email" class="block text-sm font-medium text-gray-700 mb-1.5">Email Address <span class="text-red-500">*</span></label>
+        <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="fas fa-envelope text-gray-400 text-sm"></i>
+            </div>
+            <input id="email" name="email" type="email" required value="{{ old('email') }}"
+                class="block w-full pl-10 pr-3 py-2.5 border rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('email') border-red-300 @else border-gray-300 @enderror"
+                placeholder="you@example.com">
+        </div>
+        @error('email')
+            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+        @else
+            <p class="mt-1 text-xs text-gray-400">We'll send permit updates to this email</p>
+        @enderror
+    </div>
+
+    {{-- Phone --}}
+    <div>
+        <label for="phone" class="block text-sm font-medium text-gray-700 mb-1.5">Contact Number</label>
+        <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="fas fa-phone text-gray-400 text-sm"></i>
+            </div>
+            <input id="phone" name="phone" type="text" value="{{ old('phone') }}"
+                class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="09xx-xxx-xxxx">
         </div>
     </div>
 
+    {{-- Password --}}
     <div>
-        <label for="email" class="block text-sm font-medium text-gray-700">Email address</label>
-        <input id="email" name="email" type="email" required value="{{ old('email') }}"
-            class="mt-1 block w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="you@example.com">
+        <label for="password" class="block text-sm font-medium text-gray-700 mb-1.5">Password <span class="text-red-500">*</span></label>
+        <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="fas fa-lock text-gray-400 text-sm"></i>
+            </div>
+            <input id="password" name="password" :type="showPassword ? 'text' : 'password'" required
+                x-model="password"
+                class="block w-full pl-10 pr-10 py-2.5 border rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('password') border-red-300 @else border-gray-300 @enderror"
+                placeholder="Minimum 8 characters">
+            <button type="button" @click="showPassword = !showPassword" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                <i :class="showPassword ? 'fa-eye-slash' : 'fa-eye'" class="fas text-sm"></i>
+            </button>
+        </div>
+        {{-- Password strength bar --}}
+        <div x-show="password.length > 0" x-cloak class="mt-2">
+            <div class="flex gap-1">
+                <template x-for="i in 4">
+                    <div class="h-1 flex-1 rounded-full transition-all" :class="i <= strength ? strengthColor : 'bg-gray-200'"></div>
+                </template>
+            </div>
+            <p class="text-xs mt-1" :class="{
+                'text-red-500': strength === 1,
+                'text-yellow-600': strength === 2,
+                'text-blue-600': strength === 3,
+                'text-green-600': strength === 4
+            }" x-text="strengthLabel"></p>
+        </div>
+        @error('password')
+            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+        @enderror
     </div>
 
+    {{-- Confirm Password --}}
     <div>
-        <label for="phone" class="block text-sm font-medium text-gray-700">Contact Number</label>
-        <input id="phone" name="phone" type="text" value="{{ old('phone') }}"
-            class="mt-1 block w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="09xx-xxx-xxxx">
+        <label for="password_confirmation" class="block text-sm font-medium text-gray-700 mb-1.5">Confirm Password <span class="text-red-500">*</span></label>
+        <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="fas fa-lock text-gray-400 text-sm"></i>
+            </div>
+            <input id="password_confirmation" name="password_confirmation" :type="showConfirm ? 'text' : 'password'" required
+                x-model="password_confirmation"
+                class="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                <template x-if="passwordsMatch">
+                    <i class="fas fa-check-circle text-green-500 text-sm"></i>
+                </template>
+                <template x-if="password_confirmation.length > 0 && !passwordsMatch">
+                    <i class="fas fa-times-circle text-red-500 text-sm"></i>
+                </template>
+            </div>
+        </div>
+        <p x-show="password_confirmation.length > 0 && !passwordsMatch" x-cloak class="mt-1 text-xs text-red-500">Passwords do not match</p>
     </div>
 
+    {{-- Math CAPTCHA --}}
+    @php
+        $a = rand(2, 9);
+        $b = rand(1, 9);
+        $captchaAnswer = $a + $b;
+    @endphp
     <div>
-        <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
-        <input id="password" name="password" type="password" required
-            class="mt-1 block w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Minimum 8 characters">
-    </div>
-
-    <div>
-        <label for="password_confirmation" class="block text-sm font-medium text-gray-700">Confirm Password</label>
-        <input id="password_confirmation" name="password_confirmation" type="password" required
-            class="mt-1 block w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        <label for="captcha" class="block text-sm font-medium text-gray-700 mb-1.5">Security Check <span class="text-red-500">*</span></label>
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-lg select-none">
+                <i class="fas fa-shield-alt text-blue-500 text-sm"></i>
+                <span class="text-sm font-mono font-bold text-gray-700">{{ $a }} + {{ $b }} = ?</span>
+            </div>
+            <input type="number" name="captcha" id="captcha" required
+                class="block w-24 px-3 py-2.5 border rounded-lg text-sm text-center font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('captcha') border-red-300 @else border-gray-300 @enderror"
+                placeholder="Answer">
+            <input type="hidden" name="captcha_answer" value="{{ encrypt($captchaAnswer) }}">
+        </div>
+        @error('captcha')
+            <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+        @enderror
     </div>
 
     {{-- Data Privacy Agreement --}}
@@ -59,18 +187,17 @@
                 </label>
                 <p class="mt-1">
                     By registering, I consent to the collection, processing, and storage of my personal information
-                    in accordance with <strong>Republic Act No. 10173</strong> (Data Privacy Act of 2012) of the Philippines.
+                    in accordance with <strong>Republic Act No. 10173</strong> (Data Privacy Act of 2012).
                     <button type="button" @click="showFull = !showFull" class="text-blue-600 hover:text-blue-800 font-medium underline ml-1">
                         <span x-text="showFull ? 'Show less' : 'Read more'"></span>
                     </button>
                 </p>
                 <div x-show="showFull" x-cloak class="mt-3 space-y-2 text-xs text-gray-500 border-t border-gray-200 pt-3">
-                    <p><strong class="text-gray-700">Purpose of Data Collection:</strong> Your personal information will be collected and processed solely for the purpose of processing your engineering permit application, including but not limited to building permits, occupancy permits, and other related services.</p>
-                    <p><strong class="text-gray-700">Information Collected:</strong> Full name, contact number, email address, mailing address, government-issued identification numbers, and other information required for permit processing as mandated by the National Building Code of the Philippines.</p>
-                    <p><strong class="text-gray-700">Data Storage &amp; Security:</strong> Your personal data will be stored securely within the Engineering Permit Management System. Appropriate organizational, technical, and physical security measures are in place to protect your data against unauthorized access, disclosure, alteration, or destruction.</p>
-                    <p><strong class="text-gray-700">Data Sharing:</strong> Your information may be shared with other government offices involved in the permit processing workflow, including the City Planning and Development Office and the City Treasurer's Office, strictly for official purposes.</p>
-                    <p><strong class="text-gray-700">Data Retention:</strong> Your personal information will be retained for the duration required by law and applicable government regulations regarding public records and building permits.</p>
-                    <p><strong class="text-gray-700">Your Rights:</strong> Under RA 10173, you have the right to be informed, to access, to object, to erasure or blocking, to rectification, to data portability, and to file a complaint with the National Privacy Commission. You may exercise these rights by contacting the City Engineering Office.</p>
+                    <p><strong class="text-gray-700">Purpose:</strong> Your personal information will be collected and processed solely for engineering permit applications.</p>
+                    <p><strong class="text-gray-700">Information Collected:</strong> Full name, contact number, email address, and other information required for permit processing as mandated by the National Building Code of the Philippines.</p>
+                    <p><strong class="text-gray-700">Data Security:</strong> Your personal data will be stored securely with appropriate organizational, technical, and physical security measures.</p>
+                    <p><strong class="text-gray-700">Data Sharing:</strong> Your information may be shared with other government offices involved in permit processing, strictly for official purposes.</p>
+                    <p><strong class="text-gray-700">Your Rights:</strong> Under RA 10173, you have the right to be informed, to access, to object, to erasure or blocking, to rectification, to data portability, and to file a complaint with the National Privacy Commission.</p>
                 </div>
             </div>
         </div>
@@ -79,8 +206,8 @@
         @enderror
     </div>
 
-    <button type="submit" class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition">
-        Create Account
+    <button type="submit" class="w-full flex justify-center items-center gap-2 py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition">
+        <i class="fas fa-user-plus"></i> Create Account
     </button>
 </form>
 
