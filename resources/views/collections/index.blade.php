@@ -20,7 +20,54 @@
         </div>
     </div>
 
-    {{-- Table --}}
+    {{-- For Payment --}}
+    @if($forPayment->count())
+    <div class="bg-white rounded-xl border border-orange-200 overflow-hidden">
+        <div class="px-4 py-3 bg-orange-50 border-b border-orange-200">
+            <h3 class="text-sm font-semibold text-orange-800">
+                <i class="fas fa-exclamation-circle mr-1"></i> Awaiting Payment ({{ $forPayment->count() }})
+            </h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                        <th class="text-left px-4 py-3 font-medium text-gray-500">App No.</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-500">Type</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-500">Applicant</th>
+                        <th class="text-right px-4 py-3 font-medium text-gray-500">Amount Due</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-500">Date</th>
+                        <th class="text-right px-4 py-3 font-medium text-gray-500">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @foreach($forPayment as $app)
+                    <tr class="hover:bg-orange-50/30">
+                        <td class="px-4 py-3 font-mono text-sm text-blue-600">{{ $app->application_number }}</td>
+                        <td class="px-4 py-3">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $app->permitType->code === 'BP' ? 'bg-blue-100 text-blue-700' : 'bg-indigo-100 text-indigo-700' }}">
+                                {{ $app->permitType->code }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-gray-900">{{ $app->applicant_last_name }}, {{ $app->applicant_first_name }}</td>
+                        <td class="px-4 py-3 text-right font-medium text-gray-900">&#8369;{{ number_format($app->billings->where('status','unpaid')->first()?->total_amount ?? 0, 2) }}</td>
+                        <td class="px-4 py-3 text-gray-500">{{ $app->created_at->format('M d, Y') }}</td>
+                        <td class="px-4 py-3 text-right">
+                            @can('create-collections')
+                            <a href="{{ route('collections.create', $app) }}" class="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition">
+                                <i class="fas fa-cash-register"></i> Collect Payment
+                            </a>
+                            @endcan
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
+
+    {{-- Payment History --}}
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-sm">

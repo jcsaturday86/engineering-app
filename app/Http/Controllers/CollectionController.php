@@ -17,12 +17,17 @@ class CollectionController extends Controller
 {
     public function index()
     {
-        $collections = Collection::with('application.permitType')
+        $forPayment = Application::with('permitType', 'billings')
+            ->where('status', 'billed')
+            ->latest()
+            ->get();
+
+        $collections = Collection::with('application.permitType', 'collectedBy')
             ->where('status', 'active')
             ->latest()
             ->paginate(20);
 
-        return view('collections.index', compact('collections'));
+        return view('collections.index', compact('collections', 'forPayment'));
     }
 
     public function create(Application $application)
