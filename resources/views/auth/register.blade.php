@@ -107,9 +107,12 @@
                 x-model="password"
                 class="block w-full pl-10 pr-10 py-2.5 border rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('password') border-red-300 @else border-gray-300 @enderror"
                 placeholder="Create a strong password">
-            <button type="button" @click="showPassword = !showPassword" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
-                <i :class="showPassword ? 'fa-eye-slash' : 'fa-eye'" class="fas text-sm"></i>
-            </button>
+            <div class="absolute inset-y-0 right-0 pr-3 flex items-center z-10">
+                <button type="button" @click.prevent="showPassword = !showPassword" class="p-1 text-gray-400 hover:text-gray-600 cursor-pointer">
+                    <i x-show="!showPassword" class="fas fa-eye text-sm"></i>
+                    <i x-show="showPassword" x-cloak class="fas fa-eye-slash text-sm"></i>
+                </button>
+            </div>
         </div>
         {{-- Password strength bar --}}
         <div x-show="password.length > 0" x-cloak class="mt-2">
@@ -164,15 +167,16 @@
                 x-model="password_confirmation"
                 class="block w-full pl-10 pr-20 py-2.5 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Re-enter your password">
-            <div class="absolute inset-y-0 right-0 pr-3 flex items-center gap-2">
+            <div class="absolute inset-y-0 right-0 pr-3 flex items-center gap-2 z-10">
                 <template x-if="passwordsMatch">
                     <i class="fas fa-check-circle text-green-500 text-sm"></i>
                 </template>
                 <template x-if="password_confirmation.length > 0 && !passwordsMatch">
                     <i class="fas fa-times-circle text-red-500 text-sm"></i>
                 </template>
-                <button type="button" @click="showConfirm = !showConfirm" class="text-gray-400 hover:text-gray-600">
-                    <i :class="showConfirm ? 'fa-eye-slash' : 'fa-eye'" class="fas text-sm"></i>
+                <button type="button" @click.prevent="showConfirm = !showConfirm" class="p-1 text-gray-400 hover:text-gray-600 cursor-pointer">
+                    <i x-show="!showConfirm" class="fas fa-eye text-sm"></i>
+                    <i x-show="showConfirm" x-cloak class="fas fa-eye-slash text-sm"></i>
                 </button>
             </div>
         </div>
