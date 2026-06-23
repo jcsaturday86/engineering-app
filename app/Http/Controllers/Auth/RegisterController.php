@@ -24,6 +24,10 @@ class RegisterController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'phone' => ['nullable', 'string', 'max:20'],
             'password' => ['required', 'confirmed', Password::min(8)],
+            'privacy_agreement' => ['required', 'accepted'],
+        ], [
+            'privacy_agreement.required' => 'You must agree to the Data Privacy Policy to register.',
+            'privacy_agreement.accepted' => 'You must agree to the Data Privacy Policy to register.',
         ]);
 
         $user = User::create([
