@@ -103,7 +103,7 @@
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <i class="fas fa-lock text-gray-400 text-sm"></i>
             </div>
-            <input id="password" name="password" :type="showPassword ? 'text' : 'password'" required
+            <input id="password" name="password" type="password" x-bind:type="showPassword ? 'text' : 'password'" required
                 x-model="password"
                 class="block w-full pl-10 pr-10 py-2.5 border rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('password') border-red-300 @else border-gray-300 @enderror"
                 placeholder="Create a strong password">
@@ -160,7 +160,7 @@
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <i class="fas fa-lock text-gray-400 text-sm"></i>
             </div>
-            <input id="password_confirmation" name="password_confirmation" :type="showConfirm ? 'text' : 'password'" required
+            <input id="password_confirmation" name="password_confirmation" type="password" x-bind:type="showConfirm ? 'text' : 'password'" required
                 x-model="password_confirmation"
                 class="block w-full pl-10 pr-20 py-2.5 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Re-enter your password">
