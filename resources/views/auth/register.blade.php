@@ -5,16 +5,14 @@
 
 @section('content')
 <form method="POST" action="{{ route('register') }}" class="space-y-5" x-data="{
-    password: '',
-    password_confirmation: '',
-    showPassword: false,
-    showConfirm: false,
+    pw: '',
+    pwConfirm: '',
     get strength() {
         let s = 0;
-        if (this.password.length >= 8) s++;
-        if (/[a-z]/.test(this.password) && /[A-Z]/.test(this.password)) s++;
-        if (/[0-9]/.test(this.password)) s++;
-        if (/[^A-Za-z0-9]/.test(this.password)) s++;
+        if (this.pw.length >= 8) s++;
+        if (/[a-z]/.test(this.pw) && /[A-Z]/.test(this.pw)) s++;
+        if (/[0-9]/.test(this.pw)) s++;
+        if (/[^A-Za-z0-9]/.test(this.pw)) s++;
         return s;
     },
     get strengthLabel() {
@@ -23,8 +21,11 @@
     get strengthColor() {
         return ['', 'bg-red-500', 'bg-yellow-500', 'bg-blue-500', 'bg-green-500'][this.strength];
     },
-    get passwordsMatch() {
-        return this.password_confirmation.length > 0 && this.password === this.password_confirmation;
+    get matched() {
+        return this.pwConfirm.length > 0 && this.pw === this.pwConfirm;
+    },
+    get notMatched() {
+        return this.pwConfirm.length > 0 && this.pw !== this.pwConfirm;
     }
 }">
     @csrf
@@ -104,7 +105,7 @@
                 <i class="fas fa-lock text-gray-400 text-sm"></i>
             </div>
             <input id="password" name="password" type="password" required
-                x-model="password"
+                x-model="pw"
                 class="block w-full pl-10 pr-12 py-2.5 border rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('password') border-red-300 @else border-gray-300 @enderror"
                 placeholder="Create a strong password">
             <button type="button" onclick="togglePassword('password', this)" class="absolute inset-y-0 right-0 px-3 flex items-center z-20 text-gray-400 hover:text-gray-600">
@@ -112,7 +113,7 @@
             </button>
         </div>
         {{-- Password strength bar --}}
-        <div x-show="password.length > 0" x-cloak class="mt-2">
+        <div x-show="pw.length > 0" x-cloak class="mt-2">
             <div class="flex gap-1">
                 <template x-for="i in 4">
                     <div class="h-1 flex-1 rounded-full transition-all" :class="i <= strength ? strengthColor : 'bg-gray-200'"></div>
@@ -127,24 +128,24 @@
             {{-- Complexity requirements checklist --}}
             <div class="mt-2 space-y-0.5">
                 <div class="flex items-center gap-1.5">
-                    <i class="fas text-[10px]" :class="password.length >= 8 ? 'fa-check-circle text-green-500' : 'fa-circle text-gray-300'"></i>
-                    <span class="text-xs" :class="password.length >= 8 ? 'text-green-600' : 'text-gray-400'">At least 8 characters</span>
+                    <i class="fas text-[10px]" :class="pw.length >= 8 ? 'fa-check-circle text-green-500' : 'fa-circle text-gray-300'"></i>
+                    <span class="text-xs" :class="pw.length >= 8 ? 'text-green-600' : 'text-gray-400'">At least 8 characters</span>
                 </div>
                 <div class="flex items-center gap-1.5">
-                    <i class="fas text-[10px]" :class="/[A-Z]/.test(password) ? 'fa-check-circle text-green-500' : 'fa-circle text-gray-300'"></i>
-                    <span class="text-xs" :class="/[A-Z]/.test(password) ? 'text-green-600' : 'text-gray-400'">One uppercase letter (A-Z)</span>
+                    <i class="fas text-[10px]" :class="/[A-Z]/.test(pw) ? 'fa-check-circle text-green-500' : 'fa-circle text-gray-300'"></i>
+                    <span class="text-xs" :class="/[A-Z]/.test(pw) ? 'text-green-600' : 'text-gray-400'">One uppercase letter (A-Z)</span>
                 </div>
                 <div class="flex items-center gap-1.5">
-                    <i class="fas text-[10px]" :class="/[a-z]/.test(password) ? 'fa-check-circle text-green-500' : 'fa-circle text-gray-300'"></i>
-                    <span class="text-xs" :class="/[a-z]/.test(password) ? 'text-green-600' : 'text-gray-400'">One lowercase letter (a-z)</span>
+                    <i class="fas text-[10px]" :class="/[a-z]/.test(pw) ? 'fa-check-circle text-green-500' : 'fa-circle text-gray-300'"></i>
+                    <span class="text-xs" :class="/[a-z]/.test(pw) ? 'text-green-600' : 'text-gray-400'">One lowercase letter (a-z)</span>
                 </div>
                 <div class="flex items-center gap-1.5">
-                    <i class="fas text-[10px]" :class="/[0-9]/.test(password) ? 'fa-check-circle text-green-500' : 'fa-circle text-gray-300'"></i>
-                    <span class="text-xs" :class="/[0-9]/.test(password) ? 'text-green-600' : 'text-gray-400'">One number (0-9)</span>
+                    <i class="fas text-[10px]" :class="/[0-9]/.test(pw) ? 'fa-check-circle text-green-500' : 'fa-circle text-gray-300'"></i>
+                    <span class="text-xs" :class="/[0-9]/.test(pw) ? 'text-green-600' : 'text-gray-400'">One number (0-9)</span>
                 </div>
                 <div class="flex items-center gap-1.5">
-                    <i class="fas text-[10px]" :class="/[^A-Za-z0-9]/.test(password) ? 'fa-check-circle text-green-500' : 'fa-circle text-gray-300'"></i>
-                    <span class="text-xs" :class="/[^A-Za-z0-9]/.test(password) ? 'text-green-600' : 'text-gray-400'">One special character (!@#$%&*)</span>
+                    <i class="fas text-[10px]" :class="/[^A-Za-z0-9]/.test(pw) ? 'fa-check-circle text-green-500' : 'fa-circle text-gray-300'"></i>
+                    <span class="text-xs" :class="/[^A-Za-z0-9]/.test(pw) ? 'text-green-600' : 'text-gray-400'">One special character (!@#$%&*)</span>
                 </div>
             </div>
         </div>
@@ -161,18 +162,18 @@
                 <i class="fas fa-lock text-gray-400 text-sm"></i>
             </div>
             <input id="password_confirmation" name="password_confirmation" type="password" required
-                x-model="password_confirmation"
+                x-model="pwConfirm"
                 class="block w-full pl-10 pr-20 py-2.5 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Re-enter your password">
             <div class="absolute inset-y-0 right-0 px-3 flex items-center gap-2 z-20">
-                <span x-show="passwordsMatch" x-cloak><i class="fas fa-check-circle text-green-500 text-sm"></i></span>
-                <span x-show="password_confirmation.length > 0 && !passwordsMatch" x-cloak><i class="fas fa-times-circle text-red-500 text-sm"></i></span>
+                <span x-show="matched" x-cloak><i class="fas fa-check-circle text-green-500 text-sm"></i></span>
+                <span x-show="notMatched" x-cloak><i class="fas fa-times-circle text-red-500 text-sm"></i></span>
                 <button type="button" onclick="togglePassword('password_confirmation', this)" class="text-gray-400 hover:text-gray-600">
                     <i class="fas fa-eye text-sm"></i>
                 </button>
             </div>
         </div>
-        <p x-show="password_confirmation.length > 0 && !passwordsMatch" x-cloak class="mt-1 text-xs text-red-500">Passwords do not match</p>
+        <p x-show="notMatched" x-cloak class="mt-1 text-xs text-red-500">Passwords do not match</p>
     </div>
 
     {{-- Math CAPTCHA --}}
