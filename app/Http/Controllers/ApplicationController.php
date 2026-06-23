@@ -97,7 +97,11 @@ class ApplicationController extends Controller
                     ($validated['mechanical_cost'] ?? 0) +
                     ($validated['electronics_cost'] ?? 0) +
                     ($validated['plumbing_cost'] ?? 0) +
-                    ($validated['other_equipment_cost'] ?? 0),
+                    ($validated['other_equipment_cost'] ?? 0) +
+                    ($validated['equipment_cost_1'] ?? 0) +
+                    ($validated['equipment_cost_2'] ?? 0) +
+                    ($validated['equipment_cost_3'] ?? 0) +
+                    ($validated['equipment_cost_4'] ?? 0),
             ]));
 
             $this->saveOccupancyGroups($application, $request);
@@ -233,8 +237,12 @@ class ApplicationController extends Controller
     private function validateApplication(Request $request): array
     {
         return $request->validate([
+            // Header
             'permit_type_id' => 'required|exists:permit_types,id',
             'application_type_id' => 'required|exists:application_types,id',
+            'complexity' => 'nullable|in:simple,complex',
+            'applies_to' => 'nullable|string|max:50',
+            // Applicant
             'applicant_first_name' => 'required|string|max:255',
             'applicant_middle_name' => 'nullable|string|max:255',
             'applicant_last_name' => 'required|string|max:255',
@@ -245,16 +253,21 @@ class ApplicationController extends Controller
             'applicant_govt_id' => 'nullable|string|max:100',
             'applicant_id_date_issued' => 'nullable|date',
             'applicant_id_place_issued' => 'nullable|string|max:255',
+            'applicant_date_signed' => 'nullable|date',
+            // Enterprise
             'enterprise_name' => 'nullable|string|max:255',
             'form_of_ownership_id' => 'nullable|exists:form_of_ownerships,id',
+            // Address
             'applicant_province_id' => 'nullable|exists:provinces,id',
             'applicant_city_id' => 'nullable|exists:cities,id',
             'applicant_barangay_id' => 'nullable|exists:barangays,id',
             'applicant_street' => 'nullable|string|max:255',
             'applicant_zip_code' => 'nullable|string|max:10',
+            // Project
             'project_title' => 'nullable|string|max:255',
             'scope_of_work_id' => 'nullable|exists:scope_of_works,id',
             'scope_of_work_details' => 'nullable|string|max:1000',
+            // Building Location
             'lot_no' => 'nullable|string|max:50',
             'block_no' => 'nullable|string|max:50',
             'tct_no' => 'nullable|string|max:100',
@@ -262,22 +275,35 @@ class ApplicationController extends Controller
             'land_classification_id' => 'nullable|exists:land_classifications,id',
             'building_street' => 'nullable|string|max:255',
             'building_barangay_id' => 'nullable|exists:barangays,id',
+            // Building Specs
             'no_of_storeys' => 'nullable|integer|min:1',
             'no_of_units' => 'nullable|integer|min:1',
+            'occupancy_classified' => 'nullable|string|max:255',
             'total_floor_area' => 'nullable|numeric|min:0',
             'lot_area' => 'nullable|numeric|min:0',
+            // Cost Estimates
             'building_cost' => 'nullable|numeric|min:0',
             'electrical_cost' => 'nullable|numeric|min:0',
             'mechanical_cost' => 'nullable|numeric|min:0',
             'electronics_cost' => 'nullable|numeric|min:0',
             'plumbing_cost' => 'nullable|numeric|min:0',
             'other_equipment_cost' => 'nullable|numeric|min:0',
+            'equipment_cost_1' => 'nullable|numeric|min:0',
+            'equipment_cost_2' => 'nullable|numeric|min:0',
+            'equipment_cost_3' => 'nullable|numeric|min:0',
+            'equipment_cost_4' => 'nullable|numeric|min:0',
+            // Timeline
             'proposed_construction_date' => 'nullable|date',
             'expected_completion_date' => 'nullable|date',
             'remarks' => 'nullable|string|max:1000',
+            // Occupancy permit specific
             'bp_number' => 'nullable|string|max:30',
             'bp_issued_date' => 'nullable|date',
+            'fsec_no' => 'nullable|string|max:50',
+            'fsec_issued_date' => 'nullable|date',
+            'applies_for' => 'nullable|string|max:50',
             'completion_date' => 'nullable|date',
+            // Engineer/Architect
             'engineer_name' => 'nullable|string|max:255',
             'engineer_prc_no' => 'nullable|string|max:50',
             'engineer_prc_validity' => 'nullable|date',
@@ -287,15 +313,39 @@ class ApplicationController extends Controller
             'engineer_tin' => 'nullable|string|max:50',
             'engineer_address' => 'nullable|string|max:255',
             'engineer_date_signed' => 'nullable|date',
+            // Owner/Consent
             'owner_name' => 'nullable|string|max:255',
             'owner_address' => 'nullable|string|max:255',
             'owner_govt_id' => 'nullable|string|max:100',
             'owner_id_date_issued' => 'nullable|date',
+            'owner_id_place_issued' => 'nullable|string|max:255',
             'owner_date_signed' => 'nullable|date',
+            // Electrical
             'include_electrical' => 'boolean',
             'total_connected_load' => 'nullable|numeric|min:0',
             'total_transformer_capacity' => 'nullable|numeric|min:0',
             'total_generator_capacity' => 'nullable|numeric|min:0',
+            // PEE
+            'pee_name' => 'nullable|string|max:255',
+            'pee_prc_no' => 'nullable|string|max:50',
+            'pee_prc_validity' => 'nullable|date',
+            'pee_date_signed' => 'nullable|date',
+            'pee_ptr_no' => 'nullable|string|max:50',
+            'pee_ptr_date_issued' => 'nullable|date',
+            'pee_ptr_issued_at' => 'nullable|string|max:255',
+            'pee_address' => 'nullable|string|max:255',
+            'pee_tin' => 'nullable|string|max:50',
+            // SEW
+            'sew_profession' => 'nullable|string|max:50',
+            'sew_name' => 'nullable|string|max:255',
+            'sew_prc_no' => 'nullable|string|max:50',
+            'sew_prc_validity' => 'nullable|date',
+            'sew_date_signed' => 'nullable|date',
+            'sew_ptr_no' => 'nullable|string|max:50',
+            'sew_ptr_date_issued' => 'nullable|date',
+            'sew_ptr_issued_at' => 'nullable|string|max:255',
+            'sew_address' => 'nullable|string|max:255',
+            'sew_tin' => 'nullable|string|max:50',
         ]);
     }
 

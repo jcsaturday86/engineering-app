@@ -13,16 +13,45 @@
 @endsection
 
 @section('content')
+@php
+    $isBP = $permitType->code === 'BP';
+    $isOP = $permitType->code === 'OP';
+
+    // Pre-build occupancy selections for edit mode
+    $selectedSubGroups = [];
+    $selectedOthersText = [];
+    if ($application && $application->applicationOccupancyGroups) {
+        foreach ($application->applicationOccupancyGroups as $aog) {
+            $selectedSubGroups[] = $aog->occupancy_sub_group_id;
+            if ($aog->others_text) {
+                $selectedOthersText[$aog->occupancy_sub_group_id] = $aog->others_text;
+            }
+        }
+    }
+    if (old('occupancy_sub_groups')) {
+        $selectedSubGroups = old('occupancy_sub_groups');
+    }
+
+    // Pre-parse applies_to for checkboxes
+    $appliesToValues = [];
+    $oldAppliesTo = old('applies_to', $application->applies_to ?? '');
+    if ($oldAppliesTo) {
+        $appliesToValues = array_map('trim', explode(',', $oldAppliesTo));
+    }
+@endphp
+
 <form
     method="POST"
     action="{{ $application ? route('applications.update', $application) : route('applications.store') }}"
     x-data="applicationForm()"
+    x-on:submit="syncAppliesTo()"
 >
     @csrf
     @if($application)
         @method('PUT')
     @endif
     <input type="hidden" name="permit_type_id" value="{{ $permitType->id }}">
+    <input type="hidden" name="applies_to" x-ref="appliesToInput" value="{{ old('applies_to', $application->applies_to ?? '') }}">
 
     <div class="space-y-6">
         {{-- Header --}}
@@ -32,31 +61,105 @@
             </h2>
         </div>
 
-        {{-- 1. Application Type --}}
+        {{-- ================================================================== --}}
+        {{-- 1. APPLICATION HEADER --}}
+        {{-- ================================================================== --}}
         <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-                <i class="fas fa-file-alt mr-2 text-gray-400"></i>Application Type
+                <i class="fas fa-file-alt mr-2 text-gray-400"></i>Application Header
             </h3>
-            <div class="flex flex-wrap gap-4">
-                @foreach($applicationTypes as $type)
-                    <label class="inline-flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="application_type_id" value="{{ $type->id }}"
-                            class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                            {{ old('application_type_id', $application->application_type_id ?? '') == $type->id ? 'checked' : '' }}>
-                        <span class="text-sm text-gray-700">{{ $type->name }}</span>
-                    </label>
-                @endforeach
+
+            {{-- Project Title --}}
+            <div>
+                <label for="project_title" class="block text-sm font-medium text-gray-700 mb-1">Project Title <span class="text-red-500">*</span></label>
+                <input type="text" name="project_title" id="project_title"
+                    value="{{ old('project_title', $application->project_title ?? '') }}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required>
+                @error('project_title')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
             </div>
-            @error('application_type_id')
-                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-            @enderror
+
+            {{-- Complexity (BP only) --}}
+            @if($isBP)
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Complexity</label>
+                <div class="flex flex-wrap gap-4">
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="complexity" value="Simple"
+                            class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                            {{ old('complexity', $application->complexity ?? '') === 'Simple' ? 'checked' : '' }}>
+                        <span class="text-sm text-gray-700">Simple</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="complexity" value="Complex"
+                            class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                            {{ old('complexity', $application->complexity ?? '') === 'Complex' ? 'checked' : '' }}>
+                        <span class="text-sm text-gray-700">Complex</span>
+                    </label>
+                </div>
+                @error('complexity')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+            @endif
+
+            {{-- Application Type --}}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Application Type</label>
+                <div class="flex flex-wrap gap-4">
+                    @foreach($applicationTypes as $type)
+                        <label class="inline-flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="application_type_id" value="{{ $type->id }}"
+                                class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                {{ old('application_type_id', $application->application_type_id ?? '') == $type->id ? 'checked' : '' }}>
+                            <span class="text-sm text-gray-700">{{ $type->name }}</span>
+                        </label>
+                    @endforeach
+                </div>
+                @error('application_type_id')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
+            {{-- Applies To (BP only) --}}
+            @if($isBP)
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Applies To</label>
+                <div class="flex flex-wrap gap-4">
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" value="NA" x-model="appliesToChecks"
+                            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <span class="text-sm text-gray-700">NA</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" value="LC" x-model="appliesToChecks"
+                            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <span class="text-sm text-gray-700">LC &mdash; Locational Clearance</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" value="FS" x-model="appliesToChecks"
+                            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <span class="text-sm text-gray-700">FS &mdash; Fire Safety</span>
+                    </label>
+                </div>
+                @error('applies_to')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+            @endif
         </div>
 
-        {{-- 2. Applicant Information --}}
+        {{-- ================================================================== --}}
+        {{-- 2. APPLICANT INFORMATION --}}
+        {{-- ================================================================== --}}
         <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
                 <i class="fas fa-user mr-2 text-gray-400"></i>Applicant Information
             </h3>
+
+            {{-- Name row --}}
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                     <label for="applicant_first_name" class="block text-sm font-medium text-gray-700 mb-1">First Name <span class="text-red-500">*</span></label>
@@ -96,6 +199,8 @@
                     @enderror
                 </div>
             </div>
+
+            {{-- TIN, Contact, Email --}}
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                     <label for="applicant_tin" class="block text-sm font-medium text-gray-700 mb-1">TIN</label>
@@ -125,42 +230,47 @@
                     @enderror
                 </div>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+            {{-- Enterprise & Ownership --}}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label for="applicant_govt_id" class="block text-sm font-medium text-gray-700 mb-1">Government ID</label>
-                    <input type="text" name="applicant_govt_id" id="applicant_govt_id"
-                        value="{{ old('applicant_govt_id', $application->applicant_govt_id ?? '') }}"
+                    <label for="enterprise_name" class="block text-sm font-medium text-gray-700 mb-1">For Construction Owned By an Enterprise</label>
+                    <input type="text" name="enterprise_name" id="enterprise_name"
+                        value="{{ old('enterprise_name', $application->enterprise_name ?? '') }}"
+                        placeholder="Enterprise name (if applicable)"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('applicant_govt_id')
+                    @error('enterprise_name')
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                     @enderror
                 </div>
                 <div>
-                    <label for="applicant_id_date_issued" class="block text-sm font-medium text-gray-700 mb-1">ID Date Issued</label>
-                    <input type="date" name="applicant_id_date_issued" id="applicant_id_date_issued"
-                        value="{{ old('applicant_id_date_issued', $application->applicant_id_date_issued ?? '') }}"
+                    <label for="form_of_ownership_id" class="block text-sm font-medium text-gray-700 mb-1">Form of Ownership</label>
+                    <select name="form_of_ownership_id" id="form_of_ownership_id"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('applicant_id_date_issued')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <label for="applicant_id_place_issued" class="block text-sm font-medium text-gray-700 mb-1">ID Place Issued</label>
-                    <input type="text" name="applicant_id_place_issued" id="applicant_id_place_issued"
-                        value="{{ old('applicant_id_place_issued', $application->applicant_id_place_issued ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('applicant_id_place_issued')
+                        <option value="">-- Select --</option>
+                        @foreach($formOfOwnerships as $ownership)
+                            <option value="{{ $ownership->id }}"
+                                {{ old('form_of_ownership_id', $application->form_of_ownership_id ?? '') == $ownership->id ? 'selected' : '' }}>
+                                {{ $ownership->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('form_of_ownership_id')
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                     @enderror
                 </div>
             </div>
         </div>
 
-        {{-- 3. Address --}}
+        {{-- ================================================================== --}}
+        {{-- 3. APPLICANT ADDRESS --}}
+        {{-- ================================================================== --}}
         <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
                 <i class="fas fa-map-marker-alt mr-2 text-gray-400"></i>Applicant Address
             </h3>
+
+            {{-- Province / City / Barangay cascading --}}
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                     <label for="applicant_province_id" class="block text-sm font-medium text-gray-700 mb-1">Province</label>
@@ -207,9 +317,11 @@
                     @enderror
                 </div>
             </div>
+
+            {{-- Street & Zip --}}
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label for="applicant_street" class="block text-sm font-medium text-gray-700 mb-1">Street</label>
+                    <label for="applicant_street" class="block text-sm font-medium text-gray-700 mb-1">No./Street/Bldg</label>
                     <input type="text" name="applicant_street" id="applicant_street"
                         value="{{ old('applicant_street', $application->applicant_street ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
@@ -229,195 +341,16 @@
             </div>
         </div>
 
-        {{-- 4. Enterprise / Ownership --}}
+        {{-- ================================================================== --}}
+        {{-- 4. LOCATION OF CONSTRUCTION (BP only) --}}
+        {{-- ================================================================== --}}
+        @if($isBP)
         <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-                <i class="fas fa-building mr-2 text-gray-400"></i>Enterprise / Ownership
+                <i class="fas fa-map mr-2 text-gray-400"></i>Location of Construction
             </h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label for="enterprise_name" class="block text-sm font-medium text-gray-700 mb-1">Enterprise Name</label>
-                    <input type="text" name="enterprise_name" id="enterprise_name"
-                        value="{{ old('enterprise_name', $application->enterprise_name ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('enterprise_name')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <label for="form_of_ownership_id" class="block text-sm font-medium text-gray-700 mb-1">Form of Ownership</label>
-                    <select name="form_of_ownership_id" id="form_of_ownership_id"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">-- Select --</option>
-                        @foreach($formOfOwnerships as $ownership)
-                            <option value="{{ $ownership->id }}"
-                                {{ old('form_of_ownership_id', $application->form_of_ownership_id ?? '') == $ownership->id ? 'selected' : '' }}>
-                                {{ $ownership->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('form_of_ownership_id')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
-        </div>
 
-        {{-- 5. Project Details --}}
-        <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-                <i class="fas fa-project-diagram mr-2 text-gray-400"></i>Project Details
-            </h3>
-            <div>
-                <label for="project_title" class="block text-sm font-medium text-gray-700 mb-1">Project Title</label>
-                <input type="text" name="project_title" id="project_title"
-                    value="{{ old('project_title', $application->project_title ?? '') }}"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                @error('project_title')
-                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label for="scope_of_work_id" class="block text-sm font-medium text-gray-700 mb-1">Scope of Work</label>
-                    <select name="scope_of_work_id" id="scope_of_work_id"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">-- Select --</option>
-                        @foreach($scopeOfWorks as $scope)
-                            <option value="{{ $scope->id }}"
-                                {{ old('scope_of_work_id', $application->scope_of_work_id ?? '') == $scope->id ? 'selected' : '' }}>
-                                {{ $scope->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('scope_of_work_id')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <label for="scope_of_work_details" class="block text-sm font-medium text-gray-700 mb-1">Scope of Work Details</label>
-                    <textarea name="scope_of_work_details" id="scope_of_work_details" rows="3"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">{{ old('scope_of_work_details', $application->scope_of_work_details ?? '') }}</textarea>
-                    @error('scope_of_work_details')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
-        </div>
-
-        {{-- 6. Building Specs --}}
-        <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-                <i class="fas fa-ruler-combined mr-2 text-gray-400"></i>Building Specifications
-            </h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                    <label for="no_of_storeys" class="block text-sm font-medium text-gray-700 mb-1">No. of Storeys</label>
-                    <input type="number" name="no_of_storeys" id="no_of_storeys" min="0"
-                        value="{{ old('no_of_storeys', $application->no_of_storeys ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('no_of_storeys')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <label for="no_of_units" class="block text-sm font-medium text-gray-700 mb-1">No. of Units</label>
-                    <input type="number" name="no_of_units" id="no_of_units" min="0"
-                        value="{{ old('no_of_units', $application->no_of_units ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('no_of_units')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <label for="total_floor_area" class="block text-sm font-medium text-gray-700 mb-1">Total Floor Area (sqm)</label>
-                    <input type="number" name="total_floor_area" id="total_floor_area" min="0" step="0.01"
-                        value="{{ old('total_floor_area', $application->total_floor_area ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('total_floor_area')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <label for="lot_area" class="block text-sm font-medium text-gray-700 mb-1">Lot Area (sqm)</label>
-                    <input type="number" name="lot_area" id="lot_area" min="0" step="0.01"
-                        value="{{ old('lot_area', $application->lot_area ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('lot_area')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
-        </div>
-
-        {{-- 7. Cost Estimates --}}
-        <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-                <i class="fas fa-calculator mr-2 text-gray-400"></i>Cost Estimates
-            </h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                    <label for="building_cost" class="block text-sm font-medium text-gray-700 mb-1">Building Cost</label>
-                    <input type="number" name="building_cost" id="building_cost" min="0" step="0.01"
-                        value="{{ old('building_cost', $application->building_cost ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('building_cost')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <label for="electrical_cost" class="block text-sm font-medium text-gray-700 mb-1">Electrical Cost</label>
-                    <input type="number" name="electrical_cost" id="electrical_cost" min="0" step="0.01"
-                        value="{{ old('electrical_cost', $application->electrical_cost ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('electrical_cost')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <label for="mechanical_cost" class="block text-sm font-medium text-gray-700 mb-1">Mechanical Cost</label>
-                    <input type="number" name="mechanical_cost" id="mechanical_cost" min="0" step="0.01"
-                        value="{{ old('mechanical_cost', $application->mechanical_cost ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('mechanical_cost')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <label for="electronics_cost" class="block text-sm font-medium text-gray-700 mb-1">Electronics Cost</label>
-                    <input type="number" name="electronics_cost" id="electronics_cost" min="0" step="0.01"
-                        value="{{ old('electronics_cost', $application->electronics_cost ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('electronics_cost')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <label for="plumbing_cost" class="block text-sm font-medium text-gray-700 mb-1">Plumbing Cost</label>
-                    <input type="number" name="plumbing_cost" id="plumbing_cost" min="0" step="0.01"
-                        value="{{ old('plumbing_cost', $application->plumbing_cost ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('plumbing_cost')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <label for="other_equipment_cost" class="block text-sm font-medium text-gray-700 mb-1">Other Equipment Cost</label>
-                    <input type="number" name="other_equipment_cost" id="other_equipment_cost" min="0" step="0.01"
-                        value="{{ old('other_equipment_cost', $application->other_equipment_cost ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('other_equipment_cost')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
-        </div>
-
-        {{-- 8. Building Location --}}
-        <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-                <i class="fas fa-map mr-2 text-gray-400"></i>Building / Project Location
-            </h3>
+            {{-- Lot, Block, TCT, Tax Dec --}}
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                     <label for="lot_no" class="block text-sm font-medium text-gray-700 mb-1">Lot No.</label>
@@ -429,7 +362,7 @@
                     @enderror
                 </div>
                 <div>
-                    <label for="block_no" class="block text-sm font-medium text-gray-700 mb-1">Block No.</label>
+                    <label for="block_no" class="block text-sm font-medium text-gray-700 mb-1">Blk No.</label>
                     <input type="text" name="block_no" id="block_no"
                         value="{{ old('block_no', $application->block_no ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
@@ -456,6 +389,8 @@
                     @enderror
                 </div>
             </div>
+
+            {{-- Land Classification, Street, Barangay --}}
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                     <label for="land_classification_id" class="block text-sm font-medium text-gray-700 mb-1">Land Classification</label>
@@ -500,48 +435,420 @@
                 </div>
             </div>
         </div>
+        @endif
 
-        {{-- 9. Timeline --}}
+        {{-- ================================================================== --}}
+        {{-- 5. SCOPE OF WORK (BP only) --}}
+        {{-- ================================================================== --}}
+        @if($isBP)
         <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-                <i class="fas fa-calendar-alt mr-2 text-gray-400"></i>Timeline
+                <i class="fas fa-tools mr-2 text-gray-400"></i>Scope of Work
             </h3>
+
+            @php
+                $groupedScopes = $scopeOfWorks->groupBy('category');
+            @endphp
+
+            <div class="space-y-4">
+                @foreach($groupedScopes as $category => $scopes)
+                    <div>
+                        @if($category)
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{{ $category }}</p>
+                        @endif
+                        <div class="flex flex-wrap gap-4">
+                            @foreach($scopes as $scope)
+                                <label class="inline-flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="scope_of_work_id" value="{{ $scope->id }}"
+                                        class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                        x-model="selectedScopeOfWork"
+                                        {{ old('scope_of_work_id', $application->scope_of_work_id ?? '') == $scope->id ? 'checked' : '' }}>
+                                    <span class="text-sm text-gray-700">{{ $scope->name }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+            @error('scope_of_work_id')
+                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+            @enderror
+
+            {{-- Scope of Work Details (show when not "New Construction") --}}
+            <div x-show="showScopeDetails" x-cloak>
+                <label for="scope_of_work_details" class="block text-sm font-medium text-gray-700 mb-1">Scope of Work Details</label>
+                <textarea name="scope_of_work_details" id="scope_of_work_details" rows="3"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">{{ old('scope_of_work_details', $application->scope_of_work_details ?? '') }}</textarea>
+                @error('scope_of_work_details')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+        </div>
+        @endif
+
+        {{-- ================================================================== --}}
+        {{-- 6. CHARACTER OF OCCUPANCY --}}
+        {{-- ================================================================== --}}
+        <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
+                <i class="fas fa-layer-group mr-2 text-gray-400"></i>Character of Occupancy
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                @foreach($occupancyGroups as $group)
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        {{-- Group Header --}}
+                        <div class="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                            <span class="text-sm font-semibold text-gray-800">
+                                {{ $group->code }}: {{ $group->name }}
+                            </span>
+                        </div>
+                        {{-- Sub-groups --}}
+                        <div class="px-4 py-3 space-y-2">
+                            @foreach($group->subGroups as $subGroup)
+                                @php
+                                    $isChecked = in_array($subGroup->id, (array) $selectedSubGroups);
+                                    $othersVal = old("sub_group_{$subGroup->id}_others", $selectedOthersText[$subGroup->id] ?? '');
+                                    $isOthers = str_contains(strtolower($subGroup->name), 'others') || str_contains(strtolower($subGroup->name), 'other');
+                                @endphp
+                                <div x-data="{ checked{{ $subGroup->id }}: {{ $isChecked ? 'true' : 'false' }} }">
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" name="occupancy_sub_groups[]" value="{{ $subGroup->id }}"
+                                            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                            x-model="checked{{ $subGroup->id }}"
+                                            {{ $isChecked ? 'checked' : '' }}>
+                                        <span class="text-sm text-gray-700">{{ $subGroup->name }}</span>
+                                    </label>
+                                    @if($isOthers)
+                                        <div x-show="checked{{ $subGroup->id }}" x-cloak class="mt-1 ml-6">
+                                            <input type="text" name="sub_group_{{ $subGroup->id }}_others"
+                                                value="{{ $othersVal }}"
+                                                placeholder="Please specify..."
+                                                class="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                        </div>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+            @error('occupancy_sub_groups')
+                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+            @enderror
+        </div>
+
+        {{-- ================================================================== --}}
+        {{-- 7. BUILDING DETAILS & COST --}}
+        {{-- ================================================================== --}}
+        <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
+                <i class="fas fa-ruler-combined mr-2 text-gray-400"></i>Building Details &amp; Cost
+            </h3>
+
+            {{-- Occupancy Classified, Units, Storeys, Floor Area, Lot Area --}}
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div>
+                    <label for="occupancy_classified" class="block text-sm font-medium text-gray-700 mb-1">Occupancy Classified</label>
+                    <input type="text" name="occupancy_classified" id="occupancy_classified"
+                        value="{{ old('occupancy_classified', $application->occupancy_classified ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('occupancy_classified')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="no_of_units" class="block text-sm font-medium text-gray-700 mb-1">No. of Units</label>
+                    <input type="number" name="no_of_units" id="no_of_units" min="0"
+                        value="{{ old('no_of_units', $application->no_of_units ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('no_of_units')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="no_of_storeys" class="block text-sm font-medium text-gray-700 mb-1">No. of Storeys</label>
+                    <input type="number" name="no_of_storeys" id="no_of_storeys" min="0"
+                        value="{{ old('no_of_storeys', $application->no_of_storeys ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('no_of_storeys')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="total_floor_area" class="block text-sm font-medium text-gray-700 mb-1">Total Floor Area SQ.M.</label>
+                    <input type="number" name="total_floor_area" id="total_floor_area" min="0" step="any"
+                        value="{{ old('total_floor_area', $application->total_floor_area ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('total_floor_area')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="lot_area" class="block text-sm font-medium text-gray-700 mb-1">Lot Area SQ.M.</label>
+                    <input type="number" name="lot_area" id="lot_area" min="0" step="any"
+                        value="{{ old('lot_area', $application->lot_area ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('lot_area')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+
+            {{-- Cost fields --}}
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                    <label for="building_cost" class="block text-sm font-medium text-gray-700 mb-1">Building Cost</label>
+                    <input type="number" name="building_cost" id="building_cost" min="0" step="0.01"
+                        x-model.number="costs.building_cost"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('building_cost')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="electrical_cost" class="block text-sm font-medium text-gray-700 mb-1">Electrical Cost</label>
+                    <input type="number" name="electrical_cost" id="electrical_cost" min="0" step="0.01"
+                        x-model.number="costs.electrical_cost"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('electrical_cost')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="mechanical_cost" class="block text-sm font-medium text-gray-700 mb-1">Mechanical Cost</label>
+                    <input type="number" name="mechanical_cost" id="mechanical_cost" min="0" step="0.01"
+                        x-model.number="costs.mechanical_cost"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('mechanical_cost')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="electronics_cost" class="block text-sm font-medium text-gray-700 mb-1">Electronics Cost</label>
+                    <input type="number" name="electronics_cost" id="electronics_cost" min="0" step="0.01"
+                        x-model.number="costs.electronics_cost"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('electronics_cost')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="plumbing_cost" class="block text-sm font-medium text-gray-700 mb-1">Plumbing Cost</label>
+                    <input type="number" name="plumbing_cost" id="plumbing_cost" min="0" step="0.01"
+                        x-model.number="costs.plumbing_cost"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('plumbing_cost')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="other_equipment_cost" class="block text-sm font-medium text-gray-700 mb-1">Equipment/Labor Cost 1</label>
+                    <input type="number" name="other_equipment_cost" id="other_equipment_cost" min="0" step="0.01"
+                        x-model.number="costs.other_equipment_cost"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('other_equipment_cost')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="equipment_cost_1" class="block text-sm font-medium text-gray-700 mb-1">Equipment/Labor Cost 2</label>
+                    <input type="number" name="equipment_cost_1" id="equipment_cost_1" min="0" step="0.01"
+                        x-model.number="costs.equipment_cost_1"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('equipment_cost_1')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="equipment_cost_2" class="block text-sm font-medium text-gray-700 mb-1">Equipment/Labor Cost 3</label>
+                    <input type="number" name="equipment_cost_2" id="equipment_cost_2" min="0" step="0.01"
+                        x-model.number="costs.equipment_cost_2"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('equipment_cost_2')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="equipment_cost_3" class="block text-sm font-medium text-gray-700 mb-1">Equipment/Labor Cost 4</label>
+                    <input type="number" name="equipment_cost_3" id="equipment_cost_3" min="0" step="0.01"
+                        x-model.number="costs.equipment_cost_3"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('equipment_cost_3')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+
+            {{-- Total Estimated Cost (readonly) --}}
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                    <label for="total_estimated_cost" class="block text-sm font-medium text-gray-700 mb-1">Total Estimated Cost</label>
+                    <input type="number" name="total_estimated_cost" id="total_estimated_cost" step="0.01"
+                        :value="totalEstimatedCost" readonly
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('total_estimated_cost')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+
+            {{-- Dates & Remarks --}}
+            @if($isBP)
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label for="proposed_construction_date" class="block text-sm font-medium text-gray-700 mb-1">Proposed Construction Date</label>
+                    <label for="proposed_construction_date" class="block text-sm font-medium text-gray-700 mb-1">Proposed Date of Construction</label>
                     <input type="date" name="proposed_construction_date" id="proposed_construction_date"
-                        value="{{ old('proposed_construction_date', $application->proposed_construction_date ?? '') }}"
+                        value="{{ old('proposed_construction_date', optional($application->proposed_construction_date ?? null)->format('Y-m-d') ?? ($application->proposed_construction_date ?? '')) }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('proposed_construction_date')
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                     @enderror
                 </div>
                 <div>
-                    <label for="expected_completion_date" class="block text-sm font-medium text-gray-700 mb-1">Expected Completion Date</label>
+                    <label for="expected_completion_date" class="block text-sm font-medium text-gray-700 mb-1">Expected Date of Completion</label>
                     <input type="date" name="expected_completion_date" id="expected_completion_date"
-                        value="{{ old('expected_completion_date', $application->expected_completion_date ?? '') }}"
+                        value="{{ old('expected_completion_date', optional($application->expected_completion_date ?? null)->format('Y-m-d') ?? ($application->expected_completion_date ?? '')) }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('expected_completion_date')
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                     @enderror
                 </div>
             </div>
-        </div>
+            @endif
 
-        {{-- 10. Engineer / Architect Info --}}
-        <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-                <i class="fas fa-hard-hat mr-2 text-gray-400"></i>Engineer / Architect Information
-            </h3>
             <div>
-                <label for="engineer_name" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                <input type="text" name="engineer_name" id="engineer_name"
-                    value="{{ old('engineer_name', $application->engineer_name ?? '') }}"
+                <label for="remarks" class="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
+                <input type="text" name="remarks" id="remarks"
+                    value="{{ old('remarks', $application->remarks ?? '') }}"
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                @error('engineer_name')
+                @error('remarks')
                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                 @enderror
             </div>
+        </div>
+
+        {{-- ================================================================== --}}
+        {{-- 8. OCCUPANCY PERMIT DETAILS (OP only) --}}
+        {{-- ================================================================== --}}
+        @if($isOP)
+        <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
+                <i class="fas fa-certificate mr-2 text-gray-400"></i>Occupancy Permit Details
+            </h3>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="bp_number" class="block text-sm font-medium text-gray-700 mb-1">Building Permit No.</label>
+                    <input type="text" name="bp_number" id="bp_number"
+                        value="{{ old('bp_number', $application->bp_number ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('bp_number')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="bp_issued_date" class="block text-sm font-medium text-gray-700 mb-1">BP Date Issued</label>
+                    <input type="date" name="bp_issued_date" id="bp_issued_date"
+                        value="{{ old('bp_issued_date', optional($application->bp_issued_date ?? null)->format('Y-m-d') ?? ($application->bp_issued_date ?? '')) }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('bp_issued_date')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="fsec_no" class="block text-sm font-medium text-gray-700 mb-1">FSEC No.</label>
+                    <input type="text" name="fsec_no" id="fsec_no"
+                        value="{{ old('fsec_no', $application->fsec_no ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('fsec_no')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="fsec_issued_date" class="block text-sm font-medium text-gray-700 mb-1">FSEC Date Issued</label>
+                    <input type="date" name="fsec_issued_date" id="fsec_issued_date"
+                        value="{{ old('fsec_issued_date', optional($application->fsec_issued_date ?? null)->format('Y-m-d') ?? ($application->fsec_issued_date ?? '')) }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('fsec_issued_date')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Applies For</label>
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                        <input type="hidden" name="applies_for" value="">
+                        <input type="checkbox" name="applies_for" value="FSIC"
+                            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            {{ old('applies_for', $application->applies_for ?? '') === 'FSIC' ? 'checked' : '' }}>
+                        <span class="text-sm text-gray-700">FSIC</span>
+                    </label>
+                    @error('applies_for')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="completion_date" class="block text-sm font-medium text-gray-700 mb-1">Date of Completion</label>
+                    <input type="date" name="completion_date" id="completion_date"
+                        value="{{ old('completion_date', optional($application->completion_date ?? null)->format('Y-m-d') ?? ($application->completion_date ?? '')) }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('completion_date')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+        </div>
+        @endif
+
+        {{-- ================================================================== --}}
+        {{-- 9. ENGINEER / ARCHITECT (BP only) --}}
+        {{-- ================================================================== --}}
+        @if($isBP)
+        <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
+                <i class="fas fa-hard-hat mr-2 text-gray-400"></i>Engineer / Architect
+            </h3>
+
+            {{-- Name & Date Signed --}}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="engineer_name" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                    <input type="text" name="engineer_name" id="engineer_name"
+                        value="{{ old('engineer_name', $application->engineer_name ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('engineer_name')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="engineer_date_signed" class="block text-sm font-medium text-gray-700 mb-1">Date Signed</label>
+                    <input type="date" name="engineer_date_signed" id="engineer_date_signed"
+                        value="{{ old('engineer_date_signed', optional($application->engineer_date_signed ?? null)->format('Y-m-d') ?? ($application->engineer_date_signed ?? '')) }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('engineer_date_signed')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+
+            {{-- Address --}}
+            <div>
+                <label for="engineer_address" class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                <input type="text" name="engineer_address" id="engineer_address"
+                    value="{{ old('engineer_address', $application->engineer_address ?? '') }}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                @error('engineer_address')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
+            {{-- PRC --}}
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label for="engineer_prc_no" class="block text-sm font-medium text-gray-700 mb-1">PRC No.</label>
@@ -555,13 +862,15 @@
                 <div>
                     <label for="engineer_prc_validity" class="block text-sm font-medium text-gray-700 mb-1">PRC Validity</label>
                     <input type="date" name="engineer_prc_validity" id="engineer_prc_validity"
-                        value="{{ old('engineer_prc_validity', $application->engineer_prc_validity ?? '') }}"
+                        value="{{ old('engineer_prc_validity', optional($application->engineer_prc_validity ?? null)->format('Y-m-d') ?? ($application->engineer_prc_validity ?? '')) }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('engineer_prc_validity')
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                     @enderror
                 </div>
             </div>
+
+            {{-- PTR --}}
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                     <label for="engineer_ptr_no" class="block text-sm font-medium text-gray-700 mb-1">PTR No.</label>
@@ -575,7 +884,7 @@
                 <div>
                     <label for="engineer_ptr_date_issued" class="block text-sm font-medium text-gray-700 mb-1">PTR Date Issued</label>
                     <input type="date" name="engineer_ptr_date_issued" id="engineer_ptr_date_issued"
-                        value="{{ old('engineer_ptr_date_issued', $application->engineer_ptr_date_issued ?? '') }}"
+                        value="{{ old('engineer_ptr_date_issued', optional($application->engineer_ptr_date_issued ?? null)->format('Y-m-d') ?? ($application->engineer_ptr_date_issued ?? '')) }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('engineer_ptr_date_issued')
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -591,6 +900,8 @@
                     @enderror
                 </div>
             </div>
+
+            {{-- TIN --}}
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label for="engineer_tin" class="block text-sm font-medium text-gray-700 mb-1">TIN</label>
@@ -601,23 +912,70 @@
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                     @enderror
                 </div>
+            </div>
+        </div>
+        @endif
+
+        {{-- ================================================================== --}}
+        {{-- 10. APPLICANT SIGNING (BP only) --}}
+        {{-- ================================================================== --}}
+        @if($isBP)
+        <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
+                <i class="fas fa-signature mr-2 text-gray-400"></i>Applicant Signing
+            </h3>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                    <label for="engineer_address" class="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                    <input type="text" name="engineer_address" id="engineer_address"
-                        value="{{ old('engineer_address', $application->engineer_address ?? '') }}"
+                    <label for="applicant_date_signed" class="block text-sm font-medium text-gray-700 mb-1">Date Signed</label>
+                    <input type="date" name="applicant_date_signed" id="applicant_date_signed"
+                        value="{{ old('applicant_date_signed', $application->applicant_date_signed ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('engineer_address')
+                    @error('applicant_date_signed')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="applicant_govt_id" class="block text-sm font-medium text-gray-700 mb-1">Gov't Issued ID No.</label>
+                    <input type="text" name="applicant_govt_id" id="applicant_govt_id"
+                        value="{{ old('applicant_govt_id', $application->applicant_govt_id ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('applicant_govt_id')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="applicant_id_date_issued" class="block text-sm font-medium text-gray-700 mb-1">ID Date Issued</label>
+                    <input type="date" name="applicant_id_date_issued" id="applicant_id_date_issued"
+                        value="{{ old('applicant_id_date_issued', optional($application->applicant_id_date_issued ?? null)->format('Y-m-d') ?? ($application->applicant_id_date_issued ?? '')) }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('applicant_id_date_issued')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="applicant_id_place_issued" class="block text-sm font-medium text-gray-700 mb-1">Place Issued</label>
+                    <input type="text" name="applicant_id_place_issued" id="applicant_id_place_issued"
+                        value="{{ old('applicant_id_place_issued', $application->applicant_id_place_issued ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('applicant_id_place_issued')
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                     @enderror
                 </div>
             </div>
         </div>
+        @endif
 
-        {{-- 11. Owner Info --}}
+        {{-- ================================================================== --}}
+        {{-- 11. OWNER / CONSENT (LOT OWNER) (BP only) --}}
+        {{-- ================================================================== --}}
+        @if($isBP)
         <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-                <i class="fas fa-id-card mr-2 text-gray-400"></i>Owner Information
+                <i class="fas fa-id-card mr-2 text-gray-400"></i>Owner / Consent (Lot Owner)
             </h3>
+
+            {{-- Name & Address --}}
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label for="owner_name" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
@@ -638,9 +996,20 @@
                     @enderror
                 </div>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            {{-- Date Signed, ID, ID Date, Place --}}
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                    <label for="owner_govt_id" class="block text-sm font-medium text-gray-700 mb-1">Government ID</label>
+                    <label for="owner_date_signed" class="block text-sm font-medium text-gray-700 mb-1">Date Signed</label>
+                    <input type="date" name="owner_date_signed" id="owner_date_signed"
+                        value="{{ old('owner_date_signed', optional($application->owner_date_signed ?? null)->format('Y-m-d') ?? ($application->owner_date_signed ?? '')) }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('owner_date_signed')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="owner_govt_id" class="block text-sm font-medium text-gray-700 mb-1">Gov't Issued ID No.</label>
                     <input type="text" name="owner_govt_id" id="owner_govt_id"
                         value="{{ old('owner_govt_id', $application->owner_govt_id ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
@@ -651,116 +1020,289 @@
                 <div>
                     <label for="owner_id_date_issued" class="block text-sm font-medium text-gray-700 mb-1">ID Date Issued</label>
                     <input type="date" name="owner_id_date_issued" id="owner_id_date_issued"
-                        value="{{ old('owner_id_date_issued', $application->owner_id_date_issued ?? '') }}"
+                        value="{{ old('owner_id_date_issued', optional($application->owner_id_date_issued ?? null)->format('Y-m-d') ?? ($application->owner_id_date_issued ?? '')) }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('owner_id_date_issued')
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                     @enderror
                 </div>
+                <div>
+                    <label for="owner_id_place_issued" class="block text-sm font-medium text-gray-700 mb-1">Place Issued</label>
+                    <input type="text" name="owner_id_place_issued" id="owner_id_place_issued"
+                        value="{{ old('owner_id_place_issued', $application->owner_id_place_issued ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('owner_id_place_issued')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
             </div>
         </div>
+        @endif
 
-        {{-- 12. Character of Occupancy --}}
+        {{-- ================================================================== --}}
+        {{-- 12. ELECTRICAL PERMIT DATA (BP only) --}}
+        {{-- ================================================================== --}}
+        @if($isBP)
         <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-                <i class="fas fa-layer-group mr-2 text-gray-400"></i>Character of Occupancy
+                <i class="fas fa-bolt mr-2 text-yellow-500"></i>Electrical Permit Data
             </h3>
-            @php
-                $selectedSubGroups = [];
-                if ($application && $application->applicationOccupancyGroups) {
-                    $selectedSubGroups = $application->applicationOccupancyGroups->pluck('occupancy_sub_group_id')->toArray();
-                }
-                // Merge with old input if present
-                if (old('occupancy_sub_groups')) {
-                    $selectedSubGroups = old('occupancy_sub_groups');
-                }
-            @endphp
-            <div class="space-y-3">
-                @foreach($occupancyGroups as $group)
-                    <div x-data="{ open: false }" class="border border-gray-200 rounded-lg">
-                        <button type="button" @click="open = !open"
-                            class="flex items-center justify-between w-full px-4 py-3 text-left hover:bg-gray-50 rounded-lg transition">
-                            <span class="text-sm font-medium text-gray-800">
-                                <span class="text-gray-400 mr-1">{{ $group->code }}</span> {{ $group->name }}
-                            </span>
-                            <i class="fas fa-chevron-down text-xs text-gray-400 transition-transform" :class="open && 'rotate-180'"></i>
-                        </button>
-                        <div x-show="open" x-cloak class="px-4 pb-3 space-y-2">
-                            @foreach($group->subGroups as $subGroup)
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" name="occupancy_sub_groups[]" value="{{ $subGroup->id }}"
-                                        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                        {{ in_array($subGroup->id, (array) $selectedSubGroups) ? 'checked' : '' }}>
-                                    <span class="text-sm text-gray-700">{{ $subGroup->name }}</span>
-                                </label>
-                            @endforeach
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-            @error('occupancy_sub_groups')
-                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-            @enderror
-        </div>
 
-        {{-- 13. Electrical Permit --}}
-        <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4" x-data="{ includeElectrical: {{ old('include_electrical', $application->include_electrical ?? false) ? 'true' : 'false' }} }">
-            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-                <i class="fas fa-bolt mr-2 text-yellow-500"></i>Electrical Permit
-            </h3>
             <label class="flex items-center gap-2 cursor-pointer">
                 <input type="hidden" name="include_electrical" value="0">
                 <input type="checkbox" name="include_electrical" value="1" x-model="includeElectrical"
                     class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                <span class="text-sm font-medium text-gray-700">Include Electrical Permit</span>
+                <span class="text-sm font-medium text-gray-700">Include Electrical Permit Details?</span>
             </label>
-            <div x-show="includeElectrical" x-cloak class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+
+            <div x-show="includeElectrical" x-cloak class="space-y-6 pt-2">
+
+                {{-- Electrical Loads --}}
                 <div>
-                    <label for="total_connected_load" class="block text-sm font-medium text-gray-700 mb-1">Total Connected Load (kW)</label>
-                    <input type="number" name="total_connected_load" id="total_connected_load" min="0" step="0.01"
-                        value="{{ old('total_connected_load', $application->total_connected_load ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('total_connected_load')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
+                    <p class="text-sm font-semibold text-gray-800 mb-3">Electrical Loads</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label for="total_connected_load" class="block text-sm font-medium text-gray-700 mb-1">Total Connected Load kVA</label>
+                            <input type="number" name="total_connected_load" id="total_connected_load" min="0" step="0.01"
+                                value="{{ old('total_connected_load', $application->total_connected_load ?? '') }}"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            @error('total_connected_load')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div>
+                            <label for="total_transformer_capacity" class="block text-sm font-medium text-gray-700 mb-1">Total Transformer Capacity kVA</label>
+                            <input type="number" name="total_transformer_capacity" id="total_transformer_capacity" min="0" step="0.01"
+                                value="{{ old('total_transformer_capacity', $application->total_transformer_capacity ?? '') }}"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            @error('total_transformer_capacity')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div>
+                            <label for="total_generator_capacity" class="block text-sm font-medium text-gray-700 mb-1">Total Generator/UPS Capacity kVA</label>
+                            <input type="number" name="total_generator_capacity" id="total_generator_capacity" min="0" step="0.01"
+                                value="{{ old('total_generator_capacity', $application->total_generator_capacity ?? '') }}"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            @error('total_generator_capacity')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
                 </div>
+
+                {{-- Professional Electrical Engineer (PEE) --}}
                 <div>
-                    <label for="total_transformer_capacity" class="block text-sm font-medium text-gray-700 mb-1">Total Transformer Capacity (kVA)</label>
-                    <input type="number" name="total_transformer_capacity" id="total_transformer_capacity" min="0" step="0.01"
-                        value="{{ old('total_transformer_capacity', $application->total_transformer_capacity ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('total_transformer_capacity')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
+                    <p class="text-sm font-semibold text-gray-800 mb-3">Professional Electrical Engineer (PEE)</p>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="pee_name" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                <input type="text" name="pee_name" id="pee_name"
+                                    value="{{ old('pee_name', $application->pee_name ?? '') }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                @error('pee_name')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="pee_date_signed" class="block text-sm font-medium text-gray-700 mb-1">Date Signed</label>
+                                <input type="date" name="pee_date_signed" id="pee_date_signed"
+                                    value="{{ old('pee_date_signed', $application->pee_date_signed ?? '') }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                @error('pee_date_signed')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="pee_prc_no" class="block text-sm font-medium text-gray-700 mb-1">PRC No.</label>
+                                <input type="text" name="pee_prc_no" id="pee_prc_no"
+                                    value="{{ old('pee_prc_no', $application->pee_prc_no ?? '') }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                @error('pee_prc_no')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="pee_prc_validity" class="block text-sm font-medium text-gray-700 mb-1">PRC Validity</label>
+                                <input type="date" name="pee_prc_validity" id="pee_prc_validity"
+                                    value="{{ old('pee_prc_validity', $application->pee_prc_validity ?? '') }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                @error('pee_prc_validity')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label for="pee_ptr_no" class="block text-sm font-medium text-gray-700 mb-1">PTR No.</label>
+                                <input type="text" name="pee_ptr_no" id="pee_ptr_no"
+                                    value="{{ old('pee_ptr_no', $application->pee_ptr_no ?? '') }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                @error('pee_ptr_no')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="pee_ptr_date_issued" class="block text-sm font-medium text-gray-700 mb-1">PTR Date Issued</label>
+                                <input type="date" name="pee_ptr_date_issued" id="pee_ptr_date_issued"
+                                    value="{{ old('pee_ptr_date_issued', $application->pee_ptr_date_issued ?? '') }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                @error('pee_ptr_date_issued')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="pee_ptr_issued_at" class="block text-sm font-medium text-gray-700 mb-1">PTR Issued At</label>
+                                <input type="text" name="pee_ptr_issued_at" id="pee_ptr_issued_at"
+                                    value="{{ old('pee_ptr_issued_at', $application->pee_ptr_issued_at ?? '') }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                @error('pee_ptr_issued_at')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="pee_address" class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                                <input type="text" name="pee_address" id="pee_address"
+                                    value="{{ old('pee_address', $application->pee_address ?? '') }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                @error('pee_address')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="pee_tin" class="block text-sm font-medium text-gray-700 mb-1">TIN</label>
+                                <input type="text" name="pee_tin" id="pee_tin"
+                                    value="{{ old('pee_tin', $application->pee_tin ?? '') }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                @error('pee_tin')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
+                {{-- Supervisor of Electrical Works (SEW) --}}
                 <div>
-                    <label for="total_generator_capacity" class="block text-sm font-medium text-gray-700 mb-1">Total Generator Capacity (kW)</label>
-                    <input type="number" name="total_generator_capacity" id="total_generator_capacity" min="0" step="0.01"
-                        value="{{ old('total_generator_capacity', $application->total_generator_capacity ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('total_generator_capacity')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
+                    <p class="text-sm font-semibold text-gray-800 mb-3">Supervisor of Electrical Works (SEW)</p>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label for="sew_profession" class="block text-sm font-medium text-gray-700 mb-1">Profession</label>
+                                <select name="sew_profession" id="sew_profession"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">-- Select --</option>
+                                    <option value="RME" {{ old('sew_profession', $application->sew_profession ?? '') === 'RME' ? 'selected' : '' }}>RME</option>
+                                    <option value="REE" {{ old('sew_profession', $application->sew_profession ?? '') === 'REE' ? 'selected' : '' }}>REE</option>
+                                    <option value="Master Electrician" {{ old('sew_profession', $application->sew_profession ?? '') === 'Master Electrician' ? 'selected' : '' }}>Master Electrician</option>
+                                </select>
+                                @error('sew_profession')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="sew_name" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                <input type="text" name="sew_name" id="sew_name"
+                                    value="{{ old('sew_name', $application->sew_name ?? '') }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                @error('sew_name')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="sew_date_signed" class="block text-sm font-medium text-gray-700 mb-1">Date Signed</label>
+                                <input type="date" name="sew_date_signed" id="sew_date_signed"
+                                    value="{{ old('sew_date_signed', $application->sew_date_signed ?? '') }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                @error('sew_date_signed')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="sew_prc_no" class="block text-sm font-medium text-gray-700 mb-1">PRC No.</label>
+                                <input type="text" name="sew_prc_no" id="sew_prc_no"
+                                    value="{{ old('sew_prc_no', $application->sew_prc_no ?? '') }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                @error('sew_prc_no')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="sew_prc_validity" class="block text-sm font-medium text-gray-700 mb-1">PRC Validity</label>
+                                <input type="date" name="sew_prc_validity" id="sew_prc_validity"
+                                    value="{{ old('sew_prc_validity', $application->sew_prc_validity ?? '') }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                @error('sew_prc_validity')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label for="sew_ptr_no" class="block text-sm font-medium text-gray-700 mb-1">PTR No.</label>
+                                <input type="text" name="sew_ptr_no" id="sew_ptr_no"
+                                    value="{{ old('sew_ptr_no', $application->sew_ptr_no ?? '') }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                @error('sew_ptr_no')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="sew_ptr_date_issued" class="block text-sm font-medium text-gray-700 mb-1">PTR Date Issued</label>
+                                <input type="date" name="sew_ptr_date_issued" id="sew_ptr_date_issued"
+                                    value="{{ old('sew_ptr_date_issued', $application->sew_ptr_date_issued ?? '') }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                @error('sew_ptr_date_issued')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="sew_ptr_issued_at" class="block text-sm font-medium text-gray-700 mb-1">PTR Issued At</label>
+                                <input type="text" name="sew_ptr_issued_at" id="sew_ptr_issued_at"
+                                    value="{{ old('sew_ptr_issued_at', $application->sew_ptr_issued_at ?? '') }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                @error('sew_ptr_issued_at')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="sew_address" class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                                <input type="text" name="sew_address" id="sew_address"
+                                    value="{{ old('sew_address', $application->sew_address ?? '') }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                @error('sew_address')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="sew_tin" class="block text-sm font-medium text-gray-700 mb-1">TIN</label>
+                                <input type="text" name="sew_tin" id="sew_tin"
+                                    value="{{ old('sew_tin', $application->sew_tin ?? '') }}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                @error('sew_tin')
+                                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
             </div>
         </div>
+        @endif
 
-        {{-- 14. Remarks --}}
-        <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-                <i class="fas fa-sticky-note mr-2 text-gray-400"></i>Remarks
-            </h3>
-            <div>
-                <textarea name="remarks" id="remarks" rows="4"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Additional notes or remarks...">{{ old('remarks', $application->remarks ?? '') }}</textarea>
-                @error('remarks')
-                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-        </div>
-
-        {{-- Actions --}}
+        {{-- ================================================================== --}}
+        {{-- FORM FOOTER / ACTIONS --}}
+        {{-- ================================================================== --}}
         <div class="flex items-center justify-end gap-3 pb-6">
             <a href="{{ route('applications.index') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
                 Cancel
@@ -778,11 +1320,13 @@
 <script>
     function applicationForm() {
         return {
+            // Address cascading
             selectedProvince: '{{ old('applicant_province_id', $application->applicant_province_id ?? '') }}',
             selectedCity: '{{ old('applicant_city_id', $application->applicant_city_id ?? '') }}',
             selectedBarangay: '{{ old('applicant_barangay_id', $application->applicant_barangay_id ?? '') }}',
             cities: @json($cities),
             barangays: @json($barangays),
+
             get filteredCities() {
                 if (!this.selectedProvince) return [];
                 return this.cities.filter(c => String(c.province_id) === String(this.selectedProvince));
@@ -790,7 +1334,50 @@
             get filteredBarangays() {
                 if (!this.selectedCity) return [];
                 return this.barangays.filter(b => String(b.city_id) === String(this.selectedCity));
-            }
+            },
+
+            // Applies To checkboxes (BP only)
+            appliesToChecks: @json($appliesToValues),
+
+            syncAppliesTo() {
+                if (this.$refs.appliesToInput) {
+                    this.$refs.appliesToInput.value = this.appliesToChecks.join(',');
+                }
+            },
+
+            // Scope of Work
+            selectedScopeOfWork: '{{ old('scope_of_work_id', $application->scope_of_work_id ?? '') }}',
+            scopeOfWorks: @json($scopeOfWorks),
+
+            get showScopeDetails() {
+                if (!this.selectedScopeOfWork) return false;
+                let selected = this.scopeOfWorks.find(s => String(s.id) === String(this.selectedScopeOfWork));
+                return selected && selected.name !== 'New Construction';
+            },
+
+            // Electrical permit toggle
+            includeElectrical: {{ old('include_electrical', $application->include_electrical ?? false) ? 'true' : 'false' }},
+
+            // Cost auto-calculation
+            costs: {
+                building_cost: {{ old('building_cost', $application->building_cost ?? 0) ?: 0 }},
+                electrical_cost: {{ old('electrical_cost', $application->electrical_cost ?? 0) ?: 0 }},
+                mechanical_cost: {{ old('mechanical_cost', $application->mechanical_cost ?? 0) ?: 0 }},
+                electronics_cost: {{ old('electronics_cost', $application->electronics_cost ?? 0) ?: 0 }},
+                plumbing_cost: {{ old('plumbing_cost', $application->plumbing_cost ?? 0) ?: 0 }},
+                other_equipment_cost: {{ old('other_equipment_cost', $application->other_equipment_cost ?? 0) ?: 0 }},
+                equipment_cost_1: {{ old('equipment_cost_1', $application->equipment_cost_1 ?? 0) ?: 0 }},
+                equipment_cost_2: {{ old('equipment_cost_2', $application->equipment_cost_2 ?? 0) ?: 0 }},
+                equipment_cost_3: {{ old('equipment_cost_3', $application->equipment_cost_3 ?? 0) ?: 0 }},
+            },
+
+            get totalEstimatedCost() {
+                let sum = 0;
+                for (let key in this.costs) {
+                    sum += parseFloat(this.costs[key]) || 0;
+                }
+                return sum.toFixed(2);
+            },
         }
     }
 </script>
