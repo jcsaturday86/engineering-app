@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php -m)",
+      "Bash(grep -n \"extension=gd\" C:/xampp/php/php.ini)",
+      "Bash(sed -i 's/^;extension=gd/extension=gd/' C:/xampp/php/php.ini && php -m | grep -i gd)",
+      "Bash(composer require *)",
+      "Bash(C:/xampp/mysql/bin/mysql -u root -e \"CREATE DATABASE IF NOT EXISTS epms_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\")",
+      "Read(//c/xampp/mysql/**)",
+      "Read(//c/xampp/mariadb/**)",
+      "PowerShell(Get-Command mysql -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Command mariadb -ErrorAction SilentlyContinue)",
+      "Bash(php -r ' *)",
+      "Bash(php -i)",
+      "PowerShell(\\(Get-Process -Name \"mysqld\" -ErrorAction SilentlyContinue\\).Path)",
+      "Bash(php artisan *)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}
