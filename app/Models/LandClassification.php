@@ -13,6 +13,7 @@ class LandClassification extends Model
      */
     protected $fillable = [
         'name',
+        'code',
         'is_active',
     ];
 

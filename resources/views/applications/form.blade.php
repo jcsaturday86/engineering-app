@@ -400,7 +400,7 @@
                         @foreach($landClassifications as $lc)
                             <option value="{{ $lc->id }}"
                                 {{ old('land_classification_id', $application->land_classification_id ?? '') == $lc->id ? 'selected' : '' }}>
-                                {{ $lc->name }}
+                                {{ $lc->name }} ({{ $lc->code }})
                             </option>
                         @endforeach
                     </select>
