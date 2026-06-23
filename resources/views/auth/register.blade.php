@@ -162,14 +162,18 @@
             </div>
             <input id="password_confirmation" name="password_confirmation" :type="showConfirm ? 'text' : 'password'" required
                 x-model="password_confirmation"
-                class="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                class="block w-full pl-10 pr-20 py-2.5 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Re-enter your password">
+            <div class="absolute inset-y-0 right-0 pr-3 flex items-center gap-2">
                 <template x-if="passwordsMatch">
                     <i class="fas fa-check-circle text-green-500 text-sm"></i>
                 </template>
                 <template x-if="password_confirmation.length > 0 && !passwordsMatch">
                     <i class="fas fa-times-circle text-red-500 text-sm"></i>
                 </template>
+                <button type="button" @click="showConfirm = !showConfirm" class="text-gray-400 hover:text-gray-600">
+                    <i :class="showConfirm ? 'fa-eye-slash' : 'fa-eye'" class="fas text-sm"></i>
+                </button>
             </div>
         </div>
         <p x-show="password_confirmation.length > 0 && !passwordsMatch" x-cloak class="mt-1 text-xs text-red-500">Passwords do not match</p>
