@@ -165,9 +165,7 @@
                 x-model="pwConfirm"
                 class="block w-full pl-10 pr-20 py-2.5 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Re-enter your password">
-            <div class="absolute inset-y-0 right-0 px-3 flex items-center gap-2 z-20">
-                <span x-show="matched" x-cloak><i class="fas fa-check-circle text-green-500 text-sm"></i></span>
-                <span x-show="notMatched" x-cloak><i class="fas fa-times-circle text-red-500 text-sm"></i></span>
+            <div class="absolute inset-y-0 right-0 px-3 flex items-center z-20">
                 <button type="button" onclick="togglePassword('password_confirmation', this)" class="text-gray-400 hover:text-gray-600">
                     <i class="fas fa-eye text-sm"></i>
                 </button>
