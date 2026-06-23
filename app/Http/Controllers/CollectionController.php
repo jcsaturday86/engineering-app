@@ -124,9 +124,18 @@ class CollectionController extends Controller
         return $pdf->stream("or_{$collection->or_number}.pdf");
     }
 
-    public function voidForm()
+    public function voidForm(Request $request)
     {
-        return view('collections.void');
+        $collection = null;
+
+        if ($request->filled('or_number')) {
+            $collection = Collection::with('application.permitType')
+                ->where('or_number', $request->or_number)
+                ->where('status', 'active')
+                ->first();
+        }
+
+        return view('collections.void', compact('collection'));
     }
 
     public function processVoid(Request $request)
