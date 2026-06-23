@@ -103,16 +103,20 @@
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <i class="fas fa-lock text-gray-400 text-sm"></i>
             </div>
-            <input id="password" name="password" type="password" x-bind:type="showPassword ? 'text' : 'password'" required
+            <input id="password" name="password" type="password" required
                 x-model="password"
-                class="block w-full pl-10 pr-10 py-2.5 border rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('password') border-red-300 @else border-gray-300 @enderror"
+                x-ref="passwordInput"
+                class="block w-full pl-10 pr-12 py-2.5 border rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('password') border-red-300 @else border-gray-300 @enderror"
                 placeholder="Create a strong password">
-            <div class="absolute inset-y-0 right-0 pr-3 flex items-center z-10">
-                <button type="button" @click.prevent="showPassword = !showPassword" class="p-1 text-gray-400 hover:text-gray-600 cursor-pointer">
-                    <i x-show="!showPassword" class="fas fa-eye text-sm"></i>
-                    <i x-show="showPassword" x-cloak class="fas fa-eye-slash text-sm"></i>
-                </button>
-            </div>
+            <button type="button" class="absolute inset-y-0 right-0 px-3 flex items-center z-20 text-gray-400 hover:text-gray-600"
+                @click="
+                    showPassword = !showPassword;
+                    $refs.passwordInput.type = showPassword ? 'text' : 'password';
+                    $refs.passwordInput.focus();
+                ">
+                <i x-show="!showPassword" class="fas fa-eye text-sm"></i>
+                <i x-show="showPassword" x-cloak class="fas fa-eye-slash text-sm"></i>
+            </button>
         </div>
         {{-- Password strength bar --}}
         <div x-show="password.length > 0" x-cloak class="mt-2">
@@ -163,18 +167,20 @@
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <i class="fas fa-lock text-gray-400 text-sm"></i>
             </div>
-            <input id="password_confirmation" name="password_confirmation" type="password" x-bind:type="showConfirm ? 'text' : 'password'" required
+            <input id="password_confirmation" name="password_confirmation" type="password" required
                 x-model="password_confirmation"
+                x-ref="confirmInput"
                 class="block w-full pl-10 pr-20 py-2.5 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Re-enter your password">
-            <div class="absolute inset-y-0 right-0 pr-3 flex items-center gap-2 z-10">
-                <template x-if="passwordsMatch">
-                    <i class="fas fa-check-circle text-green-500 text-sm"></i>
-                </template>
-                <template x-if="password_confirmation.length > 0 && !passwordsMatch">
-                    <i class="fas fa-times-circle text-red-500 text-sm"></i>
-                </template>
-                <button type="button" @click.prevent="showConfirm = !showConfirm" class="p-1 text-gray-400 hover:text-gray-600 cursor-pointer">
+            <div class="absolute inset-y-0 right-0 px-3 flex items-center gap-2 z-20">
+                <span x-show="passwordsMatch" x-cloak><i class="fas fa-check-circle text-green-500 text-sm"></i></span>
+                <span x-show="password_confirmation.length > 0 && !passwordsMatch" x-cloak><i class="fas fa-times-circle text-red-500 text-sm"></i></span>
+                <button type="button" class="text-gray-400 hover:text-gray-600"
+                    @click="
+                        showConfirm = !showConfirm;
+                        $refs.confirmInput.type = showConfirm ? 'text' : 'password';
+                        $refs.confirmInput.focus();
+                    ">
                     <i x-show="!showConfirm" class="fas fa-eye text-sm"></i>
                     <i x-show="showConfirm" x-cloak class="fas fa-eye-slash text-sm"></i>
                 </button>
