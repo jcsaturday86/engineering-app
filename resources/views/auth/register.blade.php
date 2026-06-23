@@ -105,17 +105,10 @@
             </div>
             <input id="password" name="password" type="password" required
                 x-model="password"
-                x-ref="passwordInput"
                 class="block w-full pl-10 pr-12 py-2.5 border rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('password') border-red-300 @else border-gray-300 @enderror"
                 placeholder="Create a strong password">
-            <button type="button" class="absolute inset-y-0 right-0 px-3 flex items-center z-20 text-gray-400 hover:text-gray-600"
-                @click="
-                    showPassword = !showPassword;
-                    $refs.passwordInput.type = showPassword ? 'text' : 'password';
-                    $refs.passwordInput.focus();
-                ">
-                <i x-show="!showPassword" class="fas fa-eye text-sm"></i>
-                <i x-show="showPassword" x-cloak class="fas fa-eye-slash text-sm"></i>
+            <button type="button" onclick="togglePassword('password', this)" class="absolute inset-y-0 right-0 px-3 flex items-center z-20 text-gray-400 hover:text-gray-600">
+                <i class="fas fa-eye text-sm"></i>
             </button>
         </div>
         {{-- Password strength bar --}}
@@ -169,20 +162,13 @@
             </div>
             <input id="password_confirmation" name="password_confirmation" type="password" required
                 x-model="password_confirmation"
-                x-ref="confirmInput"
                 class="block w-full pl-10 pr-20 py-2.5 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Re-enter your password">
             <div class="absolute inset-y-0 right-0 px-3 flex items-center gap-2 z-20">
                 <span x-show="passwordsMatch" x-cloak><i class="fas fa-check-circle text-green-500 text-sm"></i></span>
                 <span x-show="password_confirmation.length > 0 && !passwordsMatch" x-cloak><i class="fas fa-times-circle text-red-500 text-sm"></i></span>
-                <button type="button" class="text-gray-400 hover:text-gray-600"
-                    @click="
-                        showConfirm = !showConfirm;
-                        $refs.confirmInput.type = showConfirm ? 'text' : 'password';
-                        $refs.confirmInput.focus();
-                    ">
-                    <i x-show="!showConfirm" class="fas fa-eye text-sm"></i>
-                    <i x-show="showConfirm" x-cloak class="fas fa-eye-slash text-sm"></i>
+                <button type="button" onclick="togglePassword('password_confirmation', this)" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-eye text-sm"></i>
                 </button>
             </div>
         </div>
@@ -254,4 +240,21 @@
         <a href="{{ route('login') }}" class="font-medium text-blue-600 hover:text-blue-500">Sign in</a>
     </p>
 </div>
+
+<script>
+function togglePassword(inputId, btn) {
+    var input = document.getElementById(inputId);
+    var icon = btn.querySelector('i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+    input.focus();
+}
+</script>
 @endsection
