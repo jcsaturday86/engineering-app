@@ -180,9 +180,8 @@ class CollectionController extends Controller
             }
 
             $application = $collection->application;
-            $previousStatus = $application->permitType->code === 'OP' ? 'engineering_assessed' : 'billed';
             $application->update([
-                'status' => $previousStatus,
+                'status' => 'billed',
                 'paid_at' => null,
             ]);
 
