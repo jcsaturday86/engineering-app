@@ -19,10 +19,12 @@ use App\Http\Controllers\OnlineApplicationController;
 use App\Http\Controllers\ZoningController;
 use Illuminate\Support\Facades\Route;
 
-// Redirect root to login or dashboard
-Route::get('/', fn () => auth()->check() ? redirect()->route('dashboard') : redirect()->route('login'));
+// Default page = client login
+Route::get('/', fn () => auth()->check()
+    ? (auth()->user()->hasRole('client') ? redirect()->route('online.dashboard') : redirect()->route('dashboard'))
+    : redirect()->route('login'));
 
-// Auth routes (guest only)
+// Client auth (guest only)
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [LoginController::class, 'login']);
@@ -32,6 +34,10 @@ Route::middleware('guest')->group(function () {
     Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
     Route::get('/reset-password/{token}', [ResetPasswordController::class, 'showResetForm'])->name('password.reset');
     Route::post('/reset-password', [ResetPasswordController::class, 'reset'])->name('password.update');
+
+    // Staff auth (separate portal)
+    Route::get('/staff/login', [LoginController::class, 'showStaffLoginForm'])->name('staff.login');
+    Route::post('/staff/login', [LoginController::class, 'staffLogin'])->name('staff.login.submit');
 });
 
 // Authenticated routes

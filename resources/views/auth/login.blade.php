@@ -46,10 +46,15 @@
     </button>
 </form>
 
-<div class="mt-6 text-center">
+<div class="mt-6 text-center space-y-3">
     <p class="text-sm text-gray-500">
         Need to apply for a permit?
         <a href="{{ route('register') }}" class="font-medium text-blue-600 hover:text-blue-500">Register here</a>
     </p>
+    <div class="border-t border-gray-200 pt-3">
+        <a href="{{ route('staff.login') }}" class="text-xs text-gray-400 hover:text-gray-600">
+            <i class="fas fa-shield-alt mr-1"></i> Staff Portal
+        </a>
+    </div>
 </div>
 @endsection
