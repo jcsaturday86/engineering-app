@@ -222,6 +222,8 @@ class ApplicationController extends Controller
 
     private function getFormData(): array
     {
+        $sfcCityId = City::where('name', 'like', '%SAN FERNANDO%')->where('province_id', 3)->value('id') ?? 71;
+
         return [
             'applicationTypes' => ApplicationType::where('is_active', true)->orderBy('sort_order')->get(),
             'scopeOfWorks' => ScopeOfWork::where('is_active', true)->orderBy('sort_order')->get(),
@@ -229,6 +231,7 @@ class ApplicationController extends Controller
             'provinces' => Province::where('is_active', true)->orderBy('name')->get(),
             'cities' => City::where('is_active', true)->orderBy('name')->get(),
             'barangays' => Barangay::where('is_active', true)->orderBy('name')->get(),
+            'sfcBarangays' => Barangay::where('city_id', $sfcCityId)->where('is_active', true)->orderBy('name')->get(),
             'occupancyGroups' => OccupancyGroup::with('subGroups')->where('is_active', true)->orderBy('sort_order')->get(),
             'landClassifications' => LandClassification::where('is_active', true)->get(),
         ];

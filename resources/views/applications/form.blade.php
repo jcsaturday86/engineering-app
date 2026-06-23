@@ -422,7 +422,7 @@
                     <select name="building_barangay_id" id="building_barangay_id"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">-- Select --</option>
-                        @foreach($barangays as $brgy)
+                        @foreach($sfcBarangays as $brgy)
                             <option value="{{ $brgy->id }}"
                                 {{ old('building_barangay_id', $application->building_barangay_id ?? '') == $brgy->id ? 'selected' : '' }}>
                                 {{ $brgy->name }}
@@ -432,6 +432,11 @@
                     @error('building_barangay_id')
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                     @enderror
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">City / Municipality</label>
+                    <input type="text" value="City of San Fernando, La Union" readonly
+                        class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-600">
                 </div>
             </div>
         </div>
