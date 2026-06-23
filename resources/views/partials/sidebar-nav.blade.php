@@ -4,14 +4,44 @@
     $currentUrl = request()->url();
 @endphp
 
-{{-- Dashboard --}}
+{{-- Online Portal (Client) --}}
+@can('online-apply')
+@unless(auth()->user()->can('view-applications'))
+<a href="{{ route('online.dashboard') }}" class="sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition {{ str_starts_with($currentRoute, 'online.dashboard') ? 'active' : 'text-gray-700' }}">
+    <i class="fas fa-home w-5 text-center"></i>
+    <span x-show="sidebarOpen || mobileMenuOpen">My Dashboard</span>
+</a>
+
+<div x-data="{ open: {{ str_starts_with($currentRoute, 'online') ? 'true' : 'false' }} }">
+    <button @click="open = !open" class="sidebar-link flex items-center justify-between w-full px-3 py-2.5 text-sm font-medium rounded-lg transition text-gray-700">
+        <div class="flex items-center gap-3">
+            <i class="fas fa-file-alt w-5 text-center"></i>
+            <span x-show="sidebarOpen || mobileMenuOpen">My Applications</span>
+        </div>
+        <i x-show="sidebarOpen || mobileMenuOpen" :class="open ? 'rotate-90' : ''" class="fas fa-chevron-right text-xs transition-transform"></i>
+    </button>
+    <div x-show="open && (sidebarOpen || mobileMenuOpen)" x-cloak class="ml-8 mt-1 space-y-1">
+        <a href="{{ route('online.apply') }}" class="block px-3 py-2 text-sm rounded-lg {{ $currentRoute === 'online.apply' ? 'text-primary-700 bg-primary-50 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
+            New Application
+        </a>
+        <a href="{{ route('online.dashboard') }}" class="block px-3 py-2 text-sm rounded-lg {{ $currentRoute === 'online.dashboard' ? 'text-primary-700 bg-primary-50 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
+            All Applications
+        </a>
+    </div>
+</div>
+@endunless
+@endcan
+
+{{-- Dashboard (Staff/Admin) --}}
+@can('view-applications')
 <a href="{{ route('dashboard') }}" class="sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition {{ str_starts_with($currentRoute, 'dashboard') ? 'active' : 'text-gray-700' }}">
     <i class="fas fa-tachometer-alt w-5 text-center"></i>
     <span x-show="sidebarOpen || mobileMenuOpen">Dashboard</span>
 </a>
+@endcan
 
-{{-- Applications --}}
-@canany(['view-applications', 'create-applications', 'online-apply'])
+{{-- Applications (Staff/Admin) --}}
+@canany(['view-applications', 'create-applications'])
 <div x-data="{ open: {{ str_starts_with($currentRoute, 'applications') ? 'true' : 'false' }} }">
     <button @click="open = !open" class="sidebar-link flex items-center justify-between w-full px-3 py-2.5 text-sm font-medium rounded-lg transition text-gray-700">
         <div class="flex items-center gap-3">

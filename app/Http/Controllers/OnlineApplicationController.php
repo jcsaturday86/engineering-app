@@ -92,11 +92,12 @@ class OnlineApplicationController extends Controller
                 'app_month' => now()->month,
                 'app_counter' => $counter,
                 'application_number' => $appNumber,
-                'status' => 'draft',
+                'status' => 'submitted',
                 'source' => 'online',
                 'entered_by' => Auth::id(),
                 'client_user_id' => Auth::id(),
                 'applicant_email' => Auth::user()->email,
+                'submitted_at' => now(),
                 'total_estimated_cost' => ($validated['building_cost'] ?? 0) + ($validated['electrical_cost'] ?? 0) +
                     ($validated['mechanical_cost'] ?? 0) + ($validated['electronics_cost'] ?? 0) +
                     ($validated['plumbing_cost'] ?? 0) + ($validated['other_equipment_cost'] ?? 0),

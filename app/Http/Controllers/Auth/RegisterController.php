@@ -44,6 +44,6 @@ class RegisterController extends Controller
             ->causedBy($user)
             ->log('Client account registered');
 
-        return redirect()->route('dashboard');
+        return redirect()->route('online.dashboard');
     }
 }

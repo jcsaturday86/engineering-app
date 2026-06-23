@@ -38,6 +38,10 @@ class LoginController extends Controller
                 return redirect()->route('password.change');
             }
 
+            if ($user->hasRole('client')) {
+                return redirect()->intended(route('online.dashboard'));
+            }
+
             return redirect()->intended(route('dashboard'));
         }
 
