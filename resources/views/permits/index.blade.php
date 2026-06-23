@@ -77,7 +77,7 @@
                                     </button>
                                 </form>
                             @else
-                                <a href="{{ route('permits.print', $app->permits->first()) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition">
+                                <a href="{{ route('permits.print', $app->permits->first()) }}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition">
                                     <i class="fas fa-print"></i> Print Permit
                                 </a>
                             @endif

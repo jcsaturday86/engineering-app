@@ -129,7 +129,7 @@
                             </span>
                         </td>
                         <td class="px-4 py-3 text-right">
-                            <a href="{{ route('collections.receipt', $collection) }}" class="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-200 transition" title="Print Receipt">
+                            <a href="{{ route('collections.receipt', $collection) }}" target="_blank" class="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-200 transition" title="Print Receipt">
                                 <i class="fas fa-print"></i> Receipt
                             </a>
                         </td>

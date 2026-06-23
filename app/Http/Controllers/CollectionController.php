@@ -116,7 +116,7 @@ class CollectionController extends Controller
             $application->clientUser->notify(new PaymentPostedNotification($application, $collection));
         }
 
-        return redirect()->route('collections.receipt', $collection)->with('success', 'Payment recorded successfully.');
+        return redirect()->route('collections.index')->with('success', 'Payment recorded successfully. OR Number: ' . $collection->or_number);
     }
 
     public function receipt(Collection $collection)

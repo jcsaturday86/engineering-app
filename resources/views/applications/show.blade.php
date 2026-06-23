@@ -62,7 +62,7 @@
                     </button>
                 </form>
             @endif
-            <a href="{{ route('applications.print', $application) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
+            <a href="{{ route('applications.print', $application) }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
                 <i class="fas fa-print"></i> Print
             </a>
         </div>
