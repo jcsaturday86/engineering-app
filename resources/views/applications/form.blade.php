@@ -1171,7 +1171,14 @@
 
                 {{-- Supervisor / In-Charge of Electrical Works --}}
                 <div>
-                    <p class="text-sm font-semibold text-gray-800 mb-3">Supervisor / In-Charge of Electrical Works</p>
+                    <div class="flex items-center justify-between mb-3">
+                        <p class="text-sm font-semibold text-gray-800">Supervisor / In-Charge of Electrical Works</p>
+                        <label class="inline-flex items-center gap-2 cursor-pointer px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg">
+                            <input type="checkbox" id="sew_same_as_pee" onclick="copyPeeToSew(this.checked)"
+                                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            <span class="text-xs font-medium text-blue-700">Same as PEE</span>
+                        </label>
+                    </div>
                     <div class="space-y-4">
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
@@ -1360,6 +1367,29 @@
                 }
                 return sum.toFixed(2);
             },
+        }
+    }
+
+    function copyPeeToSew(checked) {
+        var fields = [
+            ['pee_name', 'sew_name'],
+            ['pee_prc_no', 'sew_prc_no'],
+            ['pee_prc_validity', 'sew_prc_validity'],
+            ['pee_date_signed', 'sew_date_signed'],
+            ['pee_ptr_no', 'sew_ptr_no'],
+            ['pee_ptr_date_issued', 'sew_ptr_date_issued'],
+            ['pee_ptr_issued_at', 'sew_ptr_issued_at'],
+            ['pee_address', 'sew_address'],
+            ['pee_tin', 'sew_tin'],
+        ];
+        for (var i = 0; i < fields.length; i++) {
+            var src = document.getElementById(fields[i][0]);
+            var dst = document.getElementById(fields[i][1]);
+            if (src && dst) {
+                dst.value = checked ? src.value : '';
+                dst.readOnly = checked;
+                dst.style.backgroundColor = checked ? '#f3f4f6' : '';
+            }
         }
     }
 </script>
