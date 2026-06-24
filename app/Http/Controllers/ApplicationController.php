@@ -71,6 +71,8 @@ class ApplicationController extends Controller
             $validated['scope_of_work_details'] = $request->input('scope_detail_' . $validated['scope_of_work_id'], '');
         }
 
+        $validated['applies_to'] = $request->boolean('skip_locational') ? 'SKIP_LC' : '';
+
         $permitType = PermitType::findOrFail($validated['permit_type_id']);
 
         DB::beginTransaction();
@@ -150,6 +152,8 @@ class ApplicationController extends Controller
             $validated['scope_of_work_details'] = $request->input('scope_detail_' . $validated['scope_of_work_id'], '');
         }
 
+        $validated['applies_to'] = $request->boolean('skip_locational') ? 'SKIP_LC' : '';
+
         DB::beginTransaction();
         try {
             $validated['total_estimated_cost'] = ($validated['building_cost'] ?? 0) +
@@ -180,18 +184,32 @@ class ApplicationController extends Controller
             return back()->with('error', 'Only draft applications can be submitted.');
         }
 
-        $application->update([
-            'status' => 'submitted',
-            'submitted_at' => now(),
-        ]);
+        $skipLC = $application->applies_to === 'SKIP_LC';
+        $isBP = $application->permitType?->code === 'BP';
 
-        activity()->causedBy(Auth::user())->performedOn($application)->log('Application submitted');
+        if ($isBP && !$skipLC) {
+            $application->update([
+                'status' => 'submitted',
+                'submitted_at' => now(),
+            ]);
+            activity()->causedBy(Auth::user())->performedOn($application)->log('Application submitted — routed to Planning Office');
+        } else {
+            $application->update([
+                'status' => 'zoning_assessed',
+                'submitted_at' => now(),
+            ]);
+            activity()->causedBy(Auth::user())->performedOn($application)->log('Application submitted — skipped Locational Clearance');
+        }
 
         // Notify engineering officers
         $engineeringUsers = User::role(['engineering-officer', 'engineering-staff'])->get();
         Notification::send($engineeringUsers, new ApplicationSubmittedNotification($application));
 
-        return back()->with('success', 'Application submitted for processing.');
+        $msg = $skipLC || !$isBP
+            ? 'Application submitted. Routed directly to Engineering Assessment.'
+            : 'Application submitted. Routed to Planning Office for Locational Clearance.';
+
+        return back()->with('success', $msg);
     }
 
     public function cancel(Request $request, Application $application)

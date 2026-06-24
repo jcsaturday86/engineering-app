@@ -123,30 +123,18 @@
                 @enderror
             </div>
 
-            {{-- Applies To (BP only) --}}
+            {{-- Skip Locational Clearance (BP only) --}}
             @if($isBP)
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Applies To</label>
-                <div class="flex flex-wrap gap-4">
-                    <label class="inline-flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" value="NA" x-model="appliesToChecks"
-                            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                        <span class="text-sm text-gray-700">NA</span>
-                    </label>
-                    <label class="inline-flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" value="LC" x-model="appliesToChecks"
-                            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                        <span class="text-sm text-gray-700">LC &mdash; Locational Clearance</span>
-                    </label>
-                    <label class="inline-flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" value="FS" x-model="appliesToChecks"
-                            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                        <span class="text-sm text-gray-700">FS &mdash; Fire Safety</span>
-                    </label>
-                </div>
-                @error('applies_to')
-                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                @enderror
+                <label class="inline-flex items-center gap-2 cursor-pointer p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <input type="checkbox" name="skip_locational" value="1"
+                        class="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
+                        {{ old('skip_locational', $application->applies_to ?? '') === 'SKIP_LC' ? 'checked' : '' }}>
+                    <div>
+                        <span class="text-sm font-medium text-gray-700">Skip Locational Clearance</span>
+                        <p class="text-xs text-gray-500">If checked, application will go directly to Engineering Assessment. Otherwise, it will be routed to the Planning Office for Locational Clearance first.</p>
+                    </div>
+                </label>
             </div>
             @endif
         </div>
