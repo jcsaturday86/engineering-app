@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\PermitApplicationContract;
 use App\Models\Application;
 use App\Models\Billing;
 use App\Models\Collection;
 use App\Models\CollectionDetail;
+use App\Models\OccupancyApplication;
 use App\Models\VoidTransaction;
 use App\Notifications\PaymentPostedNotification;
 use Illuminate\Http\Request;
@@ -17,12 +19,19 @@ class CollectionController extends Controller
 {
     public function index()
     {
-        $forPayment = Application::with('permitType', 'billings')
+        $bpForPayment = Application::with('permitType', 'billings')
             ->where('status', 'billed')
             ->latest()
             ->get();
 
-        $collections = Collection::with('application.permitType', 'collectedBy')
+        $opForPayment = OccupancyApplication::with('applicationType', 'billings')
+            ->where('status', 'billed')
+            ->latest()
+            ->get();
+
+        $forPayment = $bpForPayment->concat($opForPayment)->sortByDesc('created_at');
+
+        $collections = Collection::with('applicationable', 'collectedBy')
             ->where('status', 'active')
             ->latest()
             ->paginate(20);
@@ -30,14 +39,26 @@ class CollectionController extends Controller
         return view('collections.index', compact('collections', 'forPayment'));
     }
 
+    // BP payment
     public function create(Application $application)
+    {
+        return $this->doCreate($application);
+    }
+
+    // OP payment
+    public function createOp(OccupancyApplication $occupancyApplication)
+    {
+        return $this->doCreate($occupancyApplication);
+    }
+
+    private function doCreate(PermitApplicationContract $application)
     {
         if ($application->status !== 'billed') {
             return back()->with('error', 'Application is not ready for payment.');
         }
 
-        $billing = Billing::with('billingItems')
-            ->where('application_id', $application->id)
+        $billing = $application->billings()
+            ->with('billingItems')
             ->where('status', 'unpaid')
             ->latest()
             ->firstOrFail();
@@ -45,7 +66,19 @@ class CollectionController extends Controller
         return view('collections.create', compact('application', 'billing'));
     }
 
+    // BP store payment
     public function store(Request $request, Application $application)
+    {
+        return $this->doStore($request, $application);
+    }
+
+    // OP store payment
+    public function storeOp(Request $request, OccupancyApplication $occupancyApplication)
+    {
+        return $this->doStore($request, $occupancyApplication);
+    }
+
+    private function doStore(Request $request, PermitApplicationContract $application)
     {
         $validated = $request->validate([
             'or_number' => 'required|string|max:30|unique:collections,or_number',
@@ -58,13 +91,16 @@ class CollectionController extends Controller
             'online_reference' => 'required_if:payment_mode,online|nullable|string|max:100',
         ]);
 
-        $billing = Billing::with('billingItems')
-            ->where('application_id', $application->id)
+        $billing = $application->billings()
+            ->with('billingItems')
             ->where('status', 'unpaid')
             ->latest()
             ->firstOrFail();
 
-        $existingCollection = Collection::where('application_id', $application->id)
+        $morphType = $application->getPermitTypeCode() === 'OP' ? 'op' : 'bp';
+
+        $existingCollection = Collection::where('applicationable_type', $morphType)
+            ->where('applicationable_id', $application->id)
             ->where('status', 'active')
             ->first();
 
@@ -72,8 +108,10 @@ class CollectionController extends Controller
             return back()->with('error', 'Payment already exists for this application.');
         }
 
-        DB::transaction(function () use ($validated, $application, $billing) {
+        DB::transaction(function () use ($validated, $application, $billing, $morphType) {
             $collection = Collection::create([
+                'applicationable_type' => $morphType,
+                'applicationable_id' => $application->id,
                 'application_id' => $application->id,
                 'billing_id' => $billing->id,
                 'or_number' => $validated['or_number'],
@@ -109,9 +147,12 @@ class CollectionController extends Controller
             activity()->causedBy(Auth::user())->performedOn($application)->log('Payment collected');
         });
 
-        $collection = Collection::where('application_id', $application->id)->where('status', 'active')->latest()->first();
+        $collection = Collection::where('applicationable_type', $morphType)
+            ->where('applicationable_id', $application->id)
+            ->where('status', 'active')
+            ->latest()
+            ->first();
 
-        // Notify client user if linked
         if ($application->client_user_id) {
             $application->clientUser->notify(new PaymentPostedNotification($application, $collection));
         }
@@ -121,9 +162,11 @@ class CollectionController extends Controller
 
     public function receipt(Collection $collection)
     {
-        $collection->load('application.permitType', 'collectionDetails', 'collectedBy');
+        $collection->load('applicationable', 'collectionDetails', 'collectedBy');
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.official-receipt', compact('collection'));
+        $application = $collection->applicationable;
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.official-receipt', compact('collection', 'application'));
         $pdf->setPaper('a4', 'portrait');
 
         return $pdf->stream("or_{$collection->or_number}.pdf");
@@ -134,7 +177,7 @@ class CollectionController extends Controller
         $collection = null;
 
         if ($request->filled('or_number')) {
-            $collection = Collection::with('application.permitType')
+            $collection = Collection::with('applicationable')
                 ->where('or_number', $request->or_number)
                 ->where('status', 'active')
                 ->first();
@@ -179,7 +222,7 @@ class CollectionController extends Controller
                 $collection->billing->update(['status' => 'unpaid']);
             }
 
-            $application = $collection->application;
+            $application = $collection->applicationable;
             $application->update([
                 'status' => 'billed',
                 'paid_at' => null,

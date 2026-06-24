@@ -4,16 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class ApplicationRequirement extends Model
 {
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'application_id',
+        'applicationable_type',
+        'applicationable_id',
         'requirement_name',
         'file_path',
         'original_filename',
@@ -23,11 +21,6 @@ class ApplicationRequirement extends Model
         'reviewed_at',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -35,17 +28,16 @@ class ApplicationRequirement extends Model
         ];
     }
 
-    /**
-     * Application this requirement belongs to.
-     */
-    public function application(): BelongsTo
+    public function applicationable(): MorphTo
     {
-        return $this->belongsTo(Application::class);
+        return $this->morphTo();
     }
 
-    /**
-     * User who reviewed this requirement.
-     */
+    public function getApplicationAttribute()
+    {
+        return $this->applicationable;
+    }
+
     public function reviewedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');

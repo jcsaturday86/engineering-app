@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\PermitApplicationContract;
 use App\Models\Application;
 use App\Models\Assessment;
 use App\Models\Billing;
 use App\Models\BillingItem;
+use App\Models\OccupancyApplication;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,23 +16,41 @@ class BillingController extends Controller
 {
     public function index()
     {
-        $applications = Application::with('permitType', 'billings')
+        $bpApplications = Application::with('permitType', 'billings')
             ->where('status', 'engineering_assessed')
             ->latest()
-            ->paginate(20);
+            ->get();
+
+        $opApplications = OccupancyApplication::with('applicationType', 'billings')
+            ->where('status', 'engineering_assessed')
+            ->latest()
+            ->get();
+
+        $applications = $bpApplications->concat($opApplications)->sortByDesc('created_at');
 
         return view('billing.index', compact('applications'));
     }
 
+    // BP billing
     public function generate(Application $application)
+    {
+        return $this->doGenerate($application);
+    }
+
+    // OP billing
+    public function generateOp(OccupancyApplication $occupancyApplication)
+    {
+        return $this->doGenerate($occupancyApplication);
+    }
+
+    private function doGenerate(PermitApplicationContract $application)
     {
         if (!in_array($application->status, ['engineering_assessed', 'billed'])) {
             return back()->with('error', 'Application is not ready for billing.');
         }
 
         DB::transaction(function () use ($application) {
-            $assessments = Assessment::with('assessmentItems')
-                ->where('application_id', $application->id)
+            $assessments = $application->assessments()->with('assessmentItems')
                 ->where('status', 'finalized')
                 ->get();
 
@@ -40,7 +60,11 @@ class BillingController extends Controller
 
             $billingNumber = sprintf('BL-%s-%s-%05d', now()->format('Y'), now()->format('m'), $counter);
 
+            $morphType = $application->getPermitTypeCode() === 'OP' ? 'op' : 'bp';
+
             $billing = Billing::create([
+                'applicationable_type' => $morphType,
+                'applicationable_id' => $application->id,
                 'application_id' => $application->id,
                 'billing_number' => $billingNumber,
                 'total_amount' => 0,
@@ -102,9 +126,11 @@ class BillingController extends Controller
 
     public function print(Billing $billing)
     {
-        $billing->load('application.permitType', 'billingItems');
+        $billing->load('applicationable', 'billingItems');
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.billing-statement', compact('billing'));
+        $application = $billing->applicationable;
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.billing-statement', compact('billing', 'application'));
         $pdf->setPaper('a4', 'portrait');
 
         return $pdf->stream("billing_{$billing->billing_number}.pdf");

@@ -235,7 +235,9 @@
 
 ## Application Tables
 
-### `applications` (Core — currently shared by BP and OP)
+### `applications` (Building Permit only)
+
+> OP-specific columns (bp_number, bp_issued_date, fsec_no, fsec_issued_date, completion_date, applies_for) have been removed. OP applications are now in the separate `occupancy_applications` table. The `permit_type_id` column is retained for now.
 
 | Column Group | Columns |
 |-------------|---------|
@@ -250,7 +252,6 @@
 | **Building Specs** | no_of_storeys, no_of_units, occupancy_classified, total_floor_area, lot_area |
 | **Costs** | building_cost, electrical_cost, mechanical_cost, electronics_cost, plumbing_cost, other_equipment_cost, equipment_cost_1-4, total_estimated_cost |
 | **Timeline** | proposed_construction_date, expected_completion_date |
-| **OP-Specific** | bp_number, bp_issued_date, completion_date, fsec_no, fsec_issued_date, applies_for |
 | **Engineer** | engineer_name, engineer_prc_no, engineer_prc_validity, engineer_ptr_no, engineer_ptr_date_issued, engineer_ptr_issued_at, engineer_tin, engineer_address, engineer_date_signed |
 | **PEE** | pee_name, pee_prc_no, pee_prc_validity, pee_date_signed, pee_ptr_no, pee_ptr_date_issued, pee_ptr_issued_at, pee_address, pee_tin |
 | **SEW** | sew_profession, sew_name, sew_prc_no, sew_prc_validity, sew_date_signed, sew_ptr_no, sew_ptr_date_issued, sew_ptr_issued_at, sew_address, sew_tin |
@@ -261,24 +262,49 @@
 
 **Indexes:** [permit_type_id, status], [app_year, app_month], [status]
 
+### `occupancy_applications` (Occupancy Permit only)
+
+> Separate table for OP applications. Shares common fields with `applications` but has OP-specific fields and omits BP-specific fields (no cost fields, no engineer/PEE/SEW, no electrical, no scope_of_work, no complexity).
+
+| Column Group | Columns |
+|-------------|---------|
+| **Identity** | id, application_type_id (FK), app_year, app_month, app_counter, application_number (unique), area_number |
+| **Status** | status (default: 'draft'), source (walk_in/online) |
+| **Applicant** | applicant_first_name, applicant_middle_name, applicant_last_name, applicant_suffix, applicant_tin, applicant_contact_no, applicant_email, applicant_govt_id, applicant_id_date_issued, applicant_id_place_issued, applicant_date_signed |
+| **Enterprise** | enterprise_name, form_of_ownership_id (FK) |
+| **Applicant Address** | applicant_province_id (FK), applicant_city_id (FK), applicant_barangay_id (FK), applicant_street, applicant_zip_code |
+| **Project** | project_title |
+| **Building Location** | lot_no, block_no, tct_no, tax_dec_no, land_classification_id (FK), building_street, building_barangay_id (FK) |
+| **Building Specs** | no_of_storeys, no_of_units, occupancy_classified, total_floor_area, lot_area |
+| **OP-Specific** | bp_number, bp_issued_date, fsec_no, fsec_issued_date, completion_date, applies_for |
+| **Owner** | owner_name, owner_address, owner_govt_id, owner_id_date_issued, owner_id_place_issued, owner_date_signed |
+| **Processing** | entered_by (FK), assessed_by (FK), approved_by (FK), client_user_id (FK), submitted_at, assessed_at, approved_at, paid_at, released_at, cancelled_at, cancellation_reason, issued_date |
+| **System** | remarks, deleted_at, created_at, updated_at |
+
+**Indexes:** [status], [app_year, app_month]
+
 ### `application_occupancy_groups`
 
 | Column | Type | Description |
 |--------|------|-------------|
 | id | bigint PK | |
-| application_id | FK → applications (cascade) | |
+| applicationable_type | varchar(10) | Morph type: 'bp' or 'op' |
+| applicationable_id | bigint unsigned | FK to applications or occupancy_applications |
+| application_id | FK → applications | Yes | Kept for transition (legacy) |
 | occupancy_group_id | FK → occupancy_groups (cascade) | |
 | occupancy_sub_group_id | FK → occupancy_sub_groups | Yes |
 | others_text | string | Yes | Free text for "Others" |
 
-**Unique:** [application_id, occupancy_sub_group_id]
+**Unique:** [applicationable_type, applicationable_id, occupancy_sub_group_id]
 
 ### `application_requirements`
 
 | Column | Type | Description |
 |--------|------|-------------|
 | id | bigint PK | |
-| application_id | FK → applications (cascade) | |
+| applicationable_type | varchar(10) | Morph type: 'bp' or 'op' |
+| applicationable_id | bigint unsigned | FK to applications or occupancy_applications |
+| application_id | FK → applications | Yes | Kept for transition (legacy) |
 | requirement_name | string | |
 | file_path | string | |
 | original_filename | string | |
@@ -296,7 +322,9 @@
 | Column | Type | Description |
 |--------|------|-------------|
 | id | bigint PK | |
-| application_id | FK → applications (cascade) | |
+| applicationable_type | varchar(10) | Morph type: 'bp' or 'op' |
+| applicationable_id | bigint unsigned | FK to applications or occupancy_applications |
+| application_id | FK → applications | Yes | Kept for transition (legacy) |
 | assessment_type | string(30) | building, occupancy, zoning |
 | filing_fee | decimal(15,2) | Default: 0 |
 | processing_fee | decimal(15,2) | Default: 0 |
@@ -364,7 +392,9 @@
 | Column | Type | Description |
 |--------|------|-------------|
 | id | bigint PK | |
-| application_id | FK → applications (cascade) | |
+| applicationable_type | varchar(10) | Morph type: 'bp' or 'op' |
+| applicationable_id | bigint unsigned | FK to applications or occupancy_applications |
+| application_id | FK → applications | Yes | Kept for transition (legacy) |
 | billing_number | string(30) unique | BL-YYYY-MM-NNNNN |
 | total_amount | decimal(15,2) | Default: 0 |
 | status | enum | unpaid, partial, paid, void |
@@ -387,7 +417,9 @@
 | Column | Type | Description |
 |--------|------|-------------|
 | id | bigint PK | |
-| application_id | FK → applications (cascade) | |
+| applicationable_type | varchar(10) | Morph type: 'bp' or 'op' |
+| applicationable_id | bigint unsigned | FK to applications or occupancy_applications |
+| application_id | FK → applications | Yes | Kept for transition (legacy) |
 | billing_id | FK → billings | Yes |
 | or_number | string(30) unique | Official Receipt number |
 | or_date | date | Receipt date |
@@ -435,7 +467,9 @@
 | Column | Type | Description |
 |--------|------|-------------|
 | id | bigint PK | |
-| application_id | FK → applications (cascade) | |
+| applicationable_type | varchar(10) | Morph type: 'bp' or 'op' |
+| applicationable_id | bigint unsigned | FK to applications or occupancy_applications |
+| application_id | FK → applications | Yes | Kept for transition (legacy) |
 | permit_type_id | FK → permit_types (cascade) | |
 | permit_year | year | |
 | permit_month | tinyint | |
@@ -454,7 +488,9 @@
 | Column | Type | Description |
 |--------|------|-------------|
 | id | bigint PK | |
-| application_id | FK → applications (cascade) | |
+| applicationable_type | varchar(10) | Morph type: 'bp' or 'op' |
+| applicationable_id | bigint unsigned | FK to applications or occupancy_applications |
+| application_id | FK → applications | Yes | Kept for transition (legacy) |
 | document_type | string(50) | e.g., pdf.building-permit |
 | title | string | |
 | file_path | string | Yes |
@@ -462,4 +498,17 @@
 | document_date | date | |
 | generated_by | FK → users | Yes |
 
-**Index:** [application_id, document_type]
+**Index:** [applicationable_type, applicationable_id, document_type]
+
+---
+
+## Polymorphic Morph Map
+
+Registered in `AppServiceProvider`:
+
+| Morph Alias | Model |
+|-------------|-------|
+| `bp` | `App\Models\Application` |
+| `op` | `App\Models\OccupancyApplication` |
+
+The 7 downstream tables (assessments, billings, collections, permits, documents, application_occupancy_groups, application_requirements) use `applicationable_type` (varchar 10) + `applicationable_id` (bigint unsigned) to reference either BP or OP applications. The old `application_id` column is kept on each table for backward compatibility during transition.

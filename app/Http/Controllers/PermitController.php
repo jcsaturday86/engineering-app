@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\PermitApplicationContract;
 use App\Models\Application;
+use App\Models\OccupancyApplication;
 use App\Models\Permit;
+use App\Models\PermitType;
 use App\Models\Signatory;
 use App\Notifications\ApplicationApprovedNotification;
 use Illuminate\Support\Facades\Auth;
@@ -15,7 +18,6 @@ class PermitController extends Controller
     {
         $applications = Application::with('permitType', 'permits')
             ->whereIn('status', ['paid', 'permit_generated', 'released'])
-            ->whereHas('permitType', fn ($q) => $q->where('code', 'BP'))
             ->latest()
             ->paginate(20);
 
@@ -25,9 +27,8 @@ class PermitController extends Controller
 
     public function occupancyIndex()
     {
-        $applications = Application::with('permitType', 'permits')
+        $applications = OccupancyApplication::with('applicationType', 'permits')
             ->whereIn('status', ['paid', 'permit_generated', 'released'])
-            ->whereHas('permitType', fn ($q) => $q->where('code', 'OP'))
             ->latest()
             ->paginate(20);
 
@@ -35,23 +36,39 @@ class PermitController extends Controller
         return view('permits.index', compact('applications', 'type'));
     }
 
+    // BP permit generation
     public function generate(Application $application)
+    {
+        return $this->doGenerate($application, 'BP');
+    }
+
+    // OP permit generation
+    public function generateOp(OccupancyApplication $occupancyApplication)
+    {
+        return $this->doGenerate($occupancyApplication, 'OP');
+    }
+
+    private function doGenerate(PermitApplicationContract $application, string $permitCode)
     {
         if ($application->status !== 'paid') {
             return back()->with('error', 'Application must be paid before generating permit.');
         }
 
-        DB::transaction(function () use ($application) {
-            $counter = Permit::where('permit_type_id', $application->permit_type_id)
+        $permitType = PermitType::where('code', $permitCode)->firstOrFail();
+        $morphType = $permitCode === 'OP' ? 'op' : 'bp';
+
+        DB::transaction(function () use ($application, $permitType, $permitCode, $morphType) {
+            $counter = Permit::where('permit_type_id', $permitType->id)
                     ->where('permit_year', now()->year)
                     ->count() + 1;
 
-            $prefix = $application->permitType->code;
-            $permitNumber = sprintf('%s-%s-%s-%05d', $prefix, now()->format('Y'), now()->format('m'), $counter);
+            $permitNumber = sprintf('%s-%s-%s-%05d', $permitCode, now()->format('Y'), now()->format('m'), $counter);
 
             Permit::create([
+                'applicationable_type' => $morphType,
+                'applicationable_id' => $application->id,
                 'application_id' => $application->id,
-                'permit_type_id' => $application->permit_type_id,
+                'permit_type_id' => $permitType->id,
                 'permit_year' => now()->year,
                 'permit_month' => now()->month,
                 'permit_counter' => $counter,
@@ -69,9 +86,10 @@ class PermitController extends Controller
             activity()->causedBy(Auth::user())->performedOn($application)->log('Permit generated');
         });
 
-        // Notify client user if linked
         if ($application->client_user_id) {
-            $permit = Permit::where('application_id', $application->id)->latest()->first();
+            $permit = Permit::where('applicationable_type', $morphType)
+                ->where('applicationable_id', $application->id)
+                ->latest()->first();
             $application->clientUser->notify(new ApplicationApprovedNotification($application, $permit));
         }
 
@@ -80,16 +98,24 @@ class PermitController extends Controller
 
     public function print(Permit $permit)
     {
-        $permit->load('application.permitType', 'application.applicationType',
-            'application.applicantProvince', 'application.applicantCity',
-            'application.applicantBarangay', 'application.buildingBarangay',
-            'application.scopeOfWork', 'application.formOfOwnership',
-            'application.applicationOccupancyGroups.occupancyGroup',
-            'application.applicationOccupancyGroups.occupancySubGroup',
-            'application.collections.collectionDetails'
+        $permit->load('applicationable', 'permitType');
+
+        $application = $permit->applicationable;
+        $application->load(
+            'applicationType',
+            'applicantProvince', 'applicantCity',
+            'applicantBarangay', 'buildingBarangay',
+            'formOfOwnership',
+            'applicationOccupancyGroups.occupancyGroup',
+            'applicationOccupancyGroups.occupancySubGroup',
+            'collections.collectionDetails'
         );
 
-        $application = $permit->application;
+        // Load BP-specific relations if available
+        if ($application instanceof Application) {
+            $application->load('scopeOfWork');
+        }
+
         $signatories = Signatory::where('is_active', true)->get()->keyBy('role');
         $template = $permit->permitType->code === 'OP' ? 'pdf.occupancy-permit' : 'pdf.building-permit';
 

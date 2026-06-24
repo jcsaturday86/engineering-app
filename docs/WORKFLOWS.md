@@ -38,7 +38,7 @@
 
 | Step | Status | Actor | Controller | Action |
 |------|--------|-------|-----------|--------|
-| 1 | draft | Engineering Staff | ApplicationController::store | Create application with occupancy groups |
+| 1 | draft | Engineering Staff | ApplicationController::store | Create BP application with occupancy groups |
 | 2 | submitted | Engineering Staff | ApplicationController::submit | Submit for processing |
 | 3 | zoning_assessed | Planning Staff | ZoningController::finalize | Complete zoning assessment |
 | 4 | engineering_assessed | Engineering Officer | AssessmentController::finalize | Finalize fee assessment |
@@ -46,6 +46,8 @@
 | 6 | paid | Treasury Staff | CollectionController::store | Record payment (OR) |
 | 7 | permit_generated | Engineering Officer | PermitController::generate | Generate permit document |
 | 8 | released | Engineering Officer | Manual | Release permit to applicant |
+
+> **Note:** ApplicationController handles BP applications only (from the `applications` table).
 
 ### Skip Locational Clearance
 When `applies_to = "SKIP_LC"`, submission skips the planning office:
@@ -68,6 +70,20 @@ When `applies_to = "SKIP_LC"`, submission skips the planning office:
 ```
 
 **Key difference:** OP skips `zoning_assessed` — goes directly from `submitted` to `engineering_assessed`.
+
+### OP Step Details
+
+| Step | Status | Actor | Controller | Action |
+|------|--------|-------|-----------|--------|
+| 1 | draft | Engineering Staff | OccupancyApplicationController::store | Create OP application (from `occupancy_applications` table) |
+| 2 | submitted | Engineering Staff | OccupancyApplicationController::submit | Submit for processing (skips zoning) |
+| 3 | engineering_assessed | Engineering Officer | AssessmentController::finalizeOp | Finalize OP fee assessment |
+| 4 | billed | Finance | BillingController::generateOp | Generate billing from OP assessment |
+| 5 | paid | Treasury Staff | CollectionController::storeOp | Record OP payment (OR) |
+| 6 | permit_generated | Engineering Officer | PermitController::generateOp | Generate occupancy permit document |
+| 7 | released | Engineering Officer | Manual | Release permit to applicant |
+
+> **Note:** OccupancyApplicationController handles OP applications only (from the `occupancy_applications` table). Downstream controllers (Assessment, Billing, Collection, Permit) have parallel `*Op()` methods for OP processing.
 
 ---
 
@@ -203,7 +219,9 @@ Client downloads permit (/online/application/{id}/download)
 
 | Notification | Trigger | Recipients |
 |-------------|---------|-----------|
-| `ApplicationSubmittedNotification` | Application submitted | Engineering users |
-| `AssessmentCompleteNotification` | Assessment finalized | Applicant |
-| `PaymentPostedNotification` | Payment recorded | Applicant |
-| `ApplicationApprovedNotification` | Permit generated | Client user |
+| `ApplicationSubmittedNotification` | Application submitted (BP or OP) | Engineering users |
+| `AssessmentCompleteNotification` | Assessment finalized (BP or OP) | Applicant |
+| `PaymentPostedNotification` | Payment recorded (BP or OP) | Applicant |
+| `ApplicationApprovedNotification` | Permit generated (BP or OP) | Client user |
+
+> All 4 notification classes accept `Model` instead of `Application` to support both BP and OP application types.

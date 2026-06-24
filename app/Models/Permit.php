@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -12,13 +13,10 @@ class Permit extends Model
 {
     use LogsActivity, SoftDeletes;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'application_id',
+        'applicationable_type',
+        'applicationable_id',
         'permit_type_id',
         'permit_year',
         'permit_month',
@@ -30,11 +28,6 @@ class Permit extends Model
         'status',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -45,9 +38,6 @@ class Permit extends Model
         ];
     }
 
-    /**
-     * Get activity log options.
-     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -55,33 +45,26 @@ class Permit extends Model
             ->logOnlyDirty();
     }
 
-    /**
-     * Application this permit belongs to.
-     */
-    public function application(): BelongsTo
+    public function applicationable(): MorphTo
     {
-        return $this->belongsTo(Application::class);
+        return $this->morphTo();
     }
 
-    /**
-     * Permit type.
-     */
+    public function getApplicationAttribute()
+    {
+        return $this->applicationable;
+    }
+
     public function permitType(): BelongsTo
     {
         return $this->belongsTo(PermitType::class);
     }
 
-    /**
-     * User who processed this permit.
-     */
     public function processedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'processed_by');
     }
 
-    /**
-     * User who approved this permit.
-     */
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');

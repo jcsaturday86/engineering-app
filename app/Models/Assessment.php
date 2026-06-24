@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -13,13 +14,10 @@ class Assessment extends Model
 {
     use LogsActivity, SoftDeletes;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'application_id',
+        'applicationable_type',
+        'applicationable_id',
         'assessment_type',
         'filing_fee',
         'processing_fee',
@@ -29,11 +27,6 @@ class Assessment extends Model
         'finalized_at',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -44,9 +37,6 @@ class Assessment extends Model
         ];
     }
 
-    /**
-     * Get activity log options.
-     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -54,25 +44,21 @@ class Assessment extends Model
             ->logOnlyDirty();
     }
 
-    /**
-     * Application this assessment belongs to.
-     */
-    public function application(): BelongsTo
+    public function applicationable(): MorphTo
     {
-        return $this->belongsTo(Application::class);
+        return $this->morphTo();
     }
 
-    /**
-     * User who performed the assessment.
-     */
+    public function getApplicationAttribute()
+    {
+        return $this->applicationable;
+    }
+
     public function assessedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assessed_by');
     }
 
-    /**
-     * Line items in this assessment.
-     */
     public function assessmentItems(): HasMany
     {
         return $this->hasMany(AssessmentItem::class);

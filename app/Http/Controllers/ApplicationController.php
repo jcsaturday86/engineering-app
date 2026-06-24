@@ -41,20 +41,14 @@ class ApplicationController extends Controller
             $query->where('status', $request->status);
         }
 
-        if ($request->filled('permit_type')) {
-            $query->where('permit_type_id', $request->permit_type);
-        }
-
         $applications = $query->latest()->paginate(20)->withQueryString();
-        $permitTypes = PermitType::where('is_active', true)->get();
 
-        return view('applications.index', compact('applications', 'permitTypes'));
+        return view('applications.index', compact('applications'));
     }
 
-    public function create(Request $request)
+    public function create()
     {
-        $typeCode = $request->get('type', 'BP');
-        $permitType = PermitType::where('code', $typeCode)->where('is_active', true)->firstOrFail();
+        $permitType = PermitType::where('code', 'BP')->where('is_active', true)->firstOrFail();
 
         $data = $this->getFormData($permitType->id);
         $data['permitType'] = $permitType;
@@ -80,7 +74,7 @@ class ApplicationController extends Controller
 
         $validated['applies_to'] = $request->boolean('skip_locational') ? 'SKIP_LC' : '';
 
-        $permitType = PermitType::findOrFail($validated['permit_type_id']);
+        $permitType = PermitType::where('code', 'BP')->firstOrFail();
 
         DB::beginTransaction();
         try {
@@ -90,14 +84,14 @@ class ApplicationController extends Controller
                     ->count() + 1;
 
             $appNumber = sprintf(
-                '%s-%s-%s-%05d',
-                $permitType->code,
+                'BP-%s-%s-%05d',
                 now()->format('Y'),
                 now()->format('m'),
                 $counter
             );
 
             $application = Application::create(array_merge($validated, [
+                'permit_type_id' => $permitType->id,
                 'app_year' => now()->year,
                 'app_month' => now()->month,
                 'app_counter' => $counter,
@@ -199,9 +193,8 @@ class ApplicationController extends Controller
         }
 
         $skipLC = $application->applies_to === 'SKIP_LC';
-        $isBP = $application->permitType?->code === 'BP';
 
-        if ($isBP && !$skipLC) {
+        if (!$skipLC) {
             $application->update([
                 'status' => 'submitted',
                 'submitted_at' => now(),
@@ -215,11 +208,10 @@ class ApplicationController extends Controller
             activity()->causedBy(Auth::user())->performedOn($application)->log('Application submitted — skipped Locational Clearance');
         }
 
-        // Notify engineering officers
         $engineeringUsers = User::role(['engineering-officer', 'engineering-staff'])->get();
         Notification::send($engineeringUsers, new ApplicationSubmittedNotification($application));
 
-        $msg = $skipLC || !$isBP
+        $msg = $skipLC
             ? 'Application submitted. Routed directly to Engineering Assessment.'
             : 'Application submitted. Routed to Planning Office for Locational Clearance.';
 
@@ -282,8 +274,6 @@ class ApplicationController extends Controller
     private function validateApplication(Request $request): array
     {
         return $request->validate([
-            // Header
-            'permit_type_id' => 'required|exists:permit_types,id',
             'application_type_id' => 'required|exists:application_types,id',
             'complexity' => 'nullable|in:Simple,Complex',
             'applies_to' => 'nullable|string|max:50',
@@ -341,13 +331,6 @@ class ApplicationController extends Controller
             'proposed_construction_date' => 'nullable|date',
             'expected_completion_date' => 'nullable|date',
             'remarks' => 'nullable|string|max:1000',
-            // Occupancy permit specific
-            'bp_number' => 'nullable|string|max:30',
-            'bp_issued_date' => 'nullable|date',
-            'fsec_no' => 'nullable|string|max:50',
-            'fsec_issued_date' => 'nullable|date',
-            'applies_for' => 'nullable|string|max:50',
-            'completion_date' => 'nullable|date',
             // Engineer/Architect
             'engineer_name' => 'nullable|string|max:255',
             'engineer_prc_no' => 'nullable|string|max:50',
@@ -358,7 +341,7 @@ class ApplicationController extends Controller
             'engineer_tin' => 'nullable|string|max:50',
             'engineer_address' => 'nullable|string|max:255',
             'engineer_date_signed' => 'nullable|date',
-            // Owner/Consent
+            // Owner
             'owner_name' => 'nullable|string|max:255',
             'owner_address' => 'nullable|string|max:255',
             'owner_govt_id' => 'nullable|string|max:100',

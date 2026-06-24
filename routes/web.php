@@ -10,6 +10,7 @@ use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\OccupancyApplicationController;
 use App\Http\Controllers\PermitController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
@@ -59,7 +60,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
 
-    // Applications
+    // Building Permit Applications (BP)
     Route::prefix('applications')->name('applications.')->group(function () {
         Route::get('/', [ApplicationController::class, 'index'])->name('index')->middleware('can:view-applications');
         Route::get('/create', [ApplicationController::class, 'create'])->name('create')->middleware('can:create-applications');
@@ -72,7 +73,20 @@ Route::middleware('auth')->group(function () {
         Route::get('/{application}/print', [ApplicationController::class, 'printForm'])->name('print')->middleware('can:view-applications');
     });
 
-    // Zoning Assessment (Planning Office)
+    // Occupancy Permit Applications (OP)
+    Route::prefix('occupancy-applications')->name('occupancy-applications.')->group(function () {
+        Route::get('/', [OccupancyApplicationController::class, 'index'])->name('index')->middleware('can:view-applications');
+        Route::get('/create', [OccupancyApplicationController::class, 'create'])->name('create')->middleware('can:create-applications');
+        Route::post('/', [OccupancyApplicationController::class, 'store'])->name('store')->middleware('can:create-applications');
+        Route::get('/{occupancyApplication}', [OccupancyApplicationController::class, 'show'])->name('show')->middleware('can:view-applications');
+        Route::get('/{occupancyApplication}/edit', [OccupancyApplicationController::class, 'edit'])->name('edit')->middleware('can:edit-applications');
+        Route::put('/{occupancyApplication}', [OccupancyApplicationController::class, 'update'])->name('update')->middleware('can:edit-applications');
+        Route::post('/{occupancyApplication}/submit', [OccupancyApplicationController::class, 'submit'])->name('submit')->middleware('can:submit-applications');
+        Route::post('/{occupancyApplication}/cancel', [OccupancyApplicationController::class, 'cancel'])->name('cancel')->middleware('can:cancel-applications');
+        Route::get('/{occupancyApplication}/print', [OccupancyApplicationController::class, 'printForm'])->name('print')->middleware('can:view-applications');
+    });
+
+    // Zoning Assessment (Planning Office) — BP only
     Route::prefix('zoning')->name('zoning.')->middleware('can:view-zoning')->group(function () {
         Route::get('/', [ZoningController::class, 'index'])->name('index');
         Route::get('/{application}', [ZoningController::class, 'assess'])->name('assess')->middleware('can:create-zoning');
@@ -85,26 +99,40 @@ Route::middleware('auth')->group(function () {
     Route::prefix('assessments')->name('assessments.')->middleware('can:view-assessments')->group(function () {
         Route::get('/', [AssessmentController::class, 'index'])->name('index');
         Route::get('/occupancy', [AssessmentController::class, 'occupancyIndex'])->name('occupancy');
+        // BP assessment
         Route::get('/{application}', [AssessmentController::class, 'assess'])->name('assess')->middleware('can:create-assessments');
         Route::post('/{application}/item', [AssessmentController::class, 'addItem'])->name('addItem')->middleware('can:create-assessments');
-        Route::delete('/item/{assessmentItem}', [AssessmentController::class, 'removeItem'])->name('removeItem')->middleware('can:edit-assessments');
         Route::get('/{application}/summary', [AssessmentController::class, 'summary'])->name('summary');
         Route::post('/{application}/finalize', [AssessmentController::class, 'finalize'])->name('finalize')->middleware('can:finalize-assessments');
         Route::get('/{application}/print', [AssessmentController::class, 'print'])->name('print');
+        // OP assessment
+        Route::get('/op/{occupancyApplication}', [AssessmentController::class, 'assessOp'])->name('assess.op')->middleware('can:create-assessments');
+        Route::post('/op/{occupancyApplication}/item', [AssessmentController::class, 'addItemOp'])->name('addItem.op')->middleware('can:create-assessments');
+        Route::get('/op/{occupancyApplication}/summary', [AssessmentController::class, 'summaryOp'])->name('summary.op');
+        Route::post('/op/{occupancyApplication}/finalize', [AssessmentController::class, 'finalizeOp'])->name('finalize.op')->middleware('can:finalize-assessments');
+        Route::get('/op/{occupancyApplication}/print', [AssessmentController::class, 'printOp'])->name('print.op');
+        // Shared
+        Route::delete('/item/{assessmentItem}', [AssessmentController::class, 'removeItem'])->name('removeItem')->middleware('can:edit-assessments');
     });
 
     // Billing
     Route::prefix('billing')->name('billing.')->middleware('can:view-billing')->group(function () {
         Route::get('/', [BillingController::class, 'index'])->name('index');
         Route::post('/{application}/generate', [BillingController::class, 'generate'])->name('generate')->middleware('can:generate-billing');
+        Route::post('/op/{occupancyApplication}/generate', [BillingController::class, 'generateOp'])->name('generate.op')->middleware('can:generate-billing');
         Route::get('/{billing}/print', [BillingController::class, 'print'])->name('print');
     });
 
     // Collections / Payments
     Route::prefix('collections')->name('collections.')->middleware('can:view-collections')->group(function () {
         Route::get('/', [CollectionController::class, 'index'])->name('index');
+        // BP payment
         Route::get('/{application}/pay', [CollectionController::class, 'create'])->name('create')->middleware('can:create-collections');
         Route::post('/{application}/pay', [CollectionController::class, 'store'])->name('store')->middleware('can:create-collections');
+        // OP payment
+        Route::get('/op/{occupancyApplication}/pay', [CollectionController::class, 'createOp'])->name('create.op')->middleware('can:create-collections');
+        Route::post('/op/{occupancyApplication}/pay', [CollectionController::class, 'storeOp'])->name('store.op')->middleware('can:create-collections');
+        // Shared
         Route::get('/{collection}/receipt', [CollectionController::class, 'receipt'])->name('receipt')->middleware('can:print-receipts');
         Route::get('/void', [CollectionController::class, 'voidForm'])->name('void')->middleware('can:void-collections');
         Route::post('/void', [CollectionController::class, 'processVoid'])->name('void.process')->middleware('can:void-collections');
@@ -114,7 +142,11 @@ Route::middleware('auth')->group(function () {
     Route::prefix('permits')->name('permits.')->middleware('can:view-permits')->group(function () {
         Route::get('/building', [PermitController::class, 'buildingIndex'])->name('building');
         Route::get('/occupancy', [PermitController::class, 'occupancyIndex'])->name('occupancy');
+        // BP permit
         Route::post('/{application}/generate', [PermitController::class, 'generate'])->name('generate')->middleware('can:generate-permits');
+        // OP permit
+        Route::post('/op/{occupancyApplication}/generate', [PermitController::class, 'generateOp'])->name('generate.op')->middleware('can:generate-permits');
+        // Shared
         Route::get('/{permit}/print', [PermitController::class, 'print'])->name('print')->middleware('can:print-permits');
         Route::get('/{application}/zoning-cert', [PermitController::class, 'zoningCertification'])->name('zoningCert');
         Route::get('/{application}/locational', [PermitController::class, 'locationalClearance'])->name('locational');
@@ -160,10 +192,17 @@ Route::middleware('auth')->group(function () {
         Route::get('/dashboard', [OnlineApplicationController::class, 'dashboard'])->name('dashboard');
         Route::get('/apply', [OnlineApplicationController::class, 'create'])->name('apply');
         Route::post('/apply', [OnlineApplicationController::class, 'store'])->name('store');
+        // BP application routes
         Route::get('/application/{application}', [OnlineApplicationController::class, 'show'])->name('show');
         Route::get('/application/{application}/upload', [OnlineApplicationController::class, 'uploadRequirements'])->name('upload');
         Route::post('/application/{application}/upload', [OnlineApplicationController::class, 'storeRequirement'])->name('upload.store');
         Route::get('/application/{application}/track', [OnlineApplicationController::class, 'track'])->name('track');
         Route::get('/application/{application}/download', [OnlineApplicationController::class, 'downloadPermit'])->name('download');
+        // OP application routes
+        Route::get('/application/op/{occupancyApplication}', [OnlineApplicationController::class, 'showOp'])->name('show.op');
+        Route::get('/application/op/{occupancyApplication}/upload', [OnlineApplicationController::class, 'uploadRequirementsOp'])->name('upload.op');
+        Route::post('/application/op/{occupancyApplication}/upload', [OnlineApplicationController::class, 'storeRequirementOp'])->name('upload.store.op');
+        Route::get('/application/op/{occupancyApplication}/track', [OnlineApplicationController::class, 'trackOp'])->name('track.op');
+        Route::get('/application/op/{occupancyApplication}/download', [OnlineApplicationController::class, 'downloadPermitOp'])->name('download.op');
     });
 });

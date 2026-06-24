@@ -94,7 +94,12 @@
             <h3 class="text-sm font-semibold text-gray-900 mb-4">Recent Applications</h3>
             <div class="space-y-3">
                 @forelse($recentApplications as $app)
-                <a href="{{ route('applications.show', $app) }}" class="block p-3 rounded-lg hover:bg-gray-50 transition border border-gray-100">
+                @php
+                    $appRoute = $app->type === 'op'
+                        ? route('occupancy-applications.show', $app->id)
+                        : route('applications.show', $app->id);
+                @endphp
+                <a href="{{ $appRoute }}" class="block p-3 rounded-lg hover:bg-gray-50 transition border border-gray-100">
                     <div class="flex items-center justify-between">
                         <span class="text-xs font-mono text-gray-500">{{ $app->application_number }}</span>
                         <span class="text-xs px-2 py-0.5 rounded-full
@@ -107,8 +112,8 @@
                             @endswitch
                         ">{{ ucfirst(str_replace('_', ' ', $app->status)) }}</span>
                     </div>
-                    <p class="text-sm text-gray-900 mt-1 truncate">{{ $app->applicant_last_name }}, {{ $app->applicant_first_name }}</p>
-                    <p class="text-xs text-gray-400 mt-0.5">{{ $app->permitType?->name }} &middot; {{ $app->created_at->diffForHumans() }}</p>
+                    <p class="text-sm text-gray-900 mt-1 truncate">{{ $app->applicant_full_name }}</p>
+                    <p class="text-xs text-gray-400 mt-0.5">{{ $app->permit_type_code }} &middot; {{ $app->created_at->diffForHumans() }}</p>
                 </a>
                 @empty
                 <p class="text-sm text-gray-400 text-center py-8">No applications yet</p>

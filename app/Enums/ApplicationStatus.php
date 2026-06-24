@@ -14,9 +14,6 @@ enum ApplicationStatus: string
     case RELEASED = 'released';
     case CANCELLED = 'cancelled';
 
-    /**
-     * Get human-readable label for the status.
-     */
     public function label(): string
     {
         return match ($this) {
@@ -32,9 +29,6 @@ enum ApplicationStatus: string
         };
     }
 
-    /**
-     * Get Tailwind CSS color classes for the status badge.
-     */
     public function color(): string
     {
         return match ($this) {
@@ -50,11 +44,6 @@ enum ApplicationStatus: string
         };
     }
 
-    /**
-     * Get the allowed transitions from each status.
-     *
-     * @return array<string, list<self>>
-     */
     public static function allowedTransitions(): array
     {
         return [
@@ -70,12 +59,34 @@ enum ApplicationStatus: string
         ];
     }
 
-    /**
-     * Check if a transition to the given status is allowed.
-     */
+    public static function allowedTransitionsFor(string $permitTypeCode): array
+    {
+        if ($permitTypeCode === 'OP') {
+            return [
+                self::DRAFT->value => [self::SUBMITTED, self::CANCELLED],
+                self::SUBMITTED->value => [self::ENGINEERING_ASSESSED, self::CANCELLED],
+                self::ENGINEERING_ASSESSED->value => [self::BILLED, self::CANCELLED],
+                self::BILLED->value => [self::PAID, self::CANCELLED],
+                self::PAID->value => [self::PERMIT_GENERATED],
+                self::PERMIT_GENERATED->value => [self::RELEASED],
+                self::RELEASED->value => [],
+                self::CANCELLED->value => [],
+            ];
+        }
+
+        return self::allowedTransitions();
+    }
+
     public function canTransitionTo(self $newStatus): bool
     {
         $allowed = self::allowedTransitions()[$this->value] ?? [];
+
+        return in_array($newStatus, $allowed, true);
+    }
+
+    public function canTransitionToFor(self $newStatus, string $permitTypeCode): bool
+    {
+        $allowed = self::allowedTransitionsFor($permitTypeCode)[$this->value] ?? [];
 
         return in_array($newStatus, $allowed, true);
     }

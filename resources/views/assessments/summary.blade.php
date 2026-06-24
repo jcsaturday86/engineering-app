@@ -11,15 +11,20 @@
 @endsection
 
 @section('content')
+@php
+    $isOp = $isOp ?? false;
+    $printRoute = $isOp ? route('assessments.print.op', $application) : route('assessments.print', $application);
+    $backRoute = $isOp ? route('assessments.assess.op', $application) : route('assessments.assess', $application);
+@endphp
 <div class="space-y-6">
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h2 class="text-xl font-bold text-gray-900">Assessment Summary</h2>
         <div class="flex gap-2">
-            <a href="{{ route('assessments.print', $application) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition" target="_blank">
+            <a href="{{ $printRoute }}" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition" target="_blank">
                 <i class="fas fa-print"></i> Print
             </a>
-            <a href="{{ route('assessments.assess', $application) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition">
+            <a href="{{ $backRoute }}" class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition">
                 <i class="fas fa-arrow-left"></i> Back
             </a>
         </div>

@@ -35,8 +35,14 @@ Business logic lives in `app/Services/`, controllers are thin. Services handle: 
 ### Action Classes
 `app/Actions/` wraps complex multi-step operations: `CreateApplicationAction`, `FinalizeAssessmentAction`, `GeneratePermitAction`. Actions call services, log activity, and handle state transitions.
 
+### Separate BP and OP Tables with Polymorphic Relationships
+Building Permit (BP) and Occupancy Permit (OP) applications live in separate database tables: `applications` (BP only) and `occupancy_applications` (OP only). Seven downstream tables (assessments, billings, collections, permits, documents, application_requirements, application_occupancy_groups) use polymorphic columns (`applicationable_type`, `applicationable_id`) to reference either model. A morph map (`bp` → Application, `op` → OccupancyApplication) is registered in `AppServiceProvider`.
+
+### Interface + Trait Pattern for Shared Behavior
+`app/Contracts/PermitApplicationContract.php` defines the shared interface. `app/Concerns/HasPermitApplicationBehavior.php` provides a trait with shared accessors and polymorphic relationships (assessments, billings, collections, permits, documents, etc.). Both `Application` and `OccupancyApplication` implement the contract and use the trait, keeping BP-specific logic (scope of work, cost fields, zoning, engineer/PEE/SEW) in `Application` only.
+
 ### Enum-Based State Machine
-`app/Enums/ApplicationStatus.php` defines the complete workflow with `allowedTransitions()` for strict state validation. No invalid transitions possible.
+`app/Enums/ApplicationStatus.php` defines the complete workflow with `allowedTransitions()` and `allowedTransitionsFor(string $permitTypeCode)` for strict state validation. OP flow skips `zoning_assessed`. No invalid transitions possible.
 
 ### Consolidated Fee Schedule
 BOPMS had 100+ individual fee tables. Engineering-app consolidates into 3 tables:

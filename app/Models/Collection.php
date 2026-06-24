@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -14,13 +15,10 @@ class Collection extends Model
 {
     use LogsActivity, SoftDeletes;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'application_id',
+        'applicationable_type',
+        'applicationable_id',
         'billing_id',
         'or_number',
         'or_date',
@@ -37,11 +35,6 @@ class Collection extends Model
         'status',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -53,9 +46,6 @@ class Collection extends Model
         ];
     }
 
-    /**
-     * Get activity log options.
-     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -63,41 +53,31 @@ class Collection extends Model
             ->logOnlyDirty();
     }
 
-    /**
-     * Application this collection belongs to.
-     */
-    public function application(): BelongsTo
+    public function applicationable(): MorphTo
     {
-        return $this->belongsTo(Application::class);
+        return $this->morphTo();
     }
 
-    /**
-     * Billing this collection is for.
-     */
+    public function getApplicationAttribute()
+    {
+        return $this->applicationable;
+    }
+
     public function billing(): BelongsTo
     {
         return $this->belongsTo(Billing::class);
     }
 
-    /**
-     * User who collected the payment.
-     */
     public function collectedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'collected_by');
     }
 
-    /**
-     * Payment detail breakdown.
-     */
     public function collectionDetails(): HasMany
     {
         return $this->hasMany(CollectionDetail::class);
     }
 
-    /**
-     * Void transaction for this collection, if any.
-     */
     public function voidTransaction(): HasOne
     {
         return $this->hasOne(VoidTransaction::class);

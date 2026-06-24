@@ -2,33 +2,23 @@
 
 namespace App\Notifications;
 
-use App\Models\Application;
 use Illuminate\Bus\Queueable;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notification;
 
 class AssessmentCompleteNotification extends Notification
 {
     use Queueable;
 
-    public function __construct(private Application $application)
+    public function __construct(private Model $application)
     {
     }
 
-    /**
-     * Get the notification's delivery channels.
-     *
-     * @return array<int, string>
-     */
     public function via(object $notifiable): array
     {
         return ['database'];
     }
 
-    /**
-     * Get the array representation of the notification.
-     *
-     * @return array<string, mixed>
-     */
     public function toArray(object $notifiable): array
     {
         return [

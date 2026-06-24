@@ -38,7 +38,7 @@ class OccupancyGroup extends Model
      */
     public function subGroups(): HasMany
     {
-        return $this->hasMany(OccupancySubGroup::class);
+        return $this->hasMany(OccupancySubGroup::class)->orderBy('sort_order');
     }
 
     /**

@@ -4,16 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Document extends Model
 {
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'application_id',
+        'applicationable_type',
+        'applicationable_id',
         'document_type',
         'title',
         'file_path',
@@ -22,11 +20,6 @@ class Document extends Model
         'generated_by',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -35,17 +28,16 @@ class Document extends Model
         ];
     }
 
-    /**
-     * Application this document belongs to.
-     */
-    public function application(): BelongsTo
+    public function applicationable(): MorphTo
     {
-        return $this->belongsTo(Application::class);
+        return $this->morphTo();
     }
 
-    /**
-     * User who generated this document.
-     */
+    public function getApplicationAttribute()
+    {
+        return $this->applicationable;
+    }
+
     public function generatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'generated_by');

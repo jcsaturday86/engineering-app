@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\PermitApplicationContract;
 use App\Models\Application;
 use App\Models\Assessment;
 use App\Models\AssessmentItem;
 use App\Models\FeeCategory;
 use App\Models\FeeType;
+use App\Models\OccupancyApplication;
 use App\Notifications\AssessmentCompleteNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,7 +20,6 @@ class AssessmentController extends Controller
     {
         $applications = Application::with('permitType')
             ->whereIn('status', ['zoning_assessed', 'engineering_assessed'])
-            ->whereHas('permitType', fn ($q) => $q->where('code', 'BP'))
             ->latest()
             ->paginate(20);
 
@@ -27,22 +28,34 @@ class AssessmentController extends Controller
 
     public function occupancyIndex()
     {
-        $applications = Application::with('permitType')
-            ->whereIn('status', ['submitted', 'engineering_assessed'])
-            ->whereHas('permitType', fn ($q) => $q->where('code', 'OP'))
+        $applications = OccupancyApplication::with('applicationType')
+            ->whereIn('status', ['submitted', 'zoning_assessed', 'engineering_assessed'])
             ->latest()
             ->paginate(20);
 
         return view('assessments.occupancy-index', compact('applications'));
     }
 
+    // BP assessment
     public function assess(Application $application)
     {
-        $permitCode = $application->permitType->code;
-        $assessmentType = $permitCode === 'OP' ? 'occupancy' : 'building';
+        return $this->doAssess($application, 'building', 'BP');
+    }
 
+    // OP assessment
+    public function assessOp(OccupancyApplication $occupancyApplication)
+    {
+        return $this->doAssess($occupancyApplication, 'occupancy', 'OP');
+    }
+
+    private function doAssess(PermitApplicationContract $application, string $assessmentType, string $permitCode)
+    {
         $assessment = Assessment::firstOrCreate(
-            ['application_id' => $application->id, 'assessment_type' => $assessmentType],
+            [
+                'applicationable_type' => $permitCode === 'OP' ? 'op' : 'bp',
+                'applicationable_id' => $application->id,
+                'assessment_type' => $assessmentType,
+            ],
             ['status' => 'draft', 'assessed_by' => Auth::id()]
         );
 
@@ -57,10 +70,24 @@ class AssessmentController extends Controller
         $totals = $this->calculateTotals($assessment);
         $assessmentItems = $assessment->assessmentItems->where('is_active', true);
 
-        return view('assessments.assess', compact('application', 'assessment', 'feeCategories', 'totals', 'assessmentItems'));
+        $isOp = $permitCode === 'OP';
+
+        return view('assessments.assess', compact('application', 'assessment', 'feeCategories', 'totals', 'assessmentItems', 'isOp'));
     }
 
+    // BP add item
     public function addItem(Request $request, Application $application)
+    {
+        return $this->doAddItem($request, $application, 'building', 'BP');
+    }
+
+    // OP add item
+    public function addItemOp(Request $request, OccupancyApplication $occupancyApplication)
+    {
+        return $this->doAddItem($request, $occupancyApplication, 'occupancy', 'OP');
+    }
+
+    private function doAddItem(Request $request, PermitApplicationContract $application, string $assessmentType, string $permitCode)
     {
         $validated = $request->validate([
             'fee_category_id' => 'required|exists:fee_categories,id',
@@ -70,11 +97,12 @@ class AssessmentController extends Controller
             'description' => 'nullable|string|max:255',
         ]);
 
-        $permitCode = $application->permitType->code;
-        $assessmentType = $permitCode === 'OP' ? 'occupancy' : 'building';
-
         $assessment = Assessment::firstOrCreate(
-            ['application_id' => $application->id, 'assessment_type' => $assessmentType],
+            [
+                'applicationable_type' => $permitCode === 'OP' ? 'op' : 'bp',
+                'applicationable_id' => $application->id,
+                'assessment_type' => $assessmentType,
+            ],
             ['status' => 'draft', 'assessed_by' => Auth::id()]
         );
 
@@ -109,11 +137,21 @@ class AssessmentController extends Controller
         return back()->with('success', 'Fee item removed.');
     }
 
+    // BP summary
     public function summary(Application $application)
     {
-        $assessments = Assessment::with('assessmentItems')
-            ->where('application_id', $application->id)
-            ->get();
+        return $this->doSummary($application);
+    }
+
+    // OP summary
+    public function summaryOp(OccupancyApplication $occupancyApplication)
+    {
+        return $this->doSummary($occupancyApplication, true);
+    }
+
+    private function doSummary(PermitApplicationContract $application, bool $isOp = false)
+    {
+        $assessments = $application->assessments()->with('assessmentItems')->get();
 
         $summary = [];
         $grandTotal = 0;
@@ -132,12 +170,26 @@ class AssessmentController extends Controller
             ];
         }
 
-        return view('assessments.summary', compact('application', 'summary', 'grandTotal'));
+        return view('assessments.summary', compact('application', 'summary', 'grandTotal', 'isOp'));
     }
 
+    // BP finalize
     public function finalize(Application $application)
     {
-        $assessments = Assessment::where('application_id', $application->id)->where('status', 'draft')->get();
+        $this->doFinalize($application);
+        return redirect()->route('assessments.index')->with('success', 'Assessment finalized.');
+    }
+
+    // OP finalize
+    public function finalizeOp(OccupancyApplication $occupancyApplication)
+    {
+        $this->doFinalize($occupancyApplication);
+        return redirect()->route('assessments.occupancy')->with('success', 'Assessment finalized.');
+    }
+
+    private function doFinalize(PermitApplicationContract $application)
+    {
+        $assessments = $application->assessments()->where('status', 'draft')->get();
 
         DB::transaction(function () use ($assessments, $application) {
             foreach ($assessments as $assessment) {
@@ -165,19 +217,26 @@ class AssessmentController extends Controller
 
         activity()->causedBy(Auth::user())->performedOn($application)->log('Assessment finalized');
 
-        // Notify client user if linked
         if ($application->client_user_id) {
             $application->clientUser->notify(new AssessmentCompleteNotification($application));
         }
-
-        return redirect()->route('assessments.index')->with('success', 'Assessment finalized.');
     }
 
+    // BP print
     public function print(Application $application)
     {
-        $assessments = Assessment::with('assessmentItems')
-            ->where('application_id', $application->id)
-            ->get();
+        return $this->doPrint($application);
+    }
+
+    // OP print
+    public function printOp(OccupancyApplication $occupancyApplication)
+    {
+        return $this->doPrint($occupancyApplication);
+    }
+
+    private function doPrint(PermitApplicationContract $application)
+    {
+        $assessments = $application->assessments()->with('assessmentItems')->get();
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary', compact('application', 'assessments'));
         $pdf->setPaper('a4', 'portrait');

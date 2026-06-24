@@ -2,9 +2,9 @@
 
 namespace App\Notifications;
 
-use App\Models\Application;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -12,41 +12,30 @@ class ApplicationSubmittedNotification extends Notification implements ShouldQue
 {
     use Queueable;
 
-    public function __construct(private Application $application)
+    public function __construct(private Model $application)
     {
     }
 
-    /**
-     * Get the notification's delivery channels.
-     *
-     * @return array<int, string>
-     */
     public function via(object $notifiable): array
     {
         return ['mail', 'database'];
     }
 
-    /**
-     * Get the mail representation of the notification.
-     */
     public function toMail(object $notifiable): MailMessage
     {
+        $permitCode = method_exists($this->application, 'getPermitTypeCode')
+            ? $this->application->getPermitTypeCode()
+            : 'BP';
+
         return (new MailMessage)
             ->subject("Application Submitted - {$this->application->application_number}")
             ->greeting("Hello {$notifiable->first_name},")
-            ->line("A new application has been submitted and requires your attention.")
+            ->line("A new {$permitCode} application has been submitted and requires your attention.")
             ->line("**Applicant:** {$this->application->applicant_first_name} {$this->application->applicant_last_name}")
-            ->line("**Permit Type:** {$this->application->permitType->name}")
-            ->line("**Project Title:** {$this->application->project_title}")
-            ->action('View Application', url(route('applications.show', $this->application)))
+            ->line("**Application No:** {$this->application->application_number}")
             ->line('Please review this application at your earliest convenience.');
     }
 
-    /**
-     * Get the array representation of the notification.
-     *
-     * @return array<string, mixed>
-     */
     public function toArray(object $notifiable): array
     {
         return [

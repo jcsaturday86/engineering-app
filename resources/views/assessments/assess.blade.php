@@ -11,11 +11,17 @@
 @endsection
 
 @section('content')
+@php
+    $isOp = $isOp ?? false;
+    $addItemRoute = $isOp ? route('assessments.addItem.op', $application) : route('assessments.addItem', $application);
+    $finalizeRoute = $isOp ? route('assessments.finalize.op', $application) : route('assessments.finalize', $application);
+    $backRoute = $isOp ? route('assessments.occupancy') : route('assessments.index');
+@endphp
 <div class="space-y-6">
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h2 class="text-xl font-bold text-gray-900">Assess Application</h2>
-        <a href="{{ route('assessments.index') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition">
+        <a href="{{ $backRoute }}" class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition">
             <i class="fas fa-arrow-left"></i> Back to List
         </a>
     </div>
@@ -128,7 +134,7 @@
         }
     }">
         <h3 class="text-sm font-semibold text-gray-900 mb-4">Add Fee Item</h3>
-        <form action="{{ route('assessments.addItem', $application) }}" method="POST">
+        <form action="{{ $addItemRoute }}" method="POST">
             @csrf
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {{-- Fee Category --}}
@@ -214,7 +220,7 @@
     {{-- Finalize Button --}}
     @if($assessment && $assessment->status !== 'finalized' && $assessmentItems->count())
     <div class="flex justify-end">
-        <form action="{{ route('assessments.finalize', $application) }}" method="POST" onsubmit="return confirm('Are you sure you want to finalize this assessment? This action cannot be undone.');">
+        <form action="{{ $finalizeRoute }}" method="POST" onsubmit="return confirm('Are you sure you want to finalize this assessment? This action cannot be undone.');">
             @csrf
             <button type="submit" class="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition shadow-sm">
                 <i class="fas fa-check-circle"></i> Finalize Assessment

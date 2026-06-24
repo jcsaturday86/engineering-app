@@ -50,15 +50,18 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Application CRUD (walk-in) | DONE | Shared form with BP, OP-specific fields |
+| Application CRUD (walk-in) | DONE | Separate form/controller, own `occupancy_applications` table (OccupancyApplicationController) |
 | Application type (Full/Partial) | DONE | Separate types linked to OP permit type |
 | BP reference (number, date issued) | DONE | |
 | FSEC reference (number, date issued) | DONE | |
 | Project details (name, completion, location) | DONE | OP-specific section |
 | Character of Occupancy | DONE | Shared occupancy group selection |
-| Application form print | DONE | Shared template with BP/OP toggle |
+| Application form print | DONE | OP-specific template |
 | Status workflow (skips zoning) | DONE | submitted → engineering_assessed directly |
-| **Separate database table** | **PENDING** | **Currently shares `applications` table with BP** |
+| Separate database table | DONE | Own `occupancy_applications` table, polymorphic downstream (assessments, billings, collections, permits, documents) |
+| Separate model/service/DTO | DONE | OccupancyApplication model, OccupancyApplicationService, OccupancyApplicationDTO |
+| Separate controller/routes | DONE | OccupancyApplicationController, /occupancy-applications/* routes |
+| Separate views | DONE | occupancy-applications/index, form, show |
 
 ---
 
