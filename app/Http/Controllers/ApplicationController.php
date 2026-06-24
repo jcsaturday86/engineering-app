@@ -254,10 +254,7 @@ class ApplicationController extends Controller
             'applicationOccupancyGroups.occupancySubGroup',
         ]);
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.application-form', compact('application'));
-        $pdf->setPaper('legal', 'portrait');
-
-        return $pdf->stream("application_{$application->application_number}.pdf");
+        return view('pdf.application-form', compact('application'));
     }
 
     private function getFormData(): array
