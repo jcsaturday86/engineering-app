@@ -966,7 +966,7 @@
         @if($isBP)
         <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-                <i class="fas fa-id-card mr-2 text-gray-400"></i>Owner / Consent (Lot Owner)
+                <i class="fas fa-id-card mr-2 text-gray-400"></i>Consent (Lot Owner / Authorized Representative)
             </h3>
 
             {{-- Name & Address --}}
