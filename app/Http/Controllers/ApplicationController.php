@@ -67,6 +67,10 @@ class ApplicationController extends Controller
     {
         $validated = $this->validateApplication($request);
 
+        if (!empty($validated['scope_of_work_id'])) {
+            $validated['scope_of_work_details'] = $request->input('scope_detail_' . $validated['scope_of_work_id'], '');
+        }
+
         $permitType = PermitType::findOrFail($validated['permit_type_id']);
 
         DB::beginTransaction();
@@ -141,6 +145,10 @@ class ApplicationController extends Controller
     public function update(Request $request, Application $application)
     {
         $validated = $this->validateApplication($request);
+
+        if (!empty($validated['scope_of_work_id'])) {
+            $validated['scope_of_work_details'] = $request->input('scope_detail_' . $validated['scope_of_work_id'], '');
+        }
 
         DB::beginTransaction();
         try {

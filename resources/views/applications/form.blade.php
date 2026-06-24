@@ -446,48 +446,37 @@
         {{-- 5. SCOPE OF WORK (BP only) --}}
         {{-- ================================================================== --}}
         @if($isBP)
-        <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+        <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4" x-data="{ selectedScope: '{{ old('scope_of_work_id', $application->scope_of_work_id ?? '') }}' }">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
                 <i class="fas fa-tools mr-2 text-gray-400"></i>Scope of Work
             </h3>
 
-            @php
-                $groupedScopes = $scopeOfWorks->groupBy('category');
-            @endphp
-
-            <div class="space-y-4">
-                @foreach($groupedScopes as $category => $scopes)
-                    <div>
-                        @if($category)
-                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{{ $category }}</p>
-                        @endif
-                        <div class="flex flex-wrap gap-4">
-                            @foreach($scopes as $scope)
-                                <label class="inline-flex items-center gap-2 cursor-pointer">
-                                    <input type="radio" name="scope_of_work_id" value="{{ $scope->id }}"
-                                        class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                                        x-model="selectedScopeOfWork"
-                                        {{ old('scope_of_work_id', $application->scope_of_work_id ?? '') == $scope->id ? 'checked' : '' }}>
-                                    <span class="text-sm text-gray-700">{{ $scope->name }}</span>
-                                </label>
-                            @endforeach
-                        </div>
-                    </div>
+            <div class="space-y-2">
+                @foreach($scopeOfWorks as $scope)
+                <div class="flex items-center gap-3">
+                    <label class="inline-flex items-center gap-2 cursor-pointer shrink-0 w-48">
+                        <input type="radio" name="scope_of_work_id" value="{{ $scope->id }}"
+                            class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                            x-model="selectedScope"
+                            @click="selectedScope = '{{ $scope->id }}'"
+                            {{ old('scope_of_work_id', $application->scope_of_work_id ?? '') == $scope->id ? 'checked' : '' }}>
+                        <span class="text-sm text-gray-700">{{ $scope->name }}</span>
+                    </label>
+                    @if($scope->name !== 'New Construction')
+                    <input type="text" name="scope_detail_{{ $scope->id }}"
+                        value="{{ old('scope_detail_' . $scope->id, ($application->scope_of_work_id ?? '') == $scope->id ? ($application->scope_of_work_details ?? '') : '') }}"
+                        :disabled="selectedScope !== '{{ $scope->id }}'"
+                        class="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-400"
+                        placeholder="Specify details...">
+                    @else
+                    <div class="flex-1"></div>
+                    @endif
+                </div>
                 @endforeach
             </div>
             @error('scope_of_work_id')
                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
             @enderror
-
-            {{-- Scope of Work Details (show when not "New Construction") --}}
-            <div x-show="showScopeDetails" x-cloak>
-                <label for="scope_of_work_details" class="block text-sm font-medium text-gray-700 mb-1">Scope of Work Details</label>
-                <textarea name="scope_of_work_details" id="scope_of_work_details" rows="3"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">{{ old('scope_of_work_details', $application->scope_of_work_details ?? '') }}</textarea>
-                @error('scope_of_work_details')
-                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                @enderror
-            </div>
         </div>
         @endif
 
