@@ -362,17 +362,22 @@ class ApplicationController extends Controller
 
     private function saveOccupancyGroups(Application $application, Request $request): void
     {
-        $subGroups = OccupancySubGroup::with('occupancyGroup')->where('is_active', true)->get();
+        $selectedIds = $request->input('occupancy_sub_groups', []);
+
+        if (empty($selectedIds)) {
+            return;
+        }
+
+        $subGroups = OccupancySubGroup::with('occupancyGroup')
+            ->whereIn('id', $selectedIds)
+            ->get();
 
         foreach ($subGroups as $subGroup) {
-            $fieldName = "sub_group_{$subGroup->id}";
-            if ($request->has($fieldName)) {
-                $application->applicationOccupancyGroups()->create([
-                    'occupancy_group_id' => $subGroup->occupancy_group_id,
-                    'occupancy_sub_group_id' => $subGroup->id,
-                    'others_text' => $request->input("sub_group_{$subGroup->id}_others"),
-                ]);
-            }
+            $application->applicationOccupancyGroups()->create([
+                'occupancy_group_id' => $subGroup->occupancy_group_id,
+                'occupancy_sub_group_id' => $subGroup->id,
+                'others_text' => $request->input("sub_group_{$subGroup->id}_others"),
+            ]);
         }
     }
 }
