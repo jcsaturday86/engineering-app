@@ -456,12 +456,12 @@
                 <span class="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Scope of Work
             </h3>
 
-            <div class="space-y-1.5">
+            <div class="space-y-1">
                 @foreach($scopeOfWorks as $scope)
                 <div class="px-3 py-2 rounded-lg transition-colors"
                     :class="selectedScope === '{{ $scope->id }}' ? 'bg-blue-50 ring-1 ring-blue-200' : 'hover:bg-gray-50'">
-                    <div class="flex items-start sm:items-center gap-2 flex-col sm:flex-row">
-                        <label class="inline-flex items-center gap-2 cursor-pointer shrink-0">
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                        <label class="inline-flex items-center gap-2 cursor-pointer shrink-0 sm:w-52">
                             <input type="radio" name="scope_of_work_id" value="{{ $scope->id }}"
                                 class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                                 x-model="selectedScope"
