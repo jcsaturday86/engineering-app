@@ -56,7 +56,7 @@ class ApplicationController extends Controller
         $typeCode = $request->get('type', 'BP');
         $permitType = PermitType::where('code', $typeCode)->where('is_active', true)->firstOrFail();
 
-        $data = $this->getFormData();
+        $data = $this->getFormData($permitType->id);
         $data['permitType'] = $permitType;
         $data['application'] = null;
 
@@ -144,7 +144,7 @@ class ApplicationController extends Controller
 
     public function edit(Application $application)
     {
-        $data = $this->getFormData();
+        $data = $this->getFormData($application->permit_type_id);
         $data['permitType'] = $application->permitType;
         $data['application'] = $application->load('applicationOccupancyGroups');
 
@@ -257,12 +257,17 @@ class ApplicationController extends Controller
         return view('pdf.application-form', compact('application'));
     }
 
-    private function getFormData(): array
+    private function getFormData(?int $permitTypeId = null): array
     {
         $sfcCityId = City::where('name', 'like', '%SAN FERNANDO%')->where('province_id', 3)->value('id') ?? 71;
 
+        $appTypesQuery = ApplicationType::where('is_active', true);
+        if ($permitTypeId) {
+            $appTypesQuery->where('permit_type_id', $permitTypeId);
+        }
+
         return [
-            'applicationTypes' => ApplicationType::where('is_active', true)->orderBy('sort_order')->get(),
+            'applicationTypes' => $appTypesQuery->orderBy('sort_order')->get(),
             'scopeOfWorks' => ScopeOfWork::where('is_active', true)->orderBy('sort_order')->get(),
             'formOfOwnerships' => FormOfOwnership::where('is_active', true)->get(),
             'provinces' => Province::where('is_active', true)->orderBy('name')->get(),
@@ -279,7 +284,7 @@ class ApplicationController extends Controller
         return $request->validate([
             // Header
             'permit_type_id' => 'required|exists:permit_types,id',
-            'application_type_id' => 'required',
+            'application_type_id' => 'required|exists:application_types,id',
             'complexity' => 'nullable|in:Simple,Complex',
             'applies_to' => 'nullable|string|max:50',
             // Applicant

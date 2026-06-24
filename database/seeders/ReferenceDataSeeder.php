@@ -65,17 +65,41 @@ class ReferenceDataSeeder extends Seeder
      */
     private function seedApplicationTypes(): void
     {
-        $types = [
+        $bpPermitType = PermitType::where('code', 'BP')->first();
+        $opPermitType = PermitType::where('code', 'OP')->first();
+
+        // Assign existing unlinked types to BP
+        if ($bpPermitType) {
+            ApplicationType::whereNull('permit_type_id')
+                ->whereIn('name', ['New', 'Renewal', 'Amendatory'])
+                ->update(['permit_type_id' => $bpPermitType->id]);
+        }
+
+        $bpTypes = [
             ['name' => 'New',        'sort_order' => 1],
             ['name' => 'Renewal',    'sort_order' => 2],
             ['name' => 'Amendatory', 'sort_order' => 3],
         ];
 
-        foreach ($types as $type) {
+        foreach ($bpTypes as $type) {
             ApplicationType::updateOrCreate(
-                ['name' => $type['name']],
-                $type
+                ['name' => $type['name'], 'permit_type_id' => $bpPermitType?->id],
+                array_merge($type, ['permit_type_id' => $bpPermitType?->id])
             );
+        }
+
+        if ($opPermitType) {
+            $opTypes = [
+                ['name' => 'Full',    'sort_order' => 1],
+                ['name' => 'Partial', 'sort_order' => 2],
+            ];
+
+            foreach ($opTypes as $type) {
+                ApplicationType::updateOrCreate(
+                    ['name' => $type['name'], 'permit_type_id' => $opPermitType->id],
+                    array_merge($type, ['permit_type_id' => $opPermitType->id])
+                );
+            }
         }
     }
 

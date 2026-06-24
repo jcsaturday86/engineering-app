@@ -85,32 +85,14 @@
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Application Type <span class="text-red-500">*</span></label>
                 <div class="flex flex-wrap gap-4">
-                    @if($isOP)
-                        @php
-                            $opAppType = old('application_type_id', $application->application_type_id ?? '');
-                        @endphp
+                    @foreach($applicationTypes as $type)
                         <label class="inline-flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="application_type_id" value="full"
-                                class="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
-                                {{ $opAppType === 'full' ? 'checked' : '' }} required>
-                            <span class="text-sm text-gray-700">Full</span>
+                            <input type="radio" name="application_type_id" value="{{ $type->id }}"
+                                class="w-4 h-4 {{ $isOP ? 'text-indigo-600 focus:ring-indigo-500' : 'text-blue-600 focus:ring-blue-500' }} border-gray-300"
+                                {{ old('application_type_id', $application->application_type_id ?? '') == $type->id ? 'checked' : '' }} required>
+                            <span class="text-sm text-gray-700">{{ $type->name }}</span>
                         </label>
-                        <label class="inline-flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="application_type_id" value="partial"
-                                class="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
-                                {{ $opAppType === 'partial' ? 'checked' : '' }} required>
-                            <span class="text-sm text-gray-700">Partial</span>
-                        </label>
-                    @else
-                        @foreach($applicationTypes as $type)
-                            <label class="inline-flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="application_type_id" value="{{ $type->id }}"
-                                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                                    {{ old('application_type_id', $application->application_type_id ?? '') == $type->id ? 'checked' : '' }}>
-                                <span class="text-sm text-gray-700">{{ $type->name }}</span>
-                            </label>
-                        @endforeach
-                    @endif
+                    @endforeach
                 </div>
                 @error('application_type_id')
                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -642,6 +624,7 @@
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
                 <span class="inline-flex items-center justify-center w-7 h-7 {{ $isBP ? 'bg-blue-600' : 'bg-indigo-600' }} text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>{{ $isOP ? 'Use or Character of Occupancy' : 'Character of Occupancy' }} <span class="text-red-500">*</span>
             </h3>
+            <p id="occupancy-error" class="text-red-500 text-sm font-bold hidden">Please select at least one character of occupancy.</p>
 
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 @foreach($occupancyGroups as $group)
@@ -692,7 +675,6 @@
             @error('occupancy_sub_groups')
                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
             @enderror
-            <p id="occupancy-error" class="text-red-500 text-xs mt-1 hidden">Please select at least one character of occupancy.</p>
         </div>
 
         {{-- ================================================================== --}}

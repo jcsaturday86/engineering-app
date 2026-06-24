@@ -20,7 +20,7 @@
     $blank = '________________________________';
     $mi = $application->applicant_middle_name ? mb_substr($application->applicant_middle_name, 0, 1) . '.' : '';
     $complexity = $application->complexity ?? '';
-    $appTypeId = $application->application_type_id;
+    $appTypeName = $application->applicationType->name ?? '';
     $appliesTo = $application->applies_to ?? '';
 @endphp
 <!DOCTYPE html>
@@ -152,9 +152,14 @@
 <table class="nb" style="margin-bottom:1px;">
     <tr>
         <td style="font-size:7pt;">
-            {!! $appTypeId == 1 ? '&#9745;' : '&#9744;' !!} <span class="bold">NEW</span> &nbsp;
-            {!! $appTypeId == 2 ? '&#9745;' : '&#9744;' !!} <span class="bold">RENEWAL</span> &nbsp;
-            {!! $appTypeId == 3 ? '&#9745;' : '&#9744;' !!} <span class="bold">AMENDATORY</span>
+            @if($application->permitType->code === 'OP')
+                {!! $appTypeName === 'Full' ? '&#9745;' : '&#9744;' !!} <span class="bold">FULL</span> &nbsp;
+                {!! $appTypeName === 'Partial' ? '&#9745;' : '&#9744;' !!} <span class="bold">PARTIAL</span>
+            @else
+                {!! $appTypeName === 'New' ? '&#9745;' : '&#9744;' !!} <span class="bold">NEW</span> &nbsp;
+                {!! $appTypeName === 'Renewal' ? '&#9745;' : '&#9744;' !!} <span class="bold">RENEWAL</span> &nbsp;
+                {!! $appTypeName === 'Amendatory' ? '&#9745;' : '&#9744;' !!} <span class="bold">AMENDATORY</span>
+            @endif
         </td>
         <td style="text-align:right; font-size:7pt;">
             {!! $complexity === 'Simple' ? '&#9745;' : '&#9744;' !!} <span class="bold">SIMPLE</span> &nbsp;

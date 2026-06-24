@@ -42,7 +42,7 @@ class OnlineApplicationController extends Controller
     public function create()
     {
         $permitTypes = PermitType::where('is_active', true)->get();
-        $applicationTypes = ApplicationType::where('is_active', true)->orderBy('sort_order')->get();
+        $applicationTypes = ApplicationType::where('is_active', true)->orderBy('sort_order')->get()->groupBy('permit_type_id');
         $scopeOfWorks = ScopeOfWork::where('is_active', true)->orderBy('sort_order')->get();
         $formOfOwnerships = FormOfOwnership::where('is_active', true)->get();
         $provinces = Province::where('is_active', true)->orderBy('name')->get();

@@ -15,12 +15,17 @@
     <form method="POST" action="{{ route('online.store') }}" class="space-y-6">
         @csrf
 
-        <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+        <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4"
+             x-data="{
+                permitTypeId: '{{ old('permit_type_id', $permitTypes->first()->id ?? '') }}',
+                appTypes: @js($applicationTypes->mapWithKeys(fn($types, $key) => [$key => $types->map(fn($t) => ['id' => $t->id, 'name' => $t->name])])),
+                get filteredTypes() { return this.appTypes[this.permitTypeId] || []; }
+             }">
             <h3 class="text-sm font-semibold text-gray-900">Permit &amp; Application Type</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">Permit Type</label>
-                    <select name="permit_type_id" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    <select name="permit_type_id" x-model="permitTypeId" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
                         @foreach($permitTypes as $pt)
                         <option value="{{ $pt->id }}" {{ old('permit_type_id') == $pt->id ? 'selected' : '' }}>{{ $pt->name }}</option>
                         @endforeach
@@ -29,9 +34,9 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">Application Type</label>
                     <select name="application_type_id" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                        @foreach($applicationTypes as $at)
-                        <option value="{{ $at->id }}" {{ old('application_type_id') == $at->id ? 'selected' : '' }}>{{ $at->name }}</option>
-                        @endforeach
+                        <template x-for="at in filteredTypes" :key="at.id">
+                            <option :value="at.id" x-text="at.name" :selected="at.id == '{{ old('application_type_id', '') }}'"></option>
+                        </template>
                     </select>
                 </div>
             </div>
