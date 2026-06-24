@@ -100,13 +100,13 @@
                 <label class="block text-xs font-medium text-gray-600 mb-1">Complexity</label>
                 <div class="flex flex-wrap gap-4">
                     <label class="inline-flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="complexity" value="Simple"
+                        <input type="radio" name="complexity" value="Simple" required
                             class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                             {{ old('complexity', $application->complexity ?? '') === 'Simple' ? 'checked' : '' }}>
                         <span class="text-sm text-gray-700">Simple</span>
                     </label>
                     <label class="inline-flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="complexity" value="Complex"
+                        <input type="radio" name="complexity" value="Complex" required
                             class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                             {{ old('complexity', $application->complexity ?? '') === 'Complex' ? 'checked' : '' }}>
                         <span class="text-sm text-gray-700">Complex</span>
@@ -206,7 +206,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                     <label for="applicant_tin" class="block text-xs font-medium text-gray-600 mb-1">TIN</label>
-                    <input type="text" name="applicant_tin" id="applicant_tin"
+                    <input type="text" name="applicant_tin" required id="applicant_tin"
                         value="{{ old('applicant_tin', $application->applicant_tin ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('applicant_tin')
@@ -215,7 +215,7 @@
                 </div>
                 <div>
                     <label for="applicant_contact_no" class="block text-xs font-medium text-gray-600 mb-1">Contact No.</label>
-                    <input type="text" name="applicant_contact_no" id="applicant_contact_no"
+                    <input type="text" name="applicant_contact_no" required id="applicant_contact_no"
                         value="{{ old('applicant_contact_no', $application->applicant_contact_no ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('applicant_contact_no')
@@ -277,8 +277,8 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                     <label for="applicant_province_id" class="block text-xs font-medium text-gray-600 mb-1">Province</label>
-                    <select name="applicant_province_id" id="applicant_province_id" x-model="selectedProvince"
-                        @change="selectedCity = ''; selectedBarangay = '';"
+                    <select name="applicant_province_id" required id="applicant_province_id" x-model="selectedProvince"
+                        @change="selectedCity = ''; selectedBarangay = '';" required
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">-- Select Province --</option>
                         @foreach($provinces as $province)
@@ -294,8 +294,8 @@
                 </div>
                 <div>
                     <label for="applicant_city_id" class="block text-xs font-medium text-gray-600 mb-1">City/Municipality</label>
-                    <select name="applicant_city_id" id="applicant_city_id" x-model="selectedCity"
-                        @change="selectedBarangay = '';"
+                    <select name="applicant_city_id" required id="applicant_city_id" x-model="selectedCity"
+                        @change="selectedBarangay = '';" required
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">-- Select City --</option>
                         <template x-for="city in filteredCities" :key="city.id">
@@ -308,7 +308,7 @@
                 </div>
                 <div>
                     <label for="applicant_barangay_id" class="block text-xs font-medium text-gray-600 mb-1">Barangay</label>
-                    <select name="applicant_barangay_id" id="applicant_barangay_id" x-model="selectedBarangay"
+                    <select name="applicant_barangay_id" id="applicant_barangay_id" x-model="selectedBarangay" required
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">-- Select Barangay --</option>
                         <template x-for="brgy in filteredBarangays" :key="brgy.id">
@@ -358,7 +358,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                     <label for="lot_no" class="block text-xs font-medium text-gray-600 mb-1">Lot No.</label>
-                    <input type="text" name="lot_no" id="lot_no"
+                    <input type="text" name="lot_no" required id="lot_no"
                         value="{{ old('lot_no', $application->lot_no ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('lot_no')
@@ -367,7 +367,7 @@
                 </div>
                 <div>
                     <label for="block_no" class="block text-xs font-medium text-gray-600 mb-1">Blk No.</label>
-                    <input type="text" name="block_no" id="block_no"
+                    <input type="text" name="block_no" required id="block_no"
                         value="{{ old('block_no', $application->block_no ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('block_no')
@@ -376,7 +376,7 @@
                 </div>
                 <div>
                     <label for="tct_no" class="block text-xs font-medium text-gray-600 mb-1">TCT No.</label>
-                    <input type="text" name="tct_no" id="tct_no"
+                    <input type="text" name="tct_no" required id="tct_no"
                         value="{{ old('tct_no', $application->tct_no ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('tct_no')
@@ -385,7 +385,7 @@
                 </div>
                 <div>
                     <label for="tax_dec_no" class="block text-xs font-medium text-gray-600 mb-1">Tax Dec. No.</label>
-                    <input type="text" name="tax_dec_no" id="tax_dec_no"
+                    <input type="text" name="tax_dec_no" required id="tax_dec_no"
                         value="{{ old('tax_dec_no', $application->tax_dec_no ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('tax_dec_no')
@@ -398,7 +398,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                     <label for="land_classification_id" class="block text-xs font-medium text-gray-600 mb-1">Land Classification</label>
-                    <select name="land_classification_id" id="land_classification_id"
+                    <select name="land_classification_id" id="land_classification_id" required
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">-- Select --</option>
                         @foreach($landClassifications as $lc)
@@ -414,7 +414,7 @@
                 </div>
                 <div>
                     <label for="building_street" class="block text-xs font-medium text-gray-600 mb-1">Street</label>
-                    <input type="text" name="building_street" id="building_street"
+                    <input type="text" name="building_street" required id="building_street"
                         value="{{ old('building_street', $application->building_street ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('building_street')
@@ -423,7 +423,7 @@
                 </div>
                 <div>
                     <label for="building_barangay_id" class="block text-xs font-medium text-gray-600 mb-1">Barangay</label>
-                    <select name="building_barangay_id" id="building_barangay_id"
+                    <select name="building_barangay_id" id="building_barangay_id" required
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">-- Select --</option>
                         @foreach($sfcBarangays as $brgy)
@@ -568,7 +568,7 @@
                 </div>
                 <div>
                     <label for="no_of_units" class="block text-xs font-medium text-gray-600 mb-1">No. of Units</label>
-                    <input type="number" name="no_of_units" id="no_of_units" min="0"
+                    <input type="number" name="no_of_units" required id="no_of_units" min="0"
                         value="{{ old('no_of_units', $application->no_of_units ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('no_of_units')
@@ -577,7 +577,7 @@
                 </div>
                 <div>
                     <label for="no_of_storeys" class="block text-xs font-medium text-gray-600 mb-1">No. of Storeys</label>
-                    <input type="number" name="no_of_storeys" id="no_of_storeys" min="0"
+                    <input type="number" name="no_of_storeys" required id="no_of_storeys" min="0"
                         value="{{ old('no_of_storeys', $application->no_of_storeys ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('no_of_storeys')
@@ -586,7 +586,7 @@
                 </div>
                 <div>
                     <label for="total_floor_area" class="block text-xs font-medium text-gray-600 mb-1">Total Floor Area SQ.M.</label>
-                    <input type="number" name="total_floor_area" id="total_floor_area" min="0" step="any"
+                    <input type="number" name="total_floor_area" required id="total_floor_area" min="0" step="any"
                         value="{{ old('total_floor_area', $application->total_floor_area ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('total_floor_area')
@@ -595,7 +595,7 @@
                 </div>
                 <div>
                     <label for="lot_area" class="block text-xs font-medium text-gray-600 mb-1">Lot Area SQ.M.</label>
-                    <input type="number" name="lot_area" id="lot_area" min="0" step="any"
+                    <input type="number" name="lot_area" required id="lot_area" min="0" step="any"
                         value="{{ old('lot_area', $application->lot_area ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('lot_area')
@@ -612,8 +612,8 @@
                         <label for="building_cost" class="block text-xs font-medium text-gray-600 mb-1">Building Cost</label>
                         <div class="relative">
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">P</span>
-                            <input type="number" name="building_cost" id="building_cost" min="0" step="0.01"
-                                x-model.number="costs.building_cost"
+                            <input type="number" name="building_cost" required id="building_cost" min="0" step="0.01"
+                                x-model.number="costs.building_cost" required
                                 class="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         </div>
                         @error('building_cost')
@@ -624,8 +624,8 @@
                         <label for="electrical_cost" class="block text-xs font-medium text-gray-600 mb-1">Electrical Cost</label>
                         <div class="relative">
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">P</span>
-                            <input type="number" name="electrical_cost" id="electrical_cost" min="0" step="0.01"
-                                x-model.number="costs.electrical_cost"
+                            <input type="number" name="electrical_cost" required id="electrical_cost" min="0" step="0.01"
+                                x-model.number="costs.electrical_cost" required
                                 class="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         </div>
                         @error('electrical_cost')
@@ -636,8 +636,8 @@
                         <label for="mechanical_cost" class="block text-xs font-medium text-gray-600 mb-1">Mechanical Cost</label>
                         <div class="relative">
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">P</span>
-                            <input type="number" name="mechanical_cost" id="mechanical_cost" min="0" step="0.01"
-                                x-model.number="costs.mechanical_cost"
+                            <input type="number" name="mechanical_cost" required id="mechanical_cost" min="0" step="0.01"
+                                x-model.number="costs.mechanical_cost" required
                                 class="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         </div>
                         @error('mechanical_cost')
@@ -648,8 +648,8 @@
                         <label for="electronics_cost" class="block text-xs font-medium text-gray-600 mb-1">Electronics Cost</label>
                         <div class="relative">
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">P</span>
-                            <input type="number" name="electronics_cost" id="electronics_cost" min="0" step="0.01"
-                                x-model.number="costs.electronics_cost"
+                            <input type="number" name="electronics_cost" required id="electronics_cost" min="0" step="0.01"
+                                x-model.number="costs.electronics_cost" required
                                 class="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         </div>
                         @error('electronics_cost')
@@ -660,8 +660,8 @@
                         <label for="plumbing_cost" class="block text-xs font-medium text-gray-600 mb-1">Plumbing Cost</label>
                         <div class="relative">
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">P</span>
-                            <input type="number" name="plumbing_cost" id="plumbing_cost" min="0" step="0.01"
-                                x-model.number="costs.plumbing_cost"
+                            <input type="number" name="plumbing_cost" required id="plumbing_cost" min="0" step="0.01"
+                                x-model.number="costs.plumbing_cost" required
                                 class="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         </div>
                         @error('plumbing_cost')
@@ -740,7 +740,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                     <label for="proposed_construction_date" class="block text-xs font-medium text-gray-600 mb-1">Proposed Date of Construction</label>
-                    <input type="date" name="proposed_construction_date" id="proposed_construction_date"
+                    <input type="date" name="proposed_construction_date" required id="proposed_construction_date"
                         value="{{ old('proposed_construction_date', optional($application->proposed_construction_date ?? null)->format('Y-m-d') ?? ($application->proposed_construction_date ?? '')) }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('proposed_construction_date')
@@ -749,7 +749,7 @@
                 </div>
                 <div>
                     <label for="expected_completion_date" class="block text-xs font-medium text-gray-600 mb-1">Expected Date of Completion</label>
-                    <input type="date" name="expected_completion_date" id="expected_completion_date"
+                    <input type="date" name="expected_completion_date" required id="expected_completion_date"
                         value="{{ old('expected_completion_date', optional($application->expected_completion_date ?? null)->format('Y-m-d') ?? ($application->expected_completion_date ?? '')) }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('expected_completion_date')
@@ -864,7 +864,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                     <label for="engineer_name" class="block text-xs font-medium text-gray-600 mb-1">Name</label>
-                    <input type="text" name="engineer_name" id="engineer_name"
+                    <input type="text" name="engineer_name" required id="engineer_name"
                         value="{{ old('engineer_name', $application->engineer_name ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('engineer_name')
@@ -873,7 +873,7 @@
                 </div>
                 <div>
                     <label for="engineer_date_signed" class="block text-xs font-medium text-gray-600 mb-1">Date Signed</label>
-                    <input type="date" name="engineer_date_signed" id="engineer_date_signed"
+                    <input type="date" name="engineer_date_signed" required id="engineer_date_signed"
                         value="{{ old('engineer_date_signed', optional($application->engineer_date_signed ?? null)->format('Y-m-d') ?? ($application->engineer_date_signed ?? '')) }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('engineer_date_signed')
@@ -885,7 +885,7 @@
             {{-- Address --}}
             <div>
                 <label for="engineer_address" class="block text-xs font-medium text-gray-600 mb-1">Address</label>
-                <input type="text" name="engineer_address" id="engineer_address"
+                <input type="text" name="engineer_address" required id="engineer_address"
                     value="{{ old('engineer_address', $application->engineer_address ?? '') }}"
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 @error('engineer_address')
@@ -897,7 +897,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                     <label for="engineer_prc_no" class="block text-xs font-medium text-gray-600 mb-1">PRC No.</label>
-                    <input type="text" name="engineer_prc_no" id="engineer_prc_no"
+                    <input type="text" name="engineer_prc_no" required id="engineer_prc_no"
                         value="{{ old('engineer_prc_no', $application->engineer_prc_no ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('engineer_prc_no')
@@ -906,7 +906,7 @@
                 </div>
                 <div>
                     <label for="engineer_prc_validity" class="block text-xs font-medium text-gray-600 mb-1">PRC Validity</label>
-                    <input type="date" name="engineer_prc_validity" id="engineer_prc_validity"
+                    <input type="date" name="engineer_prc_validity" required id="engineer_prc_validity"
                         value="{{ old('engineer_prc_validity', optional($application->engineer_prc_validity ?? null)->format('Y-m-d') ?? ($application->engineer_prc_validity ?? '')) }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('engineer_prc_validity')
@@ -919,7 +919,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                     <label for="engineer_ptr_no" class="block text-xs font-medium text-gray-600 mb-1">PTR No.</label>
-                    <input type="text" name="engineer_ptr_no" id="engineer_ptr_no"
+                    <input type="text" name="engineer_ptr_no" required id="engineer_ptr_no"
                         value="{{ old('engineer_ptr_no', $application->engineer_ptr_no ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('engineer_ptr_no')
@@ -928,7 +928,7 @@
                 </div>
                 <div>
                     <label for="engineer_ptr_date_issued" class="block text-xs font-medium text-gray-600 mb-1">PTR Date Issued</label>
-                    <input type="date" name="engineer_ptr_date_issued" id="engineer_ptr_date_issued"
+                    <input type="date" name="engineer_ptr_date_issued" required id="engineer_ptr_date_issued"
                         value="{{ old('engineer_ptr_date_issued', optional($application->engineer_ptr_date_issued ?? null)->format('Y-m-d') ?? ($application->engineer_ptr_date_issued ?? '')) }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('engineer_ptr_date_issued')
@@ -937,7 +937,7 @@
                 </div>
                 <div>
                     <label for="engineer_ptr_issued_at" class="block text-xs font-medium text-gray-600 mb-1">PTR Issued At</label>
-                    <input type="text" name="engineer_ptr_issued_at" id="engineer_ptr_issued_at"
+                    <input type="text" name="engineer_ptr_issued_at" required id="engineer_ptr_issued_at"
                         value="{{ old('engineer_ptr_issued_at', $application->engineer_ptr_issued_at ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('engineer_ptr_issued_at')
@@ -950,7 +950,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                     <label for="engineer_tin" class="block text-xs font-medium text-gray-600 mb-1">TIN</label>
-                    <input type="text" name="engineer_tin" id="engineer_tin"
+                    <input type="text" name="engineer_tin" required id="engineer_tin"
                         value="{{ old('engineer_tin', $application->engineer_tin ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('engineer_tin')
@@ -1119,7 +1119,7 @@
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                             <label for="total_connected_load" class="block text-xs font-medium text-gray-600 mb-1">Total Connected Load kVA</label>
-                            <input type="number" name="total_connected_load" id="total_connected_load" min="0" step="0.01"
+                            <input type="number" name="total_connected_load" required id="total_connected_load" min="0" step="0.01"
                                 value="{{ old('total_connected_load', $application->total_connected_load ?? '') }}"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                             @error('total_connected_load')
@@ -1128,7 +1128,7 @@
                         </div>
                         <div>
                             <label for="total_transformer_capacity" class="block text-xs font-medium text-gray-600 mb-1">Total Transformer Capacity kVA</label>
-                            <input type="number" name="total_transformer_capacity" id="total_transformer_capacity" min="0" step="0.01"
+                            <input type="number" name="total_transformer_capacity" required id="total_transformer_capacity" min="0" step="0.01"
                                 value="{{ old('total_transformer_capacity', $application->total_transformer_capacity ?? '') }}"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                             @error('total_transformer_capacity')
@@ -1137,7 +1137,7 @@
                         </div>
                         <div>
                             <label for="total_generator_capacity" class="block text-xs font-medium text-gray-600 mb-1">Total Generator/UPS Capacity kVA</label>
-                            <input type="number" name="total_generator_capacity" id="total_generator_capacity" min="0" step="0.01"
+                            <input type="number" name="total_generator_capacity" required id="total_generator_capacity" min="0" step="0.01"
                                 value="{{ old('total_generator_capacity', $application->total_generator_capacity ?? '') }}"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                             @error('total_generator_capacity')
@@ -1154,7 +1154,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label for="pee_name" class="block text-xs font-medium text-gray-600 mb-1">Name</label>
-                                <input type="text" name="pee_name" id="pee_name"
+                                <input type="text" name="pee_name" required id="pee_name"
                                     value="{{ old('pee_name', $application->pee_name ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('pee_name')
@@ -1163,7 +1163,7 @@
                             </div>
                             <div>
                                 <label for="pee_date_signed" class="block text-xs font-medium text-gray-600 mb-1">Date Signed</label>
-                                <input type="date" name="pee_date_signed" id="pee_date_signed"
+                                <input type="date" name="pee_date_signed" required id="pee_date_signed"
                                     value="{{ old('pee_date_signed', $application->pee_date_signed ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('pee_date_signed')
@@ -1174,7 +1174,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label for="pee_prc_no" class="block text-xs font-medium text-gray-600 mb-1">PRC No.</label>
-                                <input type="text" name="pee_prc_no" id="pee_prc_no"
+                                <input type="text" name="pee_prc_no" required id="pee_prc_no"
                                     value="{{ old('pee_prc_no', $application->pee_prc_no ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('pee_prc_no')
@@ -1183,7 +1183,7 @@
                             </div>
                             <div>
                                 <label for="pee_prc_validity" class="block text-xs font-medium text-gray-600 mb-1">PRC Validity</label>
-                                <input type="date" name="pee_prc_validity" id="pee_prc_validity"
+                                <input type="date" name="pee_prc_validity" required id="pee_prc_validity"
                                     value="{{ old('pee_prc_validity', $application->pee_prc_validity ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('pee_prc_validity')
@@ -1194,7 +1194,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div>
                                 <label for="pee_ptr_no" class="block text-xs font-medium text-gray-600 mb-1">PTR No.</label>
-                                <input type="text" name="pee_ptr_no" id="pee_ptr_no"
+                                <input type="text" name="pee_ptr_no" required id="pee_ptr_no"
                                     value="{{ old('pee_ptr_no', $application->pee_ptr_no ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('pee_ptr_no')
@@ -1203,7 +1203,7 @@
                             </div>
                             <div>
                                 <label for="pee_ptr_date_issued" class="block text-xs font-medium text-gray-600 mb-1">PTR Date Issued</label>
-                                <input type="date" name="pee_ptr_date_issued" id="pee_ptr_date_issued"
+                                <input type="date" name="pee_ptr_date_issued" required id="pee_ptr_date_issued"
                                     value="{{ old('pee_ptr_date_issued', $application->pee_ptr_date_issued ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('pee_ptr_date_issued')
@@ -1212,7 +1212,7 @@
                             </div>
                             <div>
                                 <label for="pee_ptr_issued_at" class="block text-xs font-medium text-gray-600 mb-1">PTR Issued At</label>
-                                <input type="text" name="pee_ptr_issued_at" id="pee_ptr_issued_at"
+                                <input type="text" name="pee_ptr_issued_at" required id="pee_ptr_issued_at"
                                     value="{{ old('pee_ptr_issued_at', $application->pee_ptr_issued_at ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('pee_ptr_issued_at')
@@ -1223,7 +1223,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label for="pee_address" class="block text-xs font-medium text-gray-600 mb-1">Address</label>
-                                <input type="text" name="pee_address" id="pee_address"
+                                <input type="text" name="pee_address" required id="pee_address"
                                     value="{{ old('pee_address', $application->pee_address ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('pee_address')
@@ -1232,7 +1232,7 @@
                             </div>
                             <div>
                                 <label for="pee_tin" class="block text-xs font-medium text-gray-600 mb-1">TIN</label>
-                                <input type="text" name="pee_tin" id="pee_tin"
+                                <input type="text" name="pee_tin" required id="pee_tin"
                                     value="{{ old('pee_tin', $application->pee_tin ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('pee_tin')
@@ -1277,7 +1277,7 @@
                             </div>
                             <div>
                                 <label for="sew_name" class="block text-xs font-medium text-gray-600 mb-1">Name</label>
-                                <input type="text" name="sew_name" id="sew_name"
+                                <input type="text" name="sew_name" required id="sew_name"
                                     value="{{ old('sew_name', $application->sew_name ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('sew_name')
@@ -1286,7 +1286,7 @@
                             </div>
                             <div>
                                 <label for="sew_date_signed" class="block text-xs font-medium text-gray-600 mb-1">Date Signed</label>
-                                <input type="date" name="sew_date_signed" id="sew_date_signed"
+                                <input type="date" name="sew_date_signed" required id="sew_date_signed"
                                     value="{{ old('sew_date_signed', $application->sew_date_signed ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('sew_date_signed')
@@ -1297,7 +1297,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label for="sew_prc_no" class="block text-xs font-medium text-gray-600 mb-1">PRC No.</label>
-                                <input type="text" name="sew_prc_no" id="sew_prc_no"
+                                <input type="text" name="sew_prc_no" required id="sew_prc_no"
                                     value="{{ old('sew_prc_no', $application->sew_prc_no ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('sew_prc_no')
@@ -1306,7 +1306,7 @@
                             </div>
                             <div>
                                 <label for="sew_prc_validity" class="block text-xs font-medium text-gray-600 mb-1">PRC Validity</label>
-                                <input type="date" name="sew_prc_validity" id="sew_prc_validity"
+                                <input type="date" name="sew_prc_validity" required id="sew_prc_validity"
                                     value="{{ old('sew_prc_validity', $application->sew_prc_validity ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('sew_prc_validity')
@@ -1317,7 +1317,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div>
                                 <label for="sew_ptr_no" class="block text-xs font-medium text-gray-600 mb-1">PTR No.</label>
-                                <input type="text" name="sew_ptr_no" id="sew_ptr_no"
+                                <input type="text" name="sew_ptr_no" required id="sew_ptr_no"
                                     value="{{ old('sew_ptr_no', $application->sew_ptr_no ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('sew_ptr_no')
@@ -1326,7 +1326,7 @@
                             </div>
                             <div>
                                 <label for="sew_ptr_date_issued" class="block text-xs font-medium text-gray-600 mb-1">PTR Date Issued</label>
-                                <input type="date" name="sew_ptr_date_issued" id="sew_ptr_date_issued"
+                                <input type="date" name="sew_ptr_date_issued" required id="sew_ptr_date_issued"
                                     value="{{ old('sew_ptr_date_issued', $application->sew_ptr_date_issued ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('sew_ptr_date_issued')
@@ -1335,7 +1335,7 @@
                             </div>
                             <div>
                                 <label for="sew_ptr_issued_at" class="block text-xs font-medium text-gray-600 mb-1">PTR Issued At</label>
-                                <input type="text" name="sew_ptr_issued_at" id="sew_ptr_issued_at"
+                                <input type="text" name="sew_ptr_issued_at" required id="sew_ptr_issued_at"
                                     value="{{ old('sew_ptr_issued_at', $application->sew_ptr_issued_at ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('sew_ptr_issued_at')
@@ -1346,7 +1346,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label for="sew_address" class="block text-xs font-medium text-gray-600 mb-1">Address</label>
-                                <input type="text" name="sew_address" id="sew_address"
+                                <input type="text" name="sew_address" required id="sew_address"
                                     value="{{ old('sew_address', $application->sew_address ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('sew_address')
@@ -1355,7 +1355,7 @@
                             </div>
                             <div>
                                 <label for="sew_tin" class="block text-xs font-medium text-gray-600 mb-1">TIN</label>
-                                <input type="text" name="sew_tin" id="sew_tin"
+                                <input type="text" name="sew_tin" required id="sew_tin"
                                     value="{{ old('sew_tin', $application->sew_tin ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('sew_tin')
