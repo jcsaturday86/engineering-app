@@ -349,7 +349,7 @@
         {{-- ================================================================== --}}
         @if($isBP)
         @php $sectionNum++ @endphp
-        <div class="bg-white rounded-xl border-l-4 border-blue-400 border border-gray-200 p-5 space-y-3">
+        <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
                 <span class="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Location of Construction
             </h3>
@@ -451,7 +451,7 @@
         {{-- ================================================================== --}}
         @if($isBP)
         @php $sectionNum++ @endphp
-        <div class="bg-white rounded-xl border-l-4 border-blue-400 border border-gray-200 p-5 space-y-3" x-data="{ selectedScope: '{{ old('scope_of_work_id', $application->scope_of_work_id ?? '') }}' }">
+        <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3" x-data="{ selectedScope: '{{ old('scope_of_work_id', $application->scope_of_work_id ?? '') }}' }">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
                 <span class="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Scope of Work
             </h3>
@@ -775,7 +775,7 @@
         {{-- ================================================================== --}}
         @if($isOP)
         @php $sectionNum++ @endphp
-        <div class="bg-white rounded-xl border-l-4 border-indigo-400 border border-gray-200 p-5 space-y-3">
+        <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
                 <span class="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Occupancy Permit Details
             </h3>
@@ -854,7 +854,7 @@
         {{-- ================================================================== --}}
         @if($isBP)
         @php $sectionNum++ @endphp
-        <div class="bg-white rounded-xl border-l-4 border-blue-400 border border-gray-200 p-5 space-y-3">
+        <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
                 <span class="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Full-time Inspector &amp; Supervisor of Construction Works
             </h3>
@@ -966,7 +966,7 @@
         {{-- ================================================================== --}}
         @if($isBP)
         @php $sectionNum++ @endphp
-        <div class="bg-white rounded-xl border-l-4 border-blue-400 border border-gray-200 p-5 space-y-3">
+        <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
                 <span class="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Applicant Signing
             </h3>
@@ -1017,7 +1017,7 @@
         {{-- ================================================================== --}}
         @if($isBP)
         @php $sectionNum++ @endphp
-        <div class="bg-white rounded-xl border-l-4 border-blue-400 border border-gray-200 p-5 space-y-3">
+        <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
                 <span class="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Consent (Lot Owner / Authorized Representative)
             </h3>
@@ -1091,7 +1091,7 @@
         {{-- ================================================================== --}}
         @if($isBP)
         @php $sectionNum++ @endphp
-        <div class="bg-white rounded-xl border-l-4 border-blue-400 border border-gray-200 p-5 space-y-3">
+        <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
                 <span class="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Electrical Details
             </h3>
