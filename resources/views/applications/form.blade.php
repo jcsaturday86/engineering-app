@@ -1181,9 +1181,9 @@
                     </div>
                 </div>
 
-                {{-- Supervisor of Electrical Works (SEW) --}}
+                {{-- Supervisor / In-Charge of Electrical Works --}}
                 <div>
-                    <p class="text-sm font-semibold text-gray-800 mb-3">Supervisor of Electrical Works (SEW)</p>
+                    <p class="text-sm font-semibold text-gray-800 mb-3">Supervisor / In-Charge of Electrical Works</p>
                     <div class="space-y-4">
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
