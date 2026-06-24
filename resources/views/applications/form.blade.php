@@ -806,7 +806,7 @@
         @if($isBP)
         <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-                <i class="fas fa-hard-hat mr-2 text-gray-400"></i>Engineer / Architect
+                <i class="fas fa-hard-hat mr-2 text-gray-400"></i>Full-time Inspector &amp; Supervisor of Construction Works (Representing the Owner)
             </h3>
 
             {{-- Name & Date Signed --}}
