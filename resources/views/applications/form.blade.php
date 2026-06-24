@@ -47,7 +47,7 @@
     method="POST"
     action="{{ $application ? route('applications.update', $application) : route('applications.store') }}"
     x-data="applicationForm()"
-    x-on:submit="syncAppliesTo()"
+    x-on:submit="syncAppliesTo()" onsubmit="return validateOccupancy()"
 >
     @csrf
     @if($application)
@@ -492,7 +492,7 @@
         @php $sectionNum++ @endphp
         <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
-                <span class="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Character of Occupancy
+                <span class="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Character of Occupancy <span class="text-red-500">*</span>
             </h3>
 
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -544,6 +544,7 @@
             @error('occupancy_sub_groups')
                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
             @enderror
+            <p id="occupancy-error" class="text-red-500 text-xs mt-1 hidden">Please select at least one character of occupancy.</p>
         </div>
 
         {{-- ================================================================== --}}
@@ -1448,6 +1449,18 @@
                 return sum.toFixed(2);
             },
         }
+    }
+
+    function validateOccupancy() {
+        var checked = document.querySelectorAll('input[name="occupancy_sub_groups[]"]:checked');
+        var errorEl = document.getElementById('occupancy-error');
+        if (checked.length === 0) {
+            errorEl.classList.remove('hidden');
+            errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return false;
+        }
+        errorEl.classList.add('hidden');
+        return true;
     }
 
     function copyPeeToSew(checked) {
