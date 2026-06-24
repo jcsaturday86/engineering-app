@@ -1374,15 +1374,13 @@
     {{-- ================================================================== --}}
     {{-- FORM ACTIONS --}}
     {{-- ================================================================== --}}
-    <div class="bg-white rounded-xl border border-gray-200 p-5">
-        <div class="flex flex-col sm:flex-row items-center justify-end gap-3">
-            <a href="{{ route('applications.index') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
-                <i class="fas fa-times text-xs"></i> Cancel
-            </a>
-            <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
-                <i class="fas fa-save text-xs"></i> {{ $application ? 'Update Application' : 'Create Application' }}
-            </button>
-        </div>
+    <div class="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
+        <a href="{{ route('applications.index') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition">
+            <i class="fas fa-times text-xs"></i> Cancel
+        </a>
+        <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-2.5 bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition">
+            <i class="fas fa-save text-xs"></i> {{ $application ? 'Update Application' : 'Create Application' }}
+        </button>
     </div>
 </form>
 @endsection
