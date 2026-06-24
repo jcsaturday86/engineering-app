@@ -89,7 +89,7 @@
                         <td class="px-4 py-3 text-right text-gray-700">&#8369;{{ number_format($item->inspection_fee, 2) }}</td>
                         <td class="px-4 py-3 text-right font-medium text-gray-900">&#8369;{{ number_format($item->amount, 2) }}</td>
                         <td class="px-4 py-3 text-right">
-                            <form action="{{ route('assessments.removeItem', $item) }}" method="POST" class="inline" onsubmit="return confirm('Remove this item?');">
+                            <form action="{{ route('assessments.removeItem', $item) }}" method="POST" class="inline" onsubmit="return confirm('Remove this item?');" autocomplete="off">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="text-red-500 hover:text-red-700" title="Remove">
@@ -134,7 +134,7 @@
         }
     }">
         <h3 class="text-sm font-semibold text-gray-900 mb-4">Add Fee Item</h3>
-        <form action="{{ $addItemRoute }}" method="POST">
+        <form action="{{ $addItemRoute }}" method="POST" autocomplete="off">
             @csrf
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {{-- Fee Category --}}
@@ -220,7 +220,7 @@
     {{-- Finalize Button --}}
     @if($assessment && $assessment->status !== 'finalized' && $assessmentItems->count())
     <div class="flex justify-end">
-        <form action="{{ $finalizeRoute }}" method="POST" onsubmit="return confirm('Are you sure you want to finalize this assessment? This action cannot be undone.');">
+        <form action="{{ $finalizeRoute }}" method="POST" onsubmit="return confirm('Are you sure you want to finalize this assessment? This action cannot be undone.');" autocomplete="off">
             @csrf
             <button type="submit" class="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition shadow-sm">
                 <i class="fas fa-check-circle"></i> Finalize Assessment

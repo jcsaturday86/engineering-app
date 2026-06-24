@@ -4,7 +4,7 @@
 @section('subtitle', 'Create your account to apply for permits online')
 
 @section('content')
-<form method="POST" action="{{ route('register') }}" class="space-y-5" x-data="{
+<form method="POST" action="{{ route('register') }}" class="space-y-5" autocomplete="off" x-data="{
     pw: '',
     pwConfirm: '',
     get strength() {

@@ -40,6 +40,7 @@
     action="{{ $application ? route('occupancy-applications.update', $application) : route('occupancy-applications.store') }}"
     x-data="applicationForm()"
     onsubmit="return validateOccupancy();"
+    autocomplete="off"
 >
     @csrf
     @if($application)
@@ -120,15 +121,6 @@
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                     @error('fsec_issued_date') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
-            </div>
-
-            {{-- Applies For --}}
-            <div>
-                <label for="applies_for" class="block text-xs font-medium text-gray-600 mb-1">Applies For (FSIC)</label>
-                <input type="text" name="applies_for" id="applies_for"
-                    value="{{ old('applies_for', $application->applies_for ?? '') }}"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                @error('applies_for') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
         </div>
 

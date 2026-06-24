@@ -22,7 +22,7 @@
 
     {{-- Filters --}}
     <div class="bg-white rounded-xl border border-gray-200 p-4">
-        <form method="GET" class="flex flex-wrap items-end gap-4">
+        <form method="GET" class="flex flex-wrap items-end gap-4" autocomplete="off">
             <div class="flex-1 min-w-[200px]">
                 <label class="block text-xs font-medium text-gray-500 mb-1">Search</label>
                 <input type="text" name="search" value="{{ request('search') }}" placeholder="Name, application number, project..."

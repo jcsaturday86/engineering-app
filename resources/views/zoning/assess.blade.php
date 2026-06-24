@@ -67,7 +67,7 @@
             <i class="fas fa-map-marked-alt text-blue-500 mr-1"></i> Zoning Assessment Form
         </h3>
 
-        <form action="{{ route('zoning.store', $application) }}" method="POST">
+        <form action="{{ route('zoning.store', $application) }}" method="POST" autocomplete="off">
             @csrf
 
             {{-- Section 1: Project Classification --}}
@@ -290,7 +290,7 @@
         {{-- Separate forms for Finalize / Skip (outside the main form to avoid nesting) --}}
         <div class="flex flex-wrap items-center gap-3 mt-3">
             @if($zoningAssessment)
-                <form action="{{ route('zoning.finalize', $application) }}" method="POST" class="inline">
+                <form action="{{ route('zoning.finalize', $application) }}" method="POST" class="inline" autocomplete="off">
                     @csrf
                     <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition">
                         <i class="fas fa-check-circle"></i> Finalize
@@ -299,7 +299,7 @@
             @endif
 
             @if(!$zoningAssessment)
-                <form action="{{ route('zoning.skip', $application) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to skip zoning assessment for this application?')">
+                <form action="{{ route('zoning.skip', $application) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to skip zoning assessment for this application?')" autocomplete="off">
                     @csrf
                     <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 transition">
                         <i class="fas fa-forward"></i> Skip Zoning

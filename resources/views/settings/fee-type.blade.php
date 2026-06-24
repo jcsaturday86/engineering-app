@@ -75,7 +75,7 @@
 
         {{-- Edit Mode --}}
         <div x-show="editing" x-cloak class="px-6 py-4">
-            <form action="{{ route('settings.fees.type.update', $feeType) }}" method="POST">
+            <form action="{{ route('settings.fees.type.update', $feeType) }}" method="POST" autocomplete="off">
                 @csrf
                 @method('PUT')
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -171,7 +171,7 @@
                                             <button @click="editRow = true" class="text-primary-600 hover:text-primary-800" title="Edit">
                                                 <i class="fas fa-pencil-alt text-xs"></i>
                                             </button>
-                                            <form action="{{ route('settings.fees.schedule.destroy', $schedule) }}" method="POST" onsubmit="return confirm('Delete this schedule row?')">
+                                            <form action="{{ route('settings.fees.schedule.destroy', $schedule) }}" method="POST" onsubmit="return confirm('Delete this schedule row?')" autocomplete="off">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="text-red-500 hover:text-red-700" title="Delete">
@@ -186,7 +186,7 @@
                             {{-- Edit mode --}}
                             <template x-if="editRow">
                                 <td class="px-4 py-2" colspan="11">
-                                    <form action="{{ route('settings.fees.schedule.update', $schedule) }}" method="POST" class="flex items-center gap-1">
+                                    <form action="{{ route('settings.fees.schedule.update', $schedule) }}" method="POST" class="flex items-center gap-1" autocomplete="off">
                                         @csrf
                                         @method('PUT')
                                         <input type="number" name="range_from" value="{{ $schedule->range_from }}" step="0.01" class="w-20 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary-500" placeholder="From">
@@ -222,7 +222,7 @@
                 <tfoot class="bg-gray-50 border-t border-gray-200">
                     <tr>
                         <td colspan="11" class="px-4 py-3">
-                            <form action="{{ route('settings.fees.schedule.store', $feeType) }}" method="POST" class="flex items-end gap-1 flex-wrap">
+                            <form action="{{ route('settings.fees.schedule.store', $feeType) }}" method="POST" class="flex items-end gap-1 flex-wrap" autocomplete="off">
                                 @csrf
                                 <div>
                                     <label class="block text-xs text-gray-500 mb-0.5">Range From</label>

@@ -4,7 +4,7 @@
 @section('subtitle', 'Update your password')
 
 @section('content')
-<form method="POST" action="{{ route('password.change.update') }}" class="space-y-5">
+<form method="POST" action="{{ route('password.change.update') }}" class="space-y-5" autocomplete="off">
     @csrf
 
     <div>

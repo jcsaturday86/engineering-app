@@ -62,7 +62,6 @@ readonly class OccupancyApplicationDTO
         public ?string $fsec_no = null,
         public ?string $fsec_issued_date = null,
         public ?string $completion_date = null,
-        public ?string $applies_for = null,
 
         // Misc
         public ?string $remarks = null,
@@ -114,7 +113,6 @@ readonly class OccupancyApplicationDTO
             fsec_no: $request->input('fsec_no'),
             fsec_issued_date: $request->input('fsec_issued_date'),
             completion_date: $request->input('completion_date'),
-            applies_for: $request->input('applies_for'),
             remarks: $request->input('remarks'),
             source: $request->input('source', 'walk_in'),
             area_number: $request->input('area_number'),

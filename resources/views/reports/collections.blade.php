@@ -19,7 +19,7 @@
             </h3>
         </div>
         <div class="p-6">
-            <form method="POST" action="{{ route('reports.generate') }}" target="_blank" class="space-y-6">
+            <form method="POST" action="{{ route('reports.generate') }}" target="_blank" class="space-y-6" autocomplete="off">
                 @csrf
                 <input type="hidden" name="report_type" value="collections">
 

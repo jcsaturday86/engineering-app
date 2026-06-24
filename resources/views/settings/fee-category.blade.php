@@ -83,7 +83,7 @@
             <i class="fas fa-plus mr-1"></i> Add Fee Type
         </button>
         <div x-show="showForm" x-cloak class="mt-4">
-            <form action="{{ route('settings.fees.type.store') }}" method="POST">
+            <form action="{{ route('settings.fees.type.store') }}" method="POST" autocomplete="off">
                 @csrf
                 <input type="hidden" name="fee_category_id" value="{{ $feeCategory->id }}">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">

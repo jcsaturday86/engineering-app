@@ -275,7 +275,7 @@ class ApplicationController extends Controller
     {
         return $request->validate([
             'application_type_id' => 'required|exists:application_types,id',
-            'complexity' => 'nullable|in:Simple,Complex',
+            'complexity' => 'required|in:Simple,Complex',
             'applies_to' => 'nullable|string|max:50',
             // Applicant
             'applicant_first_name' => 'required|string|max:255',
@@ -300,7 +300,7 @@ class ApplicationController extends Controller
             'applicant_zip_code' => 'nullable|string|max:10',
             // Project
             'project_title' => 'nullable|string|max:255',
-            'scope_of_work_id' => 'nullable|exists:scope_of_works,id',
+            'scope_of_work_id' => 'required|exists:scope_of_works,id',
             'scope_of_work_details' => 'nullable|string|max:1000',
             // Building Location
             'lot_no' => 'nullable|string|max:50',

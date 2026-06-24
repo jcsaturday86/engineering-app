@@ -61,7 +61,7 @@
 
             {{-- Edit Mode --}}
             <div x-show="editing" x-cloak class="p-6">
-                <form method="POST" action="{{ route('settings.signatories.update', $signatory) }}">
+                <form method="POST" action="{{ route('settings.signatories.update', $signatory) }}" autocomplete="off">
                     @csrf
 
                     <div class="space-y-4">

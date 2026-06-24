@@ -48,6 +48,7 @@
     action="{{ $application ? route('applications.update', $application) : route('applications.store') }}"
     x-data="applicationForm()"
     onsubmit="return validateOccupancy();"
+    autocomplete="off"
 >
     @csrf
     @if($application)
@@ -99,40 +100,6 @@
                 @enderror
             </div>
 
-            {{-- OP: BP No, BP Date, FSEC No, FSEC Date --}}
-            @if($isOP)
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div>
-                    <label for="bp_number" class="block text-xs font-medium text-gray-600 mb-1">Building Permit No.</label>
-                    <input type="text" name="bp_number" id="bp_number"
-                        value="{{ old('bp_number', $application->bp_number ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                    @error('bp_number') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                </div>
-                <div>
-                    <label for="bp_issued_date" class="block text-xs font-medium text-gray-600 mb-1">Date Issued</label>
-                    <input type="date" name="bp_issued_date" id="bp_issued_date"
-                        value="{{ old('bp_issued_date', optional($application->bp_issued_date ?? null)->format('Y-m-d') ?? ($application->bp_issued_date ?? '')) }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                    @error('bp_issued_date') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                </div>
-                <div>
-                    <label for="fsec_no" class="block text-xs font-medium text-gray-600 mb-1">FSEC No.</label>
-                    <input type="text" name="fsec_no" id="fsec_no"
-                        value="{{ old('fsec_no', $application->fsec_no ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                    @error('fsec_no') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                </div>
-                <div>
-                    <label for="fsec_issued_date" class="block text-xs font-medium text-gray-600 mb-1">Date Issued</label>
-                    <input type="date" name="fsec_issued_date" id="fsec_issued_date"
-                        value="{{ old('fsec_issued_date', optional($application->fsec_issued_date ?? null)->format('Y-m-d') ?? ($application->fsec_issued_date ?? '')) }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                    @error('fsec_issued_date') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                </div>
-            </div>
-            @endif
-
             {{-- BP: Project Title --}}
             @if($isBP)
             <div>
@@ -150,7 +117,7 @@
             {{-- BP: Complexity --}}
             @if($isBP)
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Complexity</label>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Complexity <span class="text-red-500">*</span></label>
                 <div class="flex flex-wrap gap-4">
                     <label class="inline-flex items-center gap-2 cursor-pointer">
                         <input type="radio" name="complexity" value="Simple" required
@@ -384,97 +351,6 @@
         </div>
 
         {{-- ================================================================== --}}
-        {{-- OP: PROJECT DETAILS (matching BOPMS pattern) --}}
-        {{-- ================================================================== --}}
-        @if($isOP)
-        @php $sectionNum++ @endphp
-        <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
-            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
-                <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Project Details
-            </h3>
-
-            {{-- Name of Project & Completion Date --}}
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div class="sm:col-span-2">
-                    <label for="project_title" class="block text-xs font-medium text-gray-600 mb-1">Name of Project <span class="text-red-500">*</span></label>
-                    <input type="text" name="project_title" id="project_title"
-                        value="{{ old('project_title', $application->project_title ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        required>
-                    @error('project_title') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                </div>
-                <div>
-                    <label for="completion_date" class="block text-xs font-medium text-gray-600 mb-1">Date of Completion <span class="text-red-500">*</span></label>
-                    <input type="date" name="completion_date" id="completion_date"
-                        value="{{ old('completion_date', optional($application->completion_date ?? null)->format('Y-m-d') ?? ($application->completion_date ?? '')) }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        required>
-                    @error('completion_date') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                </div>
-            </div>
-
-            {{-- Building Location: Street, Barangay, City --}}
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                    <label for="building_street" class="block text-xs font-medium text-gray-600 mb-1">Street <span class="text-red-500">*</span></label>
-                    <input type="text" name="building_street" id="building_street"
-                        value="{{ old('building_street', $application->building_street ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        required>
-                    @error('building_street') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                </div>
-                <div>
-                    <label for="building_barangay_id" class="block text-xs font-medium text-gray-600 mb-1">Barangay <span class="text-red-500">*</span></label>
-                    <select name="building_barangay_id" id="building_barangay_id" required
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="">-- Select --</option>
-                        @foreach($sfcBarangays as $brgy)
-                            <option value="{{ $brgy->id }}"
-                                {{ old('building_barangay_id', $application->building_barangay_id ?? '') == $brgy->id ? 'selected' : '' }}>
-                                {{ $brgy->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('building_barangay_id') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">City / Municipality</label>
-                    <input type="text" value="City of San Fernando, La Union" readonly
-                        class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-600">
-                </div>
-            </div>
-
-            {{-- Storeys, Units, Floor Area --}}
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                    <label for="no_of_storeys" class="block text-xs font-medium text-gray-600 mb-1">No. of Storey/s <span class="text-red-500">*</span></label>
-                    <input type="number" name="no_of_storeys" id="no_of_storeys" min="0"
-                        value="{{ old('no_of_storeys', $application->no_of_storeys ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        required>
-                    @error('no_of_storeys') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                </div>
-                <div>
-                    <label for="no_of_units" class="block text-xs font-medium text-gray-600 mb-1">No. of Units <span class="text-red-500">*</span></label>
-                    <input type="number" name="no_of_units" id="no_of_units" min="0"
-                        value="{{ old('no_of_units', $application->no_of_units ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        required>
-                    @error('no_of_units') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                </div>
-                <div>
-                    <label for="total_floor_area" class="block text-xs font-medium text-gray-600 mb-1">Total Gross Floor Area (SQ.M.) <span class="text-red-500">*</span></label>
-                    <input type="number" name="total_floor_area" id="total_floor_area" min="0" step="any"
-                        value="{{ old('total_floor_area', $application->total_floor_area ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        required>
-                    @error('total_floor_area') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                </div>
-            </div>
-        </div>
-        @endif
-
-        {{-- ================================================================== --}}
         {{-- 4. LOCATION OF CONSTRUCTION (BP only) --}}
         {{-- ================================================================== --}}
         @if($isBP)
@@ -583,7 +459,7 @@
         @php $sectionNum++ @endphp
         <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3" x-data="{ selectedScope: '{{ old('scope_of_work_id', $application->scope_of_work_id ?? '') }}' }">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
-                <span class="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Scope of Work
+                <span class="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Scope of Work <span class="text-red-500">*</span>
             </h3>
 
             <div class="space-y-1">

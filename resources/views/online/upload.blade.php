@@ -44,7 +44,7 @@
 
     <div class="bg-white rounded-xl border border-gray-200 p-6">
         <h3 class="text-sm font-semibold text-gray-900 mb-4">Upload New Requirement</h3>
-        <form method="POST" action="{{ route('online.upload.store', $application) }}" enctype="multipart/form-data" class="space-y-4">
+        <form method="POST" action="{{ route('online.upload.store', $application) }}" enctype="multipart/form-data" class="space-y-4" autocomplete="off">
             @csrf
             <div>
                 <label class="block text-xs font-medium text-gray-500 mb-1">Requirement Type</label>

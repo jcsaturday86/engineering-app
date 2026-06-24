@@ -62,7 +62,7 @@
         <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
             <h3 class="text-sm font-semibold text-gray-900">Payment Details</h3>
         </div>
-        <form method="POST" action="{{ route('collections.store', $application) }}" class="p-6 space-y-5">
+        <form method="POST" action="{{ route('collections.store', $application) }}" class="p-6 space-y-5" autocomplete="off">
             @csrf
             <input type="hidden" name="billing_id" value="{{ $billing->id }}">
 

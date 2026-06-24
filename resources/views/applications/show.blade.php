@@ -53,7 +53,7 @@
                     <a href="{{ route('applications.edit', $application) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
                         <i class="fas fa-edit"></i> Edit
                     </a>
-                    <form method="POST" action="{{ route('applications.submit', $application) }}" class="inline">
+                    <form method="POST" action="{{ route('applications.submit', $application) }}" class="inline" autocomplete="off">
                         @csrf
                         <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
                             <i class="fas fa-paper-plane"></i> Submit
@@ -61,7 +61,7 @@
                     </form>
                 @endif
                 @if(!in_array($application->status, ['cancelled', 'paid', 'released']))
-                    <form method="POST" action="{{ route('applications.cancel', $application) }}" class="inline" onsubmit="return confirm('Are you sure you want to cancel this application? This action cannot be undone.')">
+                    <form method="POST" action="{{ route('applications.cancel', $application) }}" class="inline" onsubmit="return confirm('Are you sure you want to cancel this application? This action cannot be undone.')" autocomplete="off">
                         @csrf
                         <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition">
                             <i class="fas fa-times-circle"></i> Cancel
@@ -408,45 +408,7 @@
     </div>
 
     {{-- ================================================================== --}}
-    {{-- 8. OCCUPANCY PERMIT DETAILS (OP only) --}}
-    {{-- ================================================================== --}}
-    @if($isOP)
-    @php $sectionNum++ @endphp
-    <div class="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">
-            <span class="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Occupancy Permit Details
-        </h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-                <p class="text-xs text-gray-500">Building Permit No.</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->bp_number ?? '—' }}</p>
-            </div>
-            <div>
-                <p class="text-xs text-gray-500">BP Date Issued</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->bp_issued_date ? $application->bp_issued_date->format('M d, Y') : '—' }}</p>
-            </div>
-            <div>
-                <p class="text-xs text-gray-500">FSEC No.</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->fsec_no ?? '—' }}</p>
-            </div>
-            <div>
-                <p class="text-xs text-gray-500">FSEC Date Issued</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->fsec_issued_date ? $application->fsec_issued_date->format('M d, Y') : '—' }}</p>
-            </div>
-            <div>
-                <p class="text-xs text-gray-500">Applies For (FSIC)</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->applies_for ?? '—' }}</p>
-            </div>
-            <div>
-                <p class="text-xs text-gray-500">Date of Completion</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->completion_date ? $application->completion_date->format('M d, Y') : '—' }}</p>
-            </div>
-        </div>
-    </div>
-    @endif
-
-    {{-- ================================================================== --}}
-    {{-- 9. FULL-TIME INSPECTOR & SUPERVISOR (BP only) --}}
+    {{-- 8. FULL-TIME INSPECTOR & SUPERVISOR (BP only) --}}
     {{-- ================================================================== --}}
     @if($isBP)
     @php $sectionNum++ @endphp

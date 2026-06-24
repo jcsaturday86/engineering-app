@@ -20,7 +20,7 @@
     </div>
 
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <form method="POST" action="{{ $user ? route('settings.users.update', $user) : route('settings.users.store') }}">
+        <form method="POST" action="{{ $user ? route('settings.users.update', $user) : route('settings.users.store') }}" autocomplete="off">
             @csrf
             @if($user)
                 @method('PUT')

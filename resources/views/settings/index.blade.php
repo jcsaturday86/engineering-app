@@ -15,7 +15,7 @@
         <h2 class="text-xl font-bold text-gray-900">General Settings</h2>
     </div>
 
-    <form method="POST" action="{{ route('settings.update') }}">
+    <form method="POST" action="{{ route('settings.update') }}" autocomplete="off">
         @csrf
 
         <div class="space-y-6">

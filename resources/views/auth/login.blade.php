@@ -3,7 +3,7 @@
 @section('title', 'Login')
 
 @section('content')
-<form method="POST" action="{{ route('login') }}" class="space-y-5">
+<form method="POST" action="{{ route('login') }}" class="space-y-5" autocomplete="off">
     @csrf
 
     <div>
@@ -12,7 +12,7 @@
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <i class="fas fa-envelope text-gray-400 text-sm"></i>
             </div>
-            <input id="email" name="email" type="email" autocomplete="email" required
+            <input id="email" name="email" type="email" required
                 value="{{ old('email') }}"
                 class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="you@example.com">
@@ -25,7 +25,7 @@
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <i class="fas fa-lock text-gray-400 text-sm"></i>
             </div>
-            <input id="password" name="password" type="password" autocomplete="current-password" required
+            <input id="password" name="password" type="password" required
                 class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter your password">
         </div>

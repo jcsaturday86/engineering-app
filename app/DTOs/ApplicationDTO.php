@@ -67,11 +67,6 @@ readonly class ApplicationDTO
         public ?string $expected_completion_date = null,
         public ?string $remarks = null,
 
-        // For occupancy permits
-        public ?string $bp_number = null,
-        public ?string $bp_issued_date = null,
-        public ?string $completion_date = null,
-
         // Engineer / Architect info
         public ?string $engineer_name = null,
         public ?string $engineer_prc_no = null,
@@ -173,9 +168,6 @@ readonly class ApplicationDTO
             proposed_construction_date: $request->input('proposed_construction_date'),
             expected_completion_date: $request->input('expected_completion_date'),
             remarks: $request->input('remarks'),
-            bp_number: $request->input('bp_number'),
-            bp_issued_date: $request->input('bp_issued_date'),
-            completion_date: $request->input('completion_date'),
             engineer_name: $request->input('engineer_name'),
             engineer_prc_no: $request->input('engineer_prc_no'),
             engineer_prc_validity: $request->input('engineer_prc_validity'),

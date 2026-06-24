@@ -22,7 +22,7 @@
         <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
             <h3 class="text-sm font-semibold text-gray-900">Profile Information</h3>
         </div>
-        <form method="POST" action="{{ route('profile.update') }}">
+        <form method="POST" action="{{ route('profile.update') }}" autocomplete="off">
             @csrf
             @method('PUT')
 

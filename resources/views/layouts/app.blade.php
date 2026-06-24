@@ -119,7 +119,7 @@
                                     @endforelse
                                 </div>
                                 @if($notifications->count())
-                                    <form method="POST" action="{{ route('notifications.markRead') }}" class="px-4 py-2 border-t border-gray-100">
+                                    <form method="POST" action="{{ route('notifications.markRead') }}" class="px-4 py-2 border-t border-gray-100" autocomplete="off">
                                         @csrf
                                         <button type="submit" class="text-xs text-blue-600 hover:text-blue-800">Mark all as read</button>
                                     </form>
@@ -147,7 +147,7 @@
                                     <i class="fas fa-cog w-4"></i> Settings
                                 </a>
                                 <hr class="my-1">
-                                <form method="POST" action="{{ route('logout') }}">
+                                <form method="POST" action="{{ route('logout') }}" autocomplete="off">
                                     @csrf
                                     <button type="submit" class="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50">
                                         <i class="fas fa-sign-out-alt w-4"></i> Logout

@@ -18,7 +18,7 @@
             <h3 class="text-sm font-semibold text-gray-900">Search Collection</h3>
         </div>
         <div class="p-6">
-            <form method="GET" action="{{ route('collections.void') }}" class="flex items-end gap-3">
+            <form method="GET" action="{{ route('collections.void') }}" class="flex items-end gap-3" autocomplete="off">
                 <div class="flex-1">
                     <label for="or_number" class="block text-sm font-medium text-gray-700 mb-1">OR Number</label>
                     <input type="text" name="or_number" id="or_number" value="{{ request('or_number') }}"
@@ -92,7 +92,7 @@
                 <i class="fas fa-exclamation-triangle mr-1"></i> Void This Collection
             </h3>
         </div>
-        <form method="POST" action="{{ route('collections.void.process') }}" class="p-6 space-y-5">
+        <form method="POST" action="{{ route('collections.void.process') }}" class="p-6 space-y-5" autocomplete="off">
             @csrf
             <input type="hidden" name="or_number" value="{{ $collection->or_number }}">
 

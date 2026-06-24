@@ -70,7 +70,7 @@
                         </td>
                         <td class="px-4 py-3 text-right">
                             @if($app->billings->isEmpty())
-                                <form method="POST" action="{{ route('billing.generate', $app) }}" class="inline">
+                                <form method="POST" action="{{ route('billing.generate', $app) }}" class="inline" autocomplete="off">
                                     @csrf
                                     <button type="submit" class="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition">
                                         <i class="fas fa-file-invoice"></i> Generate Billing

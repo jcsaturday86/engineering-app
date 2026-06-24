@@ -12,7 +12,7 @@
 <div class="max-w-3xl mx-auto">
     <h2 class="text-xl font-bold text-gray-900 mb-6">New Permit Application</h2>
 
-    <form method="POST" action="{{ route('online.store') }}" class="space-y-6">
+    <form method="POST" action="{{ route('online.store') }}" class="space-y-6" autocomplete="off">
         @csrf
 
         <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4"

@@ -61,13 +61,13 @@
                                 <a href="{{ route('settings.users.edit', $user) }}" class="text-gray-400 hover:text-blue-600" title="Edit">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <form method="POST" action="{{ route('settings.users.toggle', $user) }}" class="inline">
+                                <form method="POST" action="{{ route('settings.users.toggle', $user) }}" class="inline" autocomplete="off">
                                     @csrf
                                     <button type="submit" class="text-gray-400 hover:text-yellow-600" title="{{ $user->is_active ? 'Deactivate' : 'Activate' }}">
                                         <i class="fas {{ $user->is_active ? 'fa-ban' : 'fa-check-circle' }}"></i>
                                     </button>
                                 </form>
-                                <form method="POST" action="{{ route('settings.users.resetPassword', $user) }}" class="inline" onsubmit="return confirm('Are you sure you want to reset this user\'s password?')">
+                                <form method="POST" action="{{ route('settings.users.resetPassword', $user) }}" class="inline" onsubmit="return confirm('Are you sure you want to reset this user\'s password?')" autocomplete="off">
                                     @csrf
                                     <button type="submit" class="text-gray-400 hover:text-red-600" title="Reset Password">
                                         <i class="fas fa-key"></i>
