@@ -1027,7 +1027,7 @@
         @if($isBP)
         <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-                <i class="fas fa-bolt mr-2 text-yellow-500"></i>Electrical Permit Data
+                <i class="fas fa-bolt mr-2 text-yellow-500"></i>Electrical Details
             </h3>
 
             <label class="flex items-center gap-2 cursor-pointer">
