@@ -1391,6 +1391,11 @@
                 dst.style.backgroundColor = checked ? '#f3f4f6' : '';
             }
         }
+        var prof = document.getElementById('sew_profession');
+        if (prof) {
+            prof.disabled = checked;
+            prof.style.backgroundColor = checked ? '#f3f4f6' : '';
+        }
     }
 </script>
 @endpush
