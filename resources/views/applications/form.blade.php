@@ -56,7 +56,7 @@
     <input type="hidden" name="permit_type_id" value="{{ $permitType->id }}">
     <input type="hidden" name="applies_to" x-ref="appliesToInput" value="{{ old('applies_to', $application->applies_to ?? '') }}">
 
-    <div class="space-y-4 pb-20">
+    <div class="space-y-4">
         {{-- Compact Form Header --}}
         <div class="bg-gray-50 rounded-xl border border-gray-200 px-5 py-4 flex items-center justify-between">
             <div class="flex items-center gap-3">
@@ -1372,15 +1372,17 @@
     </div>
 
     {{-- ================================================================== --}}
-    {{-- STICKY FOOTER / ACTIONS --}}
+    {{-- FORM ACTIONS --}}
     {{-- ================================================================== --}}
-    <div class="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-3 -mx-4 sm:-mx-6 flex items-center justify-between z-10 shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
-        <a href="{{ route('applications.index') }}" class="inline-flex items-center gap-2 px-4 py-2 text-gray-600 text-sm font-medium hover:text-gray-800 transition">
-            Cancel
-        </a>
-        <button type="submit" class="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition shadow-sm">
-            {{ $application ? 'Update Application' : 'Create Application' }}
-        </button>
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+        <div class="flex flex-col sm:flex-row items-center justify-end gap-3">
+            <a href="{{ route('applications.index') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
+                <i class="fas fa-times text-xs"></i> Cancel
+            </a>
+            <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
+                <i class="fas fa-save text-xs"></i> {{ $application ? 'Update Application' : 'Create Application' }}
+            </button>
+        </div>
     </div>
 </form>
 @endsection
