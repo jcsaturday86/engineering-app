@@ -47,14 +47,13 @@
     method="POST"
     action="{{ $application ? route('applications.update', $application) : route('applications.store') }}"
     x-data="applicationForm()"
-    x-on:submit="syncAppliesTo()" onsubmit="return validateOccupancy()"
+    onsubmit="return validateOccupancy();"
 >
     @csrf
     @if($application)
         @method('PUT')
     @endif
     <input type="hidden" name="permit_type_id" value="{{ $permitType->id }}">
-    <input type="hidden" name="applies_to" x-ref="appliesToInput" value="{{ old('applies_to', $application->applies_to ?? '') }}">
 
     <div class="space-y-4">
         {{-- Compact Form Header --}}

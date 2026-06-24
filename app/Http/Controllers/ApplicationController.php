@@ -65,6 +65,13 @@ class ApplicationController extends Controller
 
     public function store(Request $request)
     {
+        $request->validate([
+            'occupancy_sub_groups' => 'required|array|min:1',
+        ], [
+            'occupancy_sub_groups.required' => 'Please select at least one Character of Occupancy.',
+            'occupancy_sub_groups.min' => 'Please select at least one Character of Occupancy.',
+        ]);
+
         $validated = $this->validateApplication($request);
 
         if (!empty($validated['scope_of_work_id'])) {
@@ -146,6 +153,13 @@ class ApplicationController extends Controller
 
     public function update(Request $request, Application $application)
     {
+        $request->validate([
+            'occupancy_sub_groups' => 'required|array|min:1',
+        ], [
+            'occupancy_sub_groups.required' => 'Please select at least one Character of Occupancy.',
+            'occupancy_sub_groups.min' => 'Please select at least one Character of Occupancy.',
+        ]);
+
         $validated = $this->validateApplication($request);
 
         if (!empty($validated['scope_of_work_id'])) {
