@@ -95,6 +95,9 @@ class ReferenceDataSeeder extends Seeder
             ['name' => 'Moving',              'category' => 'other',        'sort_order' => 8],
             ['name' => 'Demolition',          'category' => 'other',        'sort_order' => 9],
             ['name' => 'Accessory Structure', 'category' => 'other',        'sort_order' => 10],
+            ['name' => 'Erection',            'category' => 'other',        'sort_order' => 11],
+            ['name' => 'Legalization',        'category' => 'other',        'sort_order' => 12],
+            ['name' => 'Others (Specify)',    'category' => 'other',        'sort_order' => 13],
         ];
 
         foreach ($scopes as $scope) {
