@@ -78,10 +78,80 @@
         @php $sectionNum++ @endphp
         <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
-                <span class="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Application Details
+                <span class="inline-flex items-center justify-center w-7 h-7 {{ $isBP ? 'bg-blue-600' : 'bg-indigo-600' }} text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>{{ $isOP ? 'Occupancy Permit Application' : 'Application Details' }}
             </h3>
 
-            {{-- Project Title --}}
+            {{-- Application Type --}}
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Application Type <span class="text-red-500">*</span></label>
+                <div class="flex flex-wrap gap-4">
+                    @foreach($applicationTypes as $type)
+                        <label class="inline-flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="application_type_id" value="{{ $type->id }}"
+                                class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                {{ old('application_type_id', $application->application_type_id ?? '') == $type->id ? 'checked' : '' }}>
+                            <span class="text-sm text-gray-700">{{ $type->name }}</span>
+                        </label>
+                    @endforeach
+                </div>
+                @error('application_type_id')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
+            {{-- OP: Applies For (FSIC) --}}
+            @if($isOP)
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Applies For</label>
+                <label class="inline-flex items-center gap-2 cursor-pointer">
+                    <input type="hidden" name="applies_for" value="">
+                    <input type="checkbox" name="applies_for" value="FSIC"
+                        class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                        {{ old('applies_for', $application->applies_for ?? '') === 'FSIC' ? 'checked' : '' }}>
+                    <span class="text-sm text-gray-700">Fire Safety Inspection Certificate (FSIC)</span>
+                </label>
+                @error('applies_for')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+            @endif
+
+            {{-- OP: BP No, BP Date, FSEC No, FSEC Date --}}
+            @if($isOP)
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div>
+                    <label for="bp_number" class="block text-xs font-medium text-gray-600 mb-1">Building Permit No.</label>
+                    <input type="text" name="bp_number" id="bp_number"
+                        value="{{ old('bp_number', $application->bp_number ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    @error('bp_number') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label for="bp_issued_date" class="block text-xs font-medium text-gray-600 mb-1">Date Issued</label>
+                    <input type="date" name="bp_issued_date" id="bp_issued_date"
+                        value="{{ old('bp_issued_date', optional($application->bp_issued_date ?? null)->format('Y-m-d') ?? ($application->bp_issued_date ?? '')) }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    @error('bp_issued_date') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label for="fsec_no" class="block text-xs font-medium text-gray-600 mb-1">FSEC No.</label>
+                    <input type="text" name="fsec_no" id="fsec_no"
+                        value="{{ old('fsec_no', $application->fsec_no ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    @error('fsec_no') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label for="fsec_issued_date" class="block text-xs font-medium text-gray-600 mb-1">Date Issued</label>
+                    <input type="date" name="fsec_issued_date" id="fsec_issued_date"
+                        value="{{ old('fsec_issued_date', optional($application->fsec_issued_date ?? null)->format('Y-m-d') ?? ($application->fsec_issued_date ?? '')) }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    @error('fsec_issued_date') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+            </div>
+            @endif
+
+            {{-- BP: Project Title --}}
+            @if($isBP)
             <div>
                 <label for="project_title" class="block text-xs font-medium text-gray-600 mb-1">Project Title <span class="text-red-500">*</span></label>
                 <input type="text" name="project_title" id="project_title"
@@ -92,8 +162,9 @@
                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                 @enderror
             </div>
+            @endif
 
-            {{-- Complexity (BP only) --}}
+            {{-- BP: Complexity --}}
             @if($isBP)
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Complexity</label>
@@ -117,25 +188,7 @@
             </div>
             @endif
 
-            {{-- Application Type --}}
-            <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Application Type</label>
-                <div class="flex flex-wrap gap-4">
-                    @foreach($applicationTypes as $type)
-                        <label class="inline-flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="application_type_id" value="{{ $type->id }}"
-                                class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                                {{ old('application_type_id', $application->application_type_id ?? '') == $type->id ? 'checked' : '' }}>
-                            <span class="text-sm text-gray-700">{{ $type->name }}</span>
-                        </label>
-                    @endforeach
-                </div>
-                @error('application_type_id')
-                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-
-            {{-- Skip Locational Clearance (BP only) --}}
+            {{-- BP: Skip Locational Clearance --}}
             @if($isBP)
             <div>
                 <label class="inline-flex items-start gap-2 cursor-pointer p-3 bg-amber-50 border border-amber-200 rounded-lg">
@@ -201,8 +254,9 @@
                 </div>
             </div>
 
-            {{-- TIN, Contact, Email --}}
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {{-- TIN (BP only), Contact, Email --}}
+            <div class="grid grid-cols-1 sm:grid-cols-{{ $isBP ? '3' : '2' }} gap-3">
+                @if($isBP)
                 <div>
                     <label for="applicant_tin" class="block text-xs font-medium text-gray-600 mb-1">TIN <span class="text-red-500">*</span></label>
                     <input type="text" name="applicant_tin" required id="applicant_tin"
@@ -212,6 +266,7 @@
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                     @enderror
                 </div>
+                @endif
                 <div>
                     <label for="applicant_contact_no" class="block text-xs font-medium text-gray-600 mb-1">Contact No. <span class="text-red-500">*</span></label>
                     <input type="text" name="applicant_contact_no" required id="applicant_contact_no"
@@ -232,7 +287,8 @@
                 </div>
             </div>
 
-            {{-- Enterprise & Ownership --}}
+            {{-- Enterprise & Ownership (BP only) --}}
+            @if($isBP)
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                     <label for="enterprise_name" class="block text-xs font-medium text-gray-600 mb-1">For Construction Owned By an Enterprise</label>
@@ -261,6 +317,7 @@
                     @enderror
                 </div>
             </div>
+            @endif
         </div>
 
         {{-- ================================================================== --}}
@@ -342,6 +399,97 @@
                 </div>
             </div>
         </div>
+
+        {{-- ================================================================== --}}
+        {{-- OP: PROJECT DETAILS (matching BOPMS pattern) --}}
+        {{-- ================================================================== --}}
+        @if($isOP)
+        @php $sectionNum++ @endphp
+        <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
+                <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Project Details
+            </h3>
+
+            {{-- Name of Project & Completion Date --}}
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="sm:col-span-2">
+                    <label for="project_title" class="block text-xs font-medium text-gray-600 mb-1">Name of Project <span class="text-red-500">*</span></label>
+                    <input type="text" name="project_title" id="project_title"
+                        value="{{ old('project_title', $application->project_title ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        required>
+                    @error('project_title') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label for="completion_date" class="block text-xs font-medium text-gray-600 mb-1">Date of Completion <span class="text-red-500">*</span></label>
+                    <input type="date" name="completion_date" id="completion_date"
+                        value="{{ old('completion_date', optional($application->completion_date ?? null)->format('Y-m-d') ?? ($application->completion_date ?? '')) }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        required>
+                    @error('completion_date') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+            </div>
+
+            {{-- Building Location: Street, Barangay, City --}}
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                    <label for="building_street" class="block text-xs font-medium text-gray-600 mb-1">Street <span class="text-red-500">*</span></label>
+                    <input type="text" name="building_street" id="building_street"
+                        value="{{ old('building_street', $application->building_street ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        required>
+                    @error('building_street') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label for="building_barangay_id" class="block text-xs font-medium text-gray-600 mb-1">Barangay <span class="text-red-500">*</span></label>
+                    <select name="building_barangay_id" id="building_barangay_id" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="">-- Select --</option>
+                        @foreach($sfcBarangays as $brgy)
+                            <option value="{{ $brgy->id }}"
+                                {{ old('building_barangay_id', $application->building_barangay_id ?? '') == $brgy->id ? 'selected' : '' }}>
+                                {{ $brgy->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('building_barangay_id') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">City / Municipality</label>
+                    <input type="text" value="City of San Fernando, La Union" readonly
+                        class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-600">
+                </div>
+            </div>
+
+            {{-- Storeys, Units, Floor Area --}}
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                    <label for="no_of_storeys" class="block text-xs font-medium text-gray-600 mb-1">No. of Storey/s <span class="text-red-500">*</span></label>
+                    <input type="number" name="no_of_storeys" id="no_of_storeys" min="0"
+                        value="{{ old('no_of_storeys', $application->no_of_storeys ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        required>
+                    @error('no_of_storeys') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label for="no_of_units" class="block text-xs font-medium text-gray-600 mb-1">No. of Units <span class="text-red-500">*</span></label>
+                    <input type="number" name="no_of_units" id="no_of_units" min="0"
+                        value="{{ old('no_of_units', $application->no_of_units ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        required>
+                    @error('no_of_units') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label for="total_floor_area" class="block text-xs font-medium text-gray-600 mb-1">Total Gross Floor Area (SQ.M.) <span class="text-red-500">*</span></label>
+                    <input type="number" name="total_floor_area" id="total_floor_area" min="0" step="any"
+                        value="{{ old('total_floor_area', $application->total_floor_area ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        required>
+                    @error('total_floor_area') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+            </div>
+        </div>
+        @endif
 
         {{-- ================================================================== --}}
         {{-- 4. LOCATION OF CONSTRUCTION (BP only) --}}
@@ -491,7 +639,7 @@
         @php $sectionNum++ @endphp
         <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
-                <span class="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Character of Occupancy <span class="text-red-500">*</span>
+                <span class="inline-flex items-center justify-center w-7 h-7 {{ $isBP ? 'bg-blue-600' : 'bg-indigo-600' }} text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>{{ $isOP ? 'Use or Character of Occupancy' : 'Character of Occupancy' }} <span class="text-red-500">*</span>
             </h3>
 
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -547,8 +695,9 @@
         </div>
 
         {{-- ================================================================== --}}
-        {{-- 7. BUILDING DETAILS & COST --}}
+        {{-- 7. BUILDING DETAILS & COST (BP only) --}}
         {{-- ================================================================== --}}
+        @if($isBP)
         @php $sectionNum++ @endphp
         <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
@@ -769,85 +918,7 @@
                 @enderror
             </div>
         </div>
-
-        {{-- ================================================================== --}}
-        {{-- 8. OCCUPANCY PERMIT DETAILS (OP only) --}}
-        {{-- ================================================================== --}}
-        @if($isOP)
-        @php $sectionNum++ @endphp
-        <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
-            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
-                <span class="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Occupancy Permit Details
-            </h3>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                    <label for="bp_number" class="block text-xs font-medium text-gray-600 mb-1">Building Permit No.</label>
-                    <input type="text" name="bp_number" id="bp_number"
-                        value="{{ old('bp_number', $application->bp_number ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('bp_number')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <label for="bp_issued_date" class="block text-xs font-medium text-gray-600 mb-1">BP Date Issued</label>
-                    <input type="date" name="bp_issued_date" id="bp_issued_date"
-                        value="{{ old('bp_issued_date', optional($application->bp_issued_date ?? null)->format('Y-m-d') ?? ($application->bp_issued_date ?? '')) }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('bp_issued_date')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                    <label for="fsec_no" class="block text-xs font-medium text-gray-600 mb-1">FSEC No.</label>
-                    <input type="text" name="fsec_no" id="fsec_no"
-                        value="{{ old('fsec_no', $application->fsec_no ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('fsec_no')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <label for="fsec_issued_date" class="block text-xs font-medium text-gray-600 mb-1">FSEC Date Issued</label>
-                    <input type="date" name="fsec_issued_date" id="fsec_issued_date"
-                        value="{{ old('fsec_issued_date', optional($application->fsec_issued_date ?? null)->format('Y-m-d') ?? ($application->fsec_issued_date ?? '')) }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('fsec_issued_date')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Applies For</label>
-                    <label class="inline-flex items-center gap-2 cursor-pointer">
-                        <input type="hidden" name="applies_for" value="">
-                        <input type="checkbox" name="applies_for" value="FSIC"
-                            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                            {{ old('applies_for', $application->applies_for ?? '') === 'FSIC' ? 'checked' : '' }}>
-                        <span class="text-sm text-gray-700">FSIC</span>
-                    </label>
-                    @error('applies_for')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <label for="completion_date" class="block text-xs font-medium text-gray-600 mb-1">Date of Completion</label>
-                    <input type="date" name="completion_date" id="completion_date"
-                        value="{{ old('completion_date', optional($application->completion_date ?? null)->format('Y-m-d') ?? ($application->completion_date ?? '')) }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('completion_date')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
-        </div>
-        @endif
+        @endif {{-- end BP-only Building Details & Cost --}}
 
         {{-- ================================================================== --}}
         {{-- 9. ENGINEER / ARCHITECT (BP only) --}}
