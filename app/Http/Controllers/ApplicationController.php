@@ -269,7 +269,7 @@ class ApplicationController extends Controller
             // Header
             'permit_type_id' => 'required|exists:permit_types,id',
             'application_type_id' => 'required|exists:application_types,id',
-            'complexity' => 'nullable|in:simple,complex',
+            'complexity' => 'nullable|in:Simple,Complex',
             'applies_to' => 'nullable|string|max:50',
             // Applicant
             'applicant_first_name' => 'required|string|max:255',
