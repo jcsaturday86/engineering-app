@@ -279,7 +279,7 @@ class ApplicationController extends Controller
         return $request->validate([
             // Header
             'permit_type_id' => 'required|exists:permit_types,id',
-            'application_type_id' => 'required|exists:application_types,id',
+            'application_type_id' => 'required',
             'complexity' => 'nullable|in:Simple,Complex',
             'applies_to' => 'nullable|string|max:50',
             // Applicant

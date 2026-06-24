@@ -85,36 +85,37 @@
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">Application Type <span class="text-red-500">*</span></label>
                 <div class="flex flex-wrap gap-4">
-                    @foreach($applicationTypes as $type)
+                    @if($isOP)
+                        @php
+                            $opAppType = old('application_type_id', $application->application_type_id ?? '');
+                        @endphp
                         <label class="inline-flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="application_type_id" value="{{ $type->id }}"
-                                class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                                {{ old('application_type_id', $application->application_type_id ?? '') == $type->id ? 'checked' : '' }}>
-                            <span class="text-sm text-gray-700">{{ $type->name }}</span>
+                            <input type="radio" name="application_type_id" value="full"
+                                class="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                                {{ $opAppType === 'full' ? 'checked' : '' }} required>
+                            <span class="text-sm text-gray-700">Full</span>
                         </label>
-                    @endforeach
+                        <label class="inline-flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="application_type_id" value="partial"
+                                class="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                                {{ $opAppType === 'partial' ? 'checked' : '' }} required>
+                            <span class="text-sm text-gray-700">Partial</span>
+                        </label>
+                    @else
+                        @foreach($applicationTypes as $type)
+                            <label class="inline-flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="application_type_id" value="{{ $type->id }}"
+                                    class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                    {{ old('application_type_id', $application->application_type_id ?? '') == $type->id ? 'checked' : '' }}>
+                                <span class="text-sm text-gray-700">{{ $type->name }}</span>
+                            </label>
+                        @endforeach
+                    @endif
                 </div>
                 @error('application_type_id')
                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                 @enderror
             </div>
-
-            {{-- OP: Applies For (FSIC) --}}
-            @if($isOP)
-            <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Applies For</label>
-                <label class="inline-flex items-center gap-2 cursor-pointer">
-                    <input type="hidden" name="applies_for" value="">
-                    <input type="checkbox" name="applies_for" value="FSIC"
-                        class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                        {{ old('applies_for', $application->applies_for ?? '') === 'FSIC' ? 'checked' : '' }}>
-                    <span class="text-sm text-gray-700">Fire Safety Inspection Certificate (FSIC)</span>
-                </label>
-                @error('applies_for')
-                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-            @endif
 
             {{-- OP: BP No, BP Date, FSEC No, FSEC Date --}}
             @if($isOP)
