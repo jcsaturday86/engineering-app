@@ -328,19 +328,42 @@ class ReferenceDataSeeder extends Seeder
     private function seedLandClassifications(): void
     {
         $classifications = [
-            'Agricultural',
-            'Commercial',
-            'Industrial',
-            'Residential',
-            'Timber',
-            'Mineral',
-            'Others',
+            ['id' => 1, 'code' => 'R', 'name' => 'Residential'],
+            ['id' => 2, 'code' => 'A', 'name' => 'Agricultural'],
+            ['id' => 3, 'code' => 'C', 'name' => 'Commercial'],
+            ['id' => 4, 'code' => 'I', 'name' => 'Industrial'],
+            ['id' => 5, 'code' => 'M', 'name' => 'Mineral'],
+            ['id' => 6, 'code' => 'T', 'name' => 'Timberland/Forest'],
+            ['id' => 7, 'code' => 'SPE', 'name' => 'Special'],
+            ['id' => 8, 'code' => 'SH', 'name' => 'Hospital'],
+            ['id' => 9, 'code' => 'SR', 'name' => 'Religious'],
+            ['id' => 10, 'code' => 'SB', 'name' => 'Beach Lot'],
+            ['id' => 11, 'code' => 'SRL', 'name' => 'Road Lot'],
+            ['id' => 12, 'code' => 'SC', 'name' => 'Cultural'],
+            ['id' => 13, 'code' => 'SS', 'name' => 'Scientific'],
+            ['id' => 14, 'code' => 'SW', 'name' => 'Local Water District'],
+            ['id' => 15, 'code' => 'SG', 'name' => 'Corp. engaged in Generation/distribution of electric Power'],
+            ['id' => 16, 'code' => 'SCH', 'name' => 'School Lot'],
+            ['id' => 17, 'code' => 'O', 'name' => 'Others'],
+            ['id' => 18, 'code' => 'SP10', 'name' => 'Special 10'],
+            ['id' => 19, 'code' => 'SP15', 'name' => 'Special 15'],
+            ['id' => 20, 'code' => 'GOV', 'name' => 'Government'],
+            ['id' => 21, 'code' => 'RGOV', 'name' => "Gov't/Res"],
+            ['id' => 22, 'code' => 'CGOV', 'name' => "Gov't/Com"],
+            ['id' => 23, 'code' => 'AGOV', 'name' => "Gov't/Agri"],
+            ['id' => 24, 'code' => 'IGOV', 'name' => "Gov't/Ind"],
+            ['id' => 25, 'code' => 'CI', 'name' => 'Charitable Institution'],
+            ['id' => 26, 'code' => 'CEM', 'name' => 'Cemetery'],
+            ['id' => 27, 'code' => 'RCL', 'name' => 'Recreational'],
+            ['id' => 28, 'code' => 'INSB', 'name' => 'Institutional Bldg.'],
+            ['id' => 29, 'code' => 'INS', 'name' => 'Institutional'],
+            ['id' => 30, 'code' => 'GOCCS', 'name' => 'GOCCs'],
         ];
 
-        foreach ($classifications as $classification) {
+        foreach ($classifications as $c) {
             LandClassification::updateOrCreate(
-                ['name' => $classification],
-                ['name' => $classification]
+                ['id' => $c['id']],
+                ['code' => $c['code'], 'name' => $c['name'], 'is_active' => true]
             );
         }
     }
