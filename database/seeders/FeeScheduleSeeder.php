@@ -1261,6 +1261,7 @@ class FeeScheduleSeeder extends Seeder
                     'range_from' => $p[0],
                     'range_to' => $p[1],
                     'fixed_fee' => $p[2],
+                    'occupancy_sub_group_id' => $sgId,
                     'formula' => "sub_group_id:{$sgId}",
                 ];
                 if ($p[3] > 0) {

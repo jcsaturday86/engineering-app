@@ -18,6 +18,7 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\FeeScheduleController;
 use App\Http\Controllers\OnlineApplicationController;
 use App\Http\Controllers\ZoningController;
+use App\Http\Controllers\ZoningFeeController;
 use Illuminate\Support\Facades\Route;
 
 // Default page = client login
@@ -91,6 +92,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [ZoningController::class, 'index'])->name('index');
         Route::get('/{application}', [ZoningController::class, 'assess'])->name('assess')->middleware('can:create-zoning');
         Route::post('/{application}', [ZoningController::class, 'store'])->name('store')->middleware('can:create-zoning');
+        Route::post('/{application}/auto-compute', [ZoningController::class, 'autoCompute'])->name('autoCompute')->middleware('can:create-zoning');
+        Route::post('/{application}/add-item', [ZoningController::class, 'addItem'])->name('addItem')->middleware('can:create-zoning');
+        Route::delete('/item/{assessmentItem}', [ZoningController::class, 'removeItem'])->name('removeItem')->middleware('can:create-zoning');
         Route::post('/{application}/finalize', [ZoningController::class, 'finalize'])->name('finalize')->middleware('can:finalize-zoning');
         Route::post('/{application}/skip', [ZoningController::class, 'skip'])->name('skip')->middleware('can:skip-zoning');
     });
@@ -183,6 +187,12 @@ Route::middleware('auth')->group(function () {
         Route::post('/fees/type/{feeType}/schedule', [FeeScheduleController::class, 'storeSchedule'])->name('fees.schedule.store')->middleware('can:manage-fee-schedules');
         Route::put('/fees/schedule/{feeSchedule}', [FeeScheduleController::class, 'updateSchedule'])->name('fees.schedule.update')->middleware('can:manage-fee-schedules');
         Route::delete('/fees/schedule/{feeSchedule}', [FeeScheduleController::class, 'destroySchedule'])->name('fees.schedule.destroy')->middleware('can:manage-fee-schedules');
+        Route::get('/zoning-fees', [ZoningFeeController::class, 'index'])->name('zoning-fees')->middleware('can:manage-fee-schedules');
+        Route::put('/zoning-fees/{landUseAndZoningFee}', [ZoningFeeController::class, 'update'])->name('zoning-fees.update')->middleware('can:manage-fee-schedules');
+        Route::put('/zoning-fees/cert/{certificationZoningFee}', [ZoningFeeController::class, 'updateCert'])->name('zoning-fees.updateCert')->middleware('can:manage-fee-schedules');
+        Route::post('/zoning-fees/{occupancySubGroup}', [ZoningFeeController::class, 'store'])->name('zoning-fees.store')->middleware('can:manage-fee-schedules');
+        Route::delete('/zoning-fees/{landUseAndZoningFee}', [ZoningFeeController::class, 'destroy'])->name('zoning-fees.destroy')->middleware('can:manage-fee-schedules');
+
         Route::get('/signatories', [SettingsController::class, 'signatories'])->name('signatories')->middleware('can:manage-signatories');
         Route::post('/signatories/{signatory}', [SettingsController::class, 'updateSignatory'])->name('signatories.update')->middleware('can:manage-signatories');
     });

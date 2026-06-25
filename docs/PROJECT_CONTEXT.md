@@ -42,7 +42,7 @@ Building Permit (BP) and Occupancy Permit (OP) applications live in separate dat
 `app/Contracts/PermitApplicationContract.php` defines the shared interface. `app/Concerns/HasPermitApplicationBehavior.php` provides a trait with shared accessors and polymorphic relationships (assessments, billings, collections, permits, documents, etc.). Both `Application` and `OccupancyApplication` implement the contract and use the trait, keeping BP-specific logic (scope of work, cost fields, zoning, engineer/PEE/SEW) in `Application` only.
 
 ### Enum-Based State Machine
-`app/Enums/ApplicationStatus.php` defines the complete workflow with `allowedTransitions()` and `allowedTransitionsFor(string $permitTypeCode)` for strict state validation. OP flow skips `zoning_assessed`. No invalid transitions possible.
+`app/Enums/ApplicationStatus.php` defines the complete workflow with `allowedTransitions()` and `allowedTransitionsFor(string $permitTypeCode)` for strict state validation. BP applications without skip LC go to `for_zoning_assessment` status. OP flow skips zoning entirely. No invalid transitions possible.
 
 ### Consolidated Fee Schedule
 BOPMS had 100+ individual fee tables. Engineering-app consolidates into 3 tables:
@@ -51,6 +51,13 @@ BOPMS had 100+ individual fee tables. Engineering-app consolidates into 3 tables
 - `fee_schedules` — rate rows with ranges, fixed fees, excess thresholds
 
 Six computation methods: `fixed`, `per_unit`, `range_based`, `cumulative_range`, `percentage`, `formula`.
+
+### Dedicated Zoning Fee Tables
+Zoning fees use dedicated tables matching BOPMS naming:
+- `land_use_and_zoning_fees` — locational clearance fees by occupancy sub-group with range-based + excess computation (162 rows across 52 sub-groups, 6 fee patterns)
+- `certification_zoning_fees` — flat certification fee (P500)
+
+Auto-compute in `ZoningController::autoCompute()` queries these tables directly, matching BOPMS `TransactionController::zoningAutoCompute()` logic.
 
 ### Self-Healing Service Provider
 `SelfHealingServiceProvider` auto-creates database, runs migrations, and seeds roles/settings/admin if missing on every application boot. Ensures the system works even on a fresh install.

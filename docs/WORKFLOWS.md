@@ -7,13 +7,16 @@
 ### State Transitions
 
 ```
- ┌─────────┐     submit      ┌───────────┐   finalize    ┌─────────────────┐
- │  draft  │ ──────────────→ │ submitted │ ───────────→ │ zoning_assessed │
- └─────────┘                 └───────────┘  (planning)   └─────────────────┘
-                                                                │
-                              ┌──────────────────────┐          │ finalize
-                              │ engineering_assessed │ ←────────┘ (engineering)
-                              └──────────────────────┘
+ ┌─────────┐     submit      ┌────────────────────────┐   finalize    ┌─────────────────┐
+ │  draft  │ ──────────────→ │ for_zoning_assessment │ ───────────→ │ zoning_assessed │
+ └─────────┘                 └────────────────────────┘  (planning)  └─────────────────┘
+       │ (skip LC)                                                          │
+       └──────────→ ┌───────────┐                                           │ finalize
+                    │ submitted │                                            │ (engineering)
+                    └───────────┘                                            │
+                         │               ┌──────────────────────┐           │
+                         └──────────────→│ engineering_assessed │ ←─────────┘
+                                         └──────────────────────┘
                                        │
                               ┌────────┐  generate billing
                               │ billed │ ←────────
@@ -39,8 +42,9 @@
 | Step | Status | Actor | Controller | Action |
 |------|--------|-------|-----------|--------|
 | 1 | draft | Engineering Staff | ApplicationController::store | Create BP application with occupancy groups |
-| 2 | submitted | Engineering Staff | ApplicationController::submit | Submit for processing |
-| 3 | zoning_assessed | Planning Staff | ZoningController::finalize | Complete zoning assessment |
+| 2a | for_zoning_assessment | Engineering Staff | ApplicationController::submit | Submit → routed to Planning Office |
+| 2b | submitted | Engineering Staff | ApplicationController::submit | Submit with skip LC → routed to Engineering |
+| 3 | zoning_assessed | Planning Staff | ZoningController::finalize | Complete zoning assessment with auto-computed fees |
 | 4 | engineering_assessed | Engineering Officer | AssessmentController::finalize | Finalize fee assessment |
 | 5 | billed | Finance | BillingController::generate | Generate billing from assessment |
 | 6 | paid | Treasury Staff | CollectionController::store | Record payment (OR) |
@@ -51,7 +55,17 @@
 
 ### Skip Locational Clearance
 When `applies_to = "SKIP_LC"`, submission skips the planning office:
-- `draft` → `submitted` → **`zoning_assessed`** (automatic, bypasses planning)
+- `draft` → `submitted` (bypasses planning, goes directly to Engineering Assessment)
+
+Without skip LC:
+- `draft` → `for_zoning_assessment` → `zoning_assessed` (after planning assessment + fee computation)
+
+### Zoning Fee Auto-Compute
+When a planning officer opens a zoning assessment, they can click "Auto Compute" to:
+1. Look up `land_use_and_zoning_fees` by each occupancy sub-group + total estimated cost
+2. Compute: `amount + ((totalCost - excess_of) × percentage)` per sub-group
+3. Add `certification_zoning_fees` flat fee (P500)
+4. Create assessment items in the `assessment_items` table (assessment_type = 'zoning')
 
 ---
 
@@ -95,6 +109,7 @@ When `applies_to = "SKIP_LC"`, submission skips the planning office:
 enum ApplicationStatus: string {
     case DRAFT = 'draft';
     case SUBMITTED = 'submitted';
+    case FOR_ZONING_ASSESSMENT = 'for_zoning_assessment';
     case ZONING_ASSESSED = 'zoning_assessed';
     case ENGINEERING_ASSESSED = 'engineering_assessed';
     case BILLED = 'billed';
@@ -109,8 +124,9 @@ enum ApplicationStatus: string {
 
 | From | To (allowed) |
 |------|-------------|
-| draft | submitted, cancelled |
-| submitted | zoning_assessed, engineering_assessed, cancelled |
+| draft | submitted, for_zoning_assessment, cancelled |
+| submitted | engineering_assessed, cancelled |
+| for_zoning_assessment | zoning_assessed, cancelled |
 | zoning_assessed | engineering_assessed, cancelled |
 | engineering_assessed | billed, cancelled |
 | billed | paid, cancelled |

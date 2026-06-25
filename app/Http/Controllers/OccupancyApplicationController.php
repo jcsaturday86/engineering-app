@@ -228,7 +228,7 @@ class OccupancyApplicationController extends Controller
             'applicant_last_name' => 'required|string|max:255',
             'applicant_suffix' => 'nullable|string|max:20',
             'applicant_tin' => 'nullable|string|max:50',
-            'applicant_contact_no' => 'nullable|string|max:20',
+            'applicant_contact_no' => 'required|string|max:20',
             'applicant_email' => 'nullable|email|max:255',
             'applicant_govt_id' => 'nullable|string|max:100',
             'applicant_id_date_issued' => 'nullable|date',
@@ -238,24 +238,26 @@ class OccupancyApplicationController extends Controller
             'enterprise_name' => 'nullable|string|max:255',
             'form_of_ownership_id' => 'nullable|exists:form_of_ownerships,id',
             // Address
-            'applicant_province_id' => 'nullable|exists:provinces,id',
-            'applicant_city_id' => 'nullable|exists:cities,id',
-            'applicant_barangay_id' => 'nullable|exists:barangays,id',
+            'applicant_province_id' => 'required|exists:provinces,id',
+            'applicant_city_id' => 'required|exists:cities,id',
+            'applicant_barangay_id' => 'required|exists:barangays,id',
             'applicant_street' => 'nullable|string|max:255',
             'applicant_zip_code' => 'nullable|string|max:10',
+            // Project
+            'project_title' => 'required|string|max:255',
             // Building Location
             'lot_no' => 'nullable|string|max:50',
             'block_no' => 'nullable|string|max:50',
             'tct_no' => 'nullable|string|max:100',
             'tax_dec_no' => 'nullable|string|max:100',
             'land_classification_id' => 'nullable|exists:land_classifications,id',
-            'building_street' => 'nullable|string|max:255',
-            'building_barangay_id' => 'nullable|exists:barangays,id',
+            'building_street' => 'required|string|max:255',
+            'building_barangay_id' => 'required|exists:barangays,id',
             // Building Specs
-            'no_of_storeys' => 'nullable|integer|min:1',
-            'no_of_units' => 'nullable|integer|min:1',
+            'no_of_storeys' => 'required|integer|min:1',
+            'no_of_units' => 'required|integer|min:1',
             'occupancy_classified' => 'nullable|string|max:255',
-            'total_floor_area' => 'nullable|numeric|min:0',
+            'total_floor_area' => 'required|numeric|min:0',
             'lot_area' => 'nullable|numeric|min:0',
             // Owner
             'owner_name' => 'nullable|string|max:255',
@@ -269,7 +271,7 @@ class OccupancyApplicationController extends Controller
             'bp_issued_date' => 'nullable|date',
             'fsec_no' => 'nullable|string|max:50',
             'fsec_issued_date' => 'nullable|date',
-            'completion_date' => 'nullable|date',
+            'completion_date' => 'required|date',
             // Misc
             'remarks' => 'nullable|string|max:1000',
         ]);
@@ -289,6 +291,7 @@ class OccupancyApplicationController extends Controller
 
         foreach ($subGroups as $subGroup) {
             $application->applicationOccupancyGroups()->create([
+                'application_id' => null,
                 'occupancy_group_id' => $subGroup->occupancy_group_id,
                 'occupancy_sub_group_id' => $subGroup->id,
                 'others_text' => $request->input("sub_group_{$subGroup->id}_others"),

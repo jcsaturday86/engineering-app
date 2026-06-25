@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             ReferenceDataSeeder::class,
             FeeScheduleSeeder::class,
             AdminUserSeeder::class,
+            ApplicationSeeder::class,
         ]);
     }
 }

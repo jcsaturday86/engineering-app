@@ -139,7 +139,7 @@ class OnlineApplicationController extends Controller
                 'app_month' => now()->month,
                 'app_counter' => $counter,
                 'application_number' => $appNumber,
-                'status' => 'submitted',
+                'status' => 'for_zoning_assessment',
                 'source' => 'online',
                 'entered_by' => Auth::id(),
                 'client_user_id' => Auth::id(),
@@ -290,11 +290,13 @@ class OnlineApplicationController extends Controller
     {
         $timeline = [
             ['status' => 'draft', 'label' => 'Application Created', 'date' => $application->created_at],
-            ['status' => 'submitted', 'label' => 'Submitted', 'date' => $application->submitted_at],
         ];
 
         if ($includeZoning) {
+            $timeline[] = ['status' => 'for_zoning_assessment', 'label' => 'For Zoning Assessment', 'date' => $application->submitted_at];
             $timeline[] = ['status' => 'zoning_assessed', 'label' => 'Zoning Assessed', 'date' => null];
+        } else {
+            $timeline[] = ['status' => 'submitted', 'label' => 'Submitted', 'date' => $application->submitted_at];
         }
 
         $timeline = array_merge($timeline, [

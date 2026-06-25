@@ -44,6 +44,8 @@ class OccupancyApplication extends Model implements PermitApplicationContract
         'applicant_barangay_id',
         'applicant_street',
         'applicant_zip_code',
+        // Project
+        'project_title',
         // Building location
         'lot_no',
         'block_no',

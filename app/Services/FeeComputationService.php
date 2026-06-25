@@ -199,12 +199,22 @@ class FeeComputationService
         $threshold = (float) $schedule->excess_threshold;
         $excessRate = (float) $schedule->excess_fee;
         $excessEvery = (float) $schedule->excess_every ?: 1;
+        $percentage = (float) $schedule->percentage;
 
-        if ($threshold <= 0 || $excessRate <= 0 || $quantity <= $threshold) {
+        if ($threshold <= 0 || $quantity <= $threshold) {
             return 0;
         }
 
         $excessQuantity = $quantity - $threshold;
+
+        if ($percentage > 0 && $excessRate <= 0) {
+            return $excessQuantity * $percentage;
+        }
+
+        if ($excessRate <= 0) {
+            return 0;
+        }
+
         $units = ceil($excessQuantity / $excessEvery);
 
         return $units * $excessRate;

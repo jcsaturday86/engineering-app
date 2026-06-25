@@ -194,18 +194,18 @@ class ApplicationController extends Controller
 
         $skipLC = $application->applies_to === 'SKIP_LC';
 
-        if (!$skipLC) {
+        if ($skipLC) {
             $application->update([
                 'status' => 'submitted',
                 'submitted_at' => now(),
             ]);
-            activity()->causedBy(Auth::user())->performedOn($application)->log('Application submitted — routed to Planning Office');
+            activity()->causedBy(Auth::user())->performedOn($application)->log('Application submitted — skipped Locational Clearance, routed to Engineering Assessment');
         } else {
             $application->update([
-                'status' => 'zoning_assessed',
+                'status' => 'for_zoning_assessment',
                 'submitted_at' => now(),
             ]);
-            activity()->causedBy(Auth::user())->performedOn($application)->log('Application submitted — skipped Locational Clearance');
+            activity()->causedBy(Auth::user())->performedOn($application)->log('Application submitted — routed to Planning Office for Zoning Assessment');
         }
 
         $engineeringUsers = User::role(['engineering-officer', 'engineering-staff'])->get();
@@ -213,7 +213,7 @@ class ApplicationController extends Controller
 
         $msg = $skipLC
             ? 'Application submitted. Routed directly to Engineering Assessment.'
-            : 'Application submitted. Routed to Planning Office for Locational Clearance.';
+            : 'Application submitted. Routed to Planning Office for Zoning Assessment.';
 
         return back()->with('success', $msg);
     }
@@ -282,8 +282,8 @@ class ApplicationController extends Controller
             'applicant_middle_name' => 'nullable|string|max:255',
             'applicant_last_name' => 'required|string|max:255',
             'applicant_suffix' => 'nullable|string|max:20',
-            'applicant_tin' => 'nullable|string|max:50',
-            'applicant_contact_no' => 'nullable|string|max:20',
+            'applicant_tin' => 'required|string|max:50',
+            'applicant_contact_no' => 'required|string|max:20',
             'applicant_email' => 'nullable|email|max:255',
             'applicant_govt_id' => 'nullable|string|max:100',
             'applicant_id_date_issued' => 'nullable|date',
@@ -293,54 +293,54 @@ class ApplicationController extends Controller
             'enterprise_name' => 'nullable|string|max:255',
             'form_of_ownership_id' => 'nullable|exists:form_of_ownerships,id',
             // Address
-            'applicant_province_id' => 'nullable|exists:provinces,id',
-            'applicant_city_id' => 'nullable|exists:cities,id',
-            'applicant_barangay_id' => 'nullable|exists:barangays,id',
+            'applicant_province_id' => 'required|exists:provinces,id',
+            'applicant_city_id' => 'required|exists:cities,id',
+            'applicant_barangay_id' => 'required|exists:barangays,id',
             'applicant_street' => 'nullable|string|max:255',
             'applicant_zip_code' => 'nullable|string|max:10',
             // Project
-            'project_title' => 'nullable|string|max:255',
+            'project_title' => 'required|string|max:255',
             'scope_of_work_id' => 'required|exists:scope_of_works,id',
             'scope_of_work_details' => 'nullable|string|max:1000',
             // Building Location
-            'lot_no' => 'nullable|string|max:50',
-            'block_no' => 'nullable|string|max:50',
-            'tct_no' => 'nullable|string|max:100',
-            'tax_dec_no' => 'nullable|string|max:100',
-            'land_classification_id' => 'nullable|exists:land_classifications,id',
-            'building_street' => 'nullable|string|max:255',
-            'building_barangay_id' => 'nullable|exists:barangays,id',
+            'lot_no' => 'required|string|max:50',
+            'block_no' => 'required|string|max:50',
+            'tct_no' => 'required|string|max:100',
+            'tax_dec_no' => 'required|string|max:100',
+            'land_classification_id' => 'required|exists:land_classifications,id',
+            'building_street' => 'required|string|max:255',
+            'building_barangay_id' => 'required|exists:barangays,id',
             // Building Specs
-            'no_of_storeys' => 'nullable|integer|min:1',
-            'no_of_units' => 'nullable|integer|min:1',
+            'no_of_storeys' => 'required|integer|min:1',
+            'no_of_units' => 'required|integer|min:1',
             'occupancy_classified' => 'nullable|string|max:255',
-            'total_floor_area' => 'nullable|numeric|min:0',
-            'lot_area' => 'nullable|numeric|min:0',
+            'total_floor_area' => 'required|numeric|min:0',
+            'lot_area' => 'required|numeric|min:0',
             // Cost Estimates
-            'building_cost' => 'nullable|numeric|min:0',
-            'electrical_cost' => 'nullable|numeric|min:0',
-            'mechanical_cost' => 'nullable|numeric|min:0',
-            'electronics_cost' => 'nullable|numeric|min:0',
-            'plumbing_cost' => 'nullable|numeric|min:0',
+            'building_cost' => 'required|numeric|min:0',
+            'electrical_cost' => 'required|numeric|min:0',
+            'mechanical_cost' => 'required|numeric|min:0',
+            'electronics_cost' => 'required|numeric|min:0',
+            'plumbing_cost' => 'required|numeric|min:0',
             'other_equipment_cost' => 'nullable|numeric|min:0',
             'equipment_cost_1' => 'nullable|numeric|min:0',
             'equipment_cost_2' => 'nullable|numeric|min:0',
             'equipment_cost_3' => 'nullable|numeric|min:0',
             'equipment_cost_4' => 'nullable|numeric|min:0',
             // Timeline
-            'proposed_construction_date' => 'nullable|date',
-            'expected_completion_date' => 'nullable|date',
+            'proposed_construction_date' => 'required|date',
+            'expected_completion_date' => 'required|date',
             'remarks' => 'nullable|string|max:1000',
             // Engineer/Architect
-            'engineer_name' => 'nullable|string|max:255',
-            'engineer_prc_no' => 'nullable|string|max:50',
-            'engineer_prc_validity' => 'nullable|date',
-            'engineer_ptr_no' => 'nullable|string|max:50',
-            'engineer_ptr_date_issued' => 'nullable|date',
-            'engineer_ptr_issued_at' => 'nullable|string|max:255',
-            'engineer_tin' => 'nullable|string|max:50',
-            'engineer_address' => 'nullable|string|max:255',
-            'engineer_date_signed' => 'nullable|date',
+            'engineer_name' => 'required|string|max:255',
+            'engineer_prc_no' => 'required|string|max:50',
+            'engineer_prc_validity' => 'required|date',
+            'engineer_ptr_no' => 'required|string|max:50',
+            'engineer_ptr_date_issued' => 'required|date',
+            'engineer_ptr_issued_at' => 'required|string|max:255',
+            'engineer_tin' => 'required|string|max:50',
+            'engineer_address' => 'required|string|max:255',
+            'engineer_date_signed' => 'required|date',
             // Owner
             'owner_name' => 'nullable|string|max:255',
             'owner_address' => 'nullable|string|max:255',
@@ -391,6 +391,7 @@ class ApplicationController extends Controller
 
         foreach ($subGroups as $subGroup) {
             $application->applicationOccupancyGroups()->create([
+                'application_id' => $application->id,
                 'occupancy_group_id' => $subGroup->occupancy_group_id,
                 'occupancy_sub_group_id' => $subGroup->id,
                 'others_text' => $request->input("sub_group_{$subGroup->id}_others"),

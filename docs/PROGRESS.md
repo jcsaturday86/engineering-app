@@ -16,6 +16,10 @@
 | Activity logging | DONE | Application, Assessment, Collection, Permit |
 | Soft deletes | DONE | All transaction tables |
 | Settings management | DONE | Key-value settings table with admin UI |
+| Browser autofill disabled | DONE | autocomplete="off" on all 41 forms |
+| Form validation UX | DONE | Error summary banner, section highlighting, scroll-to-error |
+| Backend validation aligned | DONE | Required fields match HTML required attributes |
+| Test data seeder | DONE | ApplicationSeeder: 5 BP + 5 OP with all fields populated |
 
 ---
 
@@ -69,9 +73,14 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Zoning assessment form | DONE | Project classification, boundaries, ECC, parking |
-| Assessment finalization | DONE | Transitions to zoning_assessed |
-| Skip locational clearance | DONE | Bypass planning office |
+| Zoning assessment form | DONE | Card-based design matching BP/OP. Project classification (BOPMS dropdowns), zoning details, boundaries, compliance |
+| Zoning fee auto-compute | DONE | Queries land_use_and_zoning_fees by occupancy sub-group + cost range. Matches BOPMS zoningAutoCompute() logic |
+| Fee items table with delete | DONE | Assessment items table with per-row delete, auto-compute button |
+| Assessment finalization | DONE | Sums items, finalizes assessment, transitions for_zoning_assessment → zoning_assessed |
+| For zoning assessment status | DONE | New status for BP apps routed to planning office |
+| Skip locational clearance | DONE | Bypass planning office, goes to submitted status directly |
+| Dedicated zoning fee tables | DONE | land_use_and_zoning_fees (162 rows), certification_zoning_fees (P500) |
+| Zoning fee settings page | DONE | /settings/zoning-fees — manage fees by occupancy group/sub-group with accordion UI |
 | Zoning certification PDF | DONE | Template exists |
 | Locational clearance PDF | DONE | Template exists |
 
@@ -82,6 +91,7 @@
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Fee schedule management (admin UI) | DONE | Categories, types, schedules CRUD |
+| Zoning fee management (admin UI) | DONE | Dedicated /settings/zoning-fees page |
 | 3-table consolidated design | DONE | Replaces BOPMS's 100+ tables |
 | Fixed fee computation | DONE | |
 | Per-unit fee computation | DONE | |

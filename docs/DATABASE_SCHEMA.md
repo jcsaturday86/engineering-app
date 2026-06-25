@@ -233,6 +233,40 @@
 
 ---
 
+## Zoning Fee Tables
+
+### `land_use_and_zoning_fees`
+
+> Dedicated table for locational clearance fees, matching BOPMS `land_use_and_zoning_fees`. Organized by occupancy sub-group with range-based + excess computation.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | bigint PK | |
+| occupancy_sub_group_id | FK → occupancy_sub_groups | Which sub-group this rate applies to |
+| range_from | decimal(15,2) | Cost range start |
+| range_to | decimal(15,2) | Cost range end |
+| amount | decimal(15,2) | Base/fixed fee for this range |
+| excess_of | decimal(15,2) | Threshold above which excess applies |
+| percentage | decimal(10,6) | Per-peso rate for excess (e.g., 0.001) |
+| is_active | boolean | Default: true |
+
+**Index:** [occupancy_sub_group_id, range_from, range_to]
+
+**162 rows** across 52 sub-groups, organized in 6 fee patterns (Residential, Commercial, Mid-Tier, Heavy, Flat, Top-Tier).
+
+### `certification_zoning_fees`
+
+> Flat certification fee, matching BOPMS `certification_zoning_fees`.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | bigint PK | |
+| occupancy_sub_group_id | FK → occupancy_sub_groups | Yes | NULL = applies to all |
+| amount | decimal(15,2) | Fixed certification fee (P500) |
+| is_active | boolean | Default: true |
+
+---
+
 ## Application Tables
 
 ### `applications` (Building Permit only)
@@ -276,7 +310,7 @@
 | **Project** | project_title |
 | **Building Location** | lot_no, block_no, tct_no, tax_dec_no, land_classification_id (FK), building_street, building_barangay_id (FK) |
 | **Building Specs** | no_of_storeys, no_of_units, occupancy_classified, total_floor_area, lot_area |
-| **OP-Specific** | bp_number, bp_issued_date, fsec_no, fsec_issued_date, completion_date, applies_for |
+| **OP-Specific** | bp_number, bp_issued_date, fsec_no, fsec_issued_date, completion_date |
 | **Owner** | owner_name, owner_address, owner_govt_id, owner_id_date_issued, owner_id_place_issued, owner_date_signed |
 | **Processing** | entered_by (FK), assessed_by (FK), approved_by (FK), client_user_id (FK), submitted_at, assessed_at, approved_at, paid_at, released_at, cancelled_at, cancellation_reason, issued_date |
 | **System** | remarks, deleted_at, created_at, updated_at |
@@ -290,7 +324,7 @@
 | id | bigint PK | |
 | applicationable_type | varchar(10) | Morph type: 'bp' or 'op' |
 | applicationable_id | bigint unsigned | FK to applications or occupancy_applications |
-| application_id | FK → applications | Yes | Kept for transition (legacy) |
+| application_id | bigint unsigned | Yes | Legacy column, nullable. Use applicationable_type/id instead |
 | occupancy_group_id | FK → occupancy_groups (cascade) | |
 | occupancy_sub_group_id | FK → occupancy_sub_groups | Yes |
 | others_text | string | Yes | Free text for "Others" |
@@ -304,7 +338,7 @@
 | id | bigint PK | |
 | applicationable_type | varchar(10) | Morph type: 'bp' or 'op' |
 | applicationable_id | bigint unsigned | FK to applications or occupancy_applications |
-| application_id | FK → applications | Yes | Kept for transition (legacy) |
+| application_id | bigint unsigned | Yes | Legacy column, nullable. Use applicationable_type/id instead |
 | requirement_name | string | |
 | file_path | string | |
 | original_filename | string | |
@@ -324,7 +358,7 @@
 | id | bigint PK | |
 | applicationable_type | varchar(10) | Morph type: 'bp' or 'op' |
 | applicationable_id | bigint unsigned | FK to applications or occupancy_applications |
-| application_id | FK → applications | Yes | Kept for transition (legacy) |
+| application_id | bigint unsigned | Yes | Legacy column, nullable. Use applicationable_type/id instead |
 | assessment_type | string(30) | building, occupancy, zoning |
 | filing_fee | decimal(15,2) | Default: 0 |
 | processing_fee | decimal(15,2) | Default: 0 |
@@ -394,7 +428,7 @@
 | id | bigint PK | |
 | applicationable_type | varchar(10) | Morph type: 'bp' or 'op' |
 | applicationable_id | bigint unsigned | FK to applications or occupancy_applications |
-| application_id | FK → applications | Yes | Kept for transition (legacy) |
+| application_id | bigint unsigned | Yes | Legacy column, nullable. Use applicationable_type/id instead |
 | billing_number | string(30) unique | BL-YYYY-MM-NNNNN |
 | total_amount | decimal(15,2) | Default: 0 |
 | status | enum | unpaid, partial, paid, void |
@@ -419,7 +453,7 @@
 | id | bigint PK | |
 | applicationable_type | varchar(10) | Morph type: 'bp' or 'op' |
 | applicationable_id | bigint unsigned | FK to applications or occupancy_applications |
-| application_id | FK → applications | Yes | Kept for transition (legacy) |
+| application_id | bigint unsigned | Yes | Legacy column, nullable. Use applicationable_type/id instead |
 | billing_id | FK → billings | Yes |
 | or_number | string(30) unique | Official Receipt number |
 | or_date | date | Receipt date |
@@ -469,7 +503,7 @@
 | id | bigint PK | |
 | applicationable_type | varchar(10) | Morph type: 'bp' or 'op' |
 | applicationable_id | bigint unsigned | FK to applications or occupancy_applications |
-| application_id | FK → applications | Yes | Kept for transition (legacy) |
+| application_id | bigint unsigned | Yes | Legacy column, nullable. Use applicationable_type/id instead |
 | permit_type_id | FK → permit_types (cascade) | |
 | permit_year | year | |
 | permit_month | tinyint | |
@@ -490,7 +524,7 @@
 | id | bigint PK | |
 | applicationable_type | varchar(10) | Morph type: 'bp' or 'op' |
 | applicationable_id | bigint unsigned | FK to applications or occupancy_applications |
-| application_id | FK → applications | Yes | Kept for transition (legacy) |
+| application_id | bigint unsigned | Yes | Legacy column, nullable. Use applicationable_type/id instead |
 | document_type | string(50) | e.g., pdf.building-permit |
 | title | string | |
 | file_path | string | Yes |

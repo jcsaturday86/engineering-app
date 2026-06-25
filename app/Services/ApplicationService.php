@@ -151,6 +151,7 @@ class ApplicationService
         // Set corresponding timestamp based on new status
         $updateData = match ($newStatus) {
             ApplicationStatus::SUBMITTED => array_merge($updateData, ['submitted_at' => now()]),
+            ApplicationStatus::FOR_ZONING_ASSESSMENT => array_merge($updateData, ['submitted_at' => now()]),
             ApplicationStatus::ENGINEERING_ASSESSED => array_merge($updateData, ['assessed_at' => now()]),
             ApplicationStatus::PAID => array_merge($updateData, ['paid_at' => now()]),
             ApplicationStatus::RELEASED => array_merge($updateData, ['released_at' => now()]),

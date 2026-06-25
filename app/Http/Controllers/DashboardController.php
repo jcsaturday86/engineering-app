@@ -17,7 +17,7 @@ class DashboardController extends Controller
         $bpTotal = Application::whereYear('created_at', $currentYear)->count();
         $opTotal = OccupancyApplication::whereYear('created_at', $currentYear)->count();
 
-        $bpPending = Application::whereIn('status', ['draft', 'submitted'])->count();
+        $bpPending = Application::whereIn('status', ['draft', 'submitted', 'for_zoning_assessment'])->count();
         $opPending = OccupancyApplication::whereIn('status', ['draft', 'submitted'])->count();
 
         $bpApproved = Application::whereYear('created_at', $currentYear)->where('status', 'released')->count();

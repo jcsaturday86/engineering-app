@@ -19,7 +19,7 @@ class AssessmentController extends Controller
     public function index()
     {
         $applications = Application::with('permitType')
-            ->whereIn('status', ['zoning_assessed', 'engineering_assessed'])
+            ->whereIn('status', ['submitted', 'zoning_assessed', 'engineering_assessed'])
             ->latest()
             ->paginate(20);
 
@@ -206,7 +206,7 @@ class AssessmentController extends Controller
                 ]);
             }
 
-            if (in_array($application->status, ['zoning_assessed', 'submitted'])) {
+            if (in_array($application->status, ['submitted', 'zoning_assessed'])) {
                 $application->update([
                     'status' => 'engineering_assessed',
                     'assessed_by' => Auth::id(),

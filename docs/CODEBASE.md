@@ -45,7 +45,7 @@ engineering-app/
 | Model | Table | Key Relationships |
 |-------|-------|-------------------|
 | Application | applications | Implements PermitApplicationContract, uses HasPermitApplicationBehavior. belongsTo: permitType, applicationType, scopeOfWork, formOfOwnership, provinces/cities/barangays (x2), landClassification. morphMany (via trait): assessments, billings, collections, permits, documents, applicationOccupancyGroups, applicationRequirements. hasOne: zoningAssessment. BP-specific: scopeOfWork(), getTotalEstimatedCostAttribute(), getPermitTypeCode() returns 'BP' |
-| OccupancyApplication | occupancy_applications | Implements PermitApplicationContract, uses HasPermitApplicationBehavior. belongsTo: applicationType, formOfOwnership, provinces/cities/barangays (x2), landClassification. morphMany (via trait): assessments, billings, collections, permits, documents, applicationOccupancyGroups, applicationRequirements. OP-specific: bp_number, fsec_no, completion_date, applies_for. getPermitTypeCode() returns 'OP' |
+| OccupancyApplication | occupancy_applications | Implements PermitApplicationContract, uses HasPermitApplicationBehavior. belongsTo: applicationType, formOfOwnership, provinces/cities/barangays (x2), landClassification. morphMany (via trait): assessments, billings, collections, permits, documents, applicationOccupancyGroups, applicationRequirements. OP-specific: project_title, bp_number, fsec_no, completion_date. getPermitTypeCode() returns 'OP' |
 | ApplicationOccupancyGroup | application_occupancy_groups | morphTo: applicationable (Application or OccupancyApplication), belongsTo: occupancyGroup, occupancySubGroup. Backward-compat getApplicationAttribute() accessor |
 | ApplicationRequirement | application_requirements | morphTo: applicationable (Application or OccupancyApplication), belongsTo: reviewedBy (user). Backward-compat getApplicationAttribute() accessor |
 | Assessment | assessments | morphTo: applicationable (Application or OccupancyApplication), belongsTo: assessedBy. hasMany: assessmentItems. SoftDeletes, LogsActivity. Backward-compat getApplicationAttribute() accessor |
@@ -81,6 +81,8 @@ engineering-app/
 | FeeCategory | fee_categories | belongsTo: permitType. hasMany: feeTypes |
 | FeeType | fee_types | belongsTo: feeCategory. hasMany: feeSchedules |
 | FeeSchedule | fee_schedules | belongsTo: feeType, occupancyDivision, occupancySubGroup |
+| LandUseAndZoningFee | land_use_and_zoning_fees | belongsTo: occupancySubGroup. Range-based locational clearance fees (162 rows) |
+| CertificationZoningFee | certification_zoning_fees | belongsTo: occupancySubGroup. Flat certification fee (P500) |
 
 ### Auth/System Models
 
@@ -124,11 +126,23 @@ engineering-app/
 ### ZoningController
 | Method | Route | Purpose |
 |--------|-------|---------|
-| index | GET /zoning | List submitted BP applications |
-| assess | GET /zoning/{id} | Zoning assessment form |
-| store | POST /zoning/{id} | Save assessment (updateOrCreate) |
-| finalize | POST /zoning/{id}/finalize | → zoning_assessed |
+| index | GET /zoning | List BP applications with status for_zoning_assessment |
+| assess | GET /zoning/{id} | Zoning assessment form with application details + fee items |
+| store | POST /zoning/{id} | Save compliance fields (updateOrCreate) |
+| autoCompute | POST /zoning/{id}/auto-compute | Auto-compute zoning fees from land_use_and_zoning_fees + certification_zoning_fees |
+| addItem | POST /zoning/{id}/add-item | Manually add fee item |
+| removeItem | DELETE /zoning/item/{id} | Remove fee item |
+| finalize | POST /zoning/{id}/finalize | Finalize assessment + for_zoning_assessment → zoning_assessed |
 | skip | POST /zoning/{id}/skip | Bypass locational clearance |
+
+### ZoningFeeController (Settings)
+| Method | Route | Purpose |
+|--------|-------|---------|
+| index | GET /settings/zoning-fees | Land use & zoning fee settings (grouped by occupancy group/sub-group) |
+| update | PUT /settings/zoning-fees/{id} | Update a land_use_and_zoning_fees row |
+| store | POST /settings/zoning-fees/{subGroup} | Add new fee schedule row for sub-group |
+| updateCert | PUT /settings/zoning-fees/cert/{id} | Update certification fee amount |
+| destroy | DELETE /settings/zoning-fees/{id} | Delete a fee schedule row |
 
 ### AssessmentController
 | Method | Route | Purpose |

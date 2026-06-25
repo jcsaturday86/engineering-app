@@ -32,7 +32,7 @@
                 <label class="block text-xs font-medium text-gray-500 mb-1">Status</label>
                 <select name="status" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
                     <option value="">All</option>
-                    @foreach(['draft','submitted','zoning_assessed','engineering_assessed','billed','paid','permit_generated','released'] as $s)
+                    @foreach(['draft','submitted','for_zoning_assessment','zoning_assessed','engineering_assessed','billed','paid','permit_generated','released'] as $s)
                         <option value="{{ $s }}" {{ request('status') === $s ? 'selected' : '' }}>{{ ucfirst(str_replace('_', ' ', $s)) }}</option>
                     @endforeach
                 </select>
@@ -75,6 +75,7 @@
                                 $colors = [
                                     'draft' => 'bg-gray-100 text-gray-600',
                                     'submitted' => 'bg-blue-100 text-blue-700',
+                                    'for_zoning_assessment' => 'bg-purple-100 text-purple-700',
                                     'zoning_assessed' => 'bg-yellow-100 text-yellow-700',
                                     'engineering_assessed' => 'bg-amber-100 text-amber-700',
                                     'billed' => 'bg-orange-100 text-orange-700',

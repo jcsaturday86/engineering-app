@@ -17,6 +17,18 @@ BP and OP applications now live in separate database tables with polymorphic dow
 - **Notifications:** 4 notification classes accept `Model` instead of `Application`.
 - **Enums:** `ApplicationStatus::allowedTransitionsFor(string $permitTypeCode)` for OP flow (skips zoning_assessed).
 
+### Zoning Assessment Fee Auto-Compute & Settings -- COMPLETED
+
+Added zoning fee auto-compute matching BOPMS `zoningAutoCompute()` logic, with dedicated fee tables and settings UI:
+
+- **Database:** New `land_use_and_zoning_fees` table (162 rows, 52 sub-groups, 6 fee patterns) and `certification_zoning_fees` table (P500 flat). Migrated data from generic `fee_schedules`. Made `application_id` nullable on 7 downstream tables. Added `project_title` to `occupancy_applications`.
+- **Models:** New `LandUseAndZoningFee`, `CertificationZoningFee`.
+- **Controllers:** `ZoningController` updated with `autoCompute()` (queries new tables directly), `addItem()`, `removeItem()`. New `ZoningFeeController` for settings CRUD.
+- **View:** Zoning form restyled to BP/OP card pattern (numbered badges). Section 5 (Evaluation) removed. Fee items table with Auto Compute button, per-row delete, and manual add form. New `/settings/zoning-fees` page with accordion by occupancy group.
+- **Workflow:** New `for_zoning_assessment` status for BP apps routed to planning. `submitted` status now means skip-LC (direct to engineering).
+- **Validation:** Backend validation aligned with HTML required fields on BP/OP forms. Error summary banner, section card highlighting, auto-scroll to errors.
+- **Other:** Browser autofill disabled on all 41 forms. `ApplicationSeeder` creates 5 BP + 5 OP test records. `FeeComputationService::applyExcess()` fixed for percentage-based excess.
+
 ---
 
 ## Upcoming Tasks

@@ -64,11 +64,28 @@
             <p class="text-xs text-gray-400">Fields marked with <span class="text-red-500">*</span> are required</p>
         </div>
 
+        {{-- Validation Error Summary --}}
+        @if($errors->any())
+        <div class="bg-red-50 border border-red-200 rounded-xl p-4" id="validation-errors">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-exclamation-triangle text-red-500 mt-0.5"></i>
+                <div>
+                    <h4 class="text-sm font-semibold text-red-800">Please correct the following errors ({{ $errors->count() }}):</h4>
+                    <ul class="mt-2 text-sm text-red-700 list-disc list-inside space-y-1">
+                        @foreach($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
+        </div>
+        @endif
+
         {{-- ================================================================== --}}
         {{-- 1. OCCUPANCY PERMIT APPLICATION --}}
         {{-- ================================================================== --}}
         @php $sectionNum++ @endphp
-        <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+        <div class="bg-white rounded-xl border {{ $errors->has('application_type_id') ? 'border-red-300 ring-1 ring-red-200' : 'border-gray-200' }} p-5 space-y-3">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
                 <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Occupancy Permit Application
             </h3>
@@ -128,7 +145,7 @@
         {{-- 2. APPLICANT INFORMATION --}}
         {{-- ================================================================== --}}
         @php $sectionNum++ @endphp
-        <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+        <div class="bg-white rounded-xl border {{ $errors->hasAny(['applicant_first_name','applicant_last_name','applicant_contact_no']) ? 'border-red-300 ring-1 ring-red-200' : 'border-gray-200' }} p-5 space-y-3">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
                 <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Applicant Information
             </h3>
@@ -201,7 +218,7 @@
         {{-- 3. APPLICANT ADDRESS --}}
         {{-- ================================================================== --}}
         @php $sectionNum++ @endphp
-        <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+        <div class="bg-white rounded-xl border {{ $errors->hasAny(['applicant_province_id','applicant_city_id','applicant_barangay_id']) ? 'border-red-300 ring-1 ring-red-200' : 'border-gray-200' }} p-5 space-y-3">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
                 <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Applicant Address
             </h3>
@@ -281,7 +298,7 @@
         {{-- 4. PROJECT DETAILS --}}
         {{-- ================================================================== --}}
         @php $sectionNum++ @endphp
-        <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+        <div class="bg-white rounded-xl border {{ $errors->hasAny(['project_title','completion_date','building_street','building_barangay_id','no_of_storeys','no_of_units','total_floor_area']) ? 'border-red-300 ring-1 ring-red-200' : 'border-gray-200' }} p-5 space-y-3">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
                 <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Project Details
             </h3>
@@ -370,7 +387,7 @@
         {{-- 5. CHARACTER OF OCCUPANCY --}}
         {{-- ================================================================== --}}
         @php $sectionNum++ @endphp
-        <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+        <div class="bg-white rounded-xl border {{ $errors->has('occupancy_sub_groups') ? 'border-red-300 ring-1 ring-red-200' : 'border-gray-200' }} p-5 space-y-3">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
                 <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Use or Character of Occupancy <span class="text-red-500">*</span>
             </h3>
@@ -566,5 +583,12 @@
         errorEl.classList.add('hidden');
         return true;
     }
+
+@if($errors->any())
+    document.addEventListener('DOMContentLoaded', function() {
+        var el = document.getElementById('validation-errors');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+@endif
 </script>
 @endpush

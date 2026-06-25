@@ -6,6 +6,7 @@ enum ApplicationStatus: string
 {
     case DRAFT = 'draft';
     case SUBMITTED = 'submitted';
+    case FOR_ZONING_ASSESSMENT = 'for_zoning_assessment';
     case ZONING_ASSESSED = 'zoning_assessed';
     case ENGINEERING_ASSESSED = 'engineering_assessed';
     case BILLED = 'billed';
@@ -19,6 +20,7 @@ enum ApplicationStatus: string
         return match ($this) {
             self::DRAFT => 'Draft',
             self::SUBMITTED => 'Submitted',
+            self::FOR_ZONING_ASSESSMENT => 'For Zoning Assessment',
             self::ZONING_ASSESSED => 'Zoning Assessed',
             self::ENGINEERING_ASSESSED => 'Engineering Assessed',
             self::BILLED => 'Billed',
@@ -34,6 +36,7 @@ enum ApplicationStatus: string
         return match ($this) {
             self::DRAFT => 'bg-gray-100 text-gray-800',
             self::SUBMITTED => 'bg-blue-100 text-blue-800',
+            self::FOR_ZONING_ASSESSMENT => 'bg-purple-100 text-purple-800',
             self::ZONING_ASSESSED => 'bg-yellow-100 text-yellow-800',
             self::ENGINEERING_ASSESSED => 'bg-yellow-100 text-yellow-800',
             self::BILLED => 'bg-orange-100 text-orange-800',
@@ -47,8 +50,9 @@ enum ApplicationStatus: string
     public static function allowedTransitions(): array
     {
         return [
-            self::DRAFT->value => [self::SUBMITTED, self::CANCELLED],
-            self::SUBMITTED->value => [self::ZONING_ASSESSED, self::ENGINEERING_ASSESSED, self::CANCELLED],
+            self::DRAFT->value => [self::SUBMITTED, self::FOR_ZONING_ASSESSMENT, self::CANCELLED],
+            self::SUBMITTED->value => [self::ENGINEERING_ASSESSED, self::CANCELLED],
+            self::FOR_ZONING_ASSESSMENT->value => [self::ZONING_ASSESSED, self::CANCELLED],
             self::ZONING_ASSESSED->value => [self::ENGINEERING_ASSESSED, self::CANCELLED],
             self::ENGINEERING_ASSESSED->value => [self::BILLED, self::CANCELLED],
             self::BILLED->value => [self::PAID, self::CANCELLED],
