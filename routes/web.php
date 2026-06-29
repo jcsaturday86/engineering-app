@@ -95,6 +95,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/{application}/auto-compute', [ZoningController::class, 'autoCompute'])->name('autoCompute')->middleware('can:create-zoning');
         Route::post('/{application}/add-item', [ZoningController::class, 'addItem'])->name('addItem')->middleware('can:create-zoning');
         Route::delete('/item/{assessmentItem}', [ZoningController::class, 'removeItem'])->name('removeItem')->middleware('can:create-zoning');
+        Route::delete('/{application}/remove-items', [ZoningController::class, 'removeItems'])->name('removeItems')->middleware('can:create-zoning');
         Route::post('/{application}/finalize', [ZoningController::class, 'finalize'])->name('finalize')->middleware('can:finalize-zoning');
         Route::post('/{application}/skip', [ZoningController::class, 'skip'])->name('skip')->middleware('can:skip-zoning');
     });
@@ -106,6 +107,8 @@ Route::middleware('auth')->group(function () {
         // BP assessment
         Route::get('/{application}', [AssessmentController::class, 'assess'])->name('assess')->middleware('can:create-assessments');
         Route::post('/{application}/item', [AssessmentController::class, 'addItem'])->name('addItem')->middleware('can:create-assessments');
+        Route::post('/{application}/construction-item', [AssessmentController::class, 'addConstructionItem'])->name('constructionItem')->middleware('can:create-assessments');
+        Route::post('/{application}/electrical-item', [AssessmentController::class, 'addElectricalItem'])->name('electricalItem')->middleware('can:create-assessments');
         Route::get('/{application}/summary', [AssessmentController::class, 'summary'])->name('summary');
         Route::post('/{application}/finalize', [AssessmentController::class, 'finalize'])->name('finalize')->middleware('can:finalize-assessments');
         Route::get('/{application}/print', [AssessmentController::class, 'print'])->name('print');
@@ -192,6 +195,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/zoning-fees/cert/{certificationZoningFee}', [ZoningFeeController::class, 'updateCert'])->name('zoning-fees.updateCert')->middleware('can:manage-fee-schedules');
         Route::post('/zoning-fees/{occupancySubGroup}', [ZoningFeeController::class, 'store'])->name('zoning-fees.store')->middleware('can:manage-fee-schedules');
         Route::delete('/zoning-fees/{landUseAndZoningFee}', [ZoningFeeController::class, 'destroy'])->name('zoning-fees.destroy')->middleware('can:manage-fee-schedules');
+        Route::put('/zoning-fees/other/{landUseAndZoningOtherFee}', [ZoningFeeController::class, 'updateOther'])->name('zoning-fees.updateOther')->middleware('can:manage-fee-schedules');
 
         Route::get('/signatories', [SettingsController::class, 'signatories'])->name('signatories')->middleware('can:manage-signatories');
         Route::post('/signatories/{signatory}', [SettingsController::class, 'updateSignatory'])->name('signatories.update')->middleware('can:manage-signatories');

@@ -163,16 +163,39 @@ FeeCategory (by permit_type)
 
 ### Assessment Item Creation Flow
 
+#### Construction Tab (BOPMS-style)
 ```
-1. Select fee category (e.g., "Construction Fees")
-2. Select fee type (e.g., "Division A1 - Residential")
-3. Enter quantity (e.g., floor area = 150 sqm)
-4. FeeComputationService calculates:
-   a. Find matching fee_schedule row (range_from <= 150 <= range_to)
-   b. Apply computation method
-   c. Apply excess if value > excess_threshold
-   d. Apply min/max constraints
-5. Create assessment_item with computed amount
+1. Select Part of Building (Building Residential, Building Area Office, Carport, Others)
+2. Select Division (auto-filtered by application's occupancy groups)
+3. Enter Area (sq.m.)
+4. Server looks up FeeType by CONST_{division.code}, finds FeeSchedule by area range
+5. Compute: amount = area × fee_per_unit
+6. Create assessment_item with computed amount + computation_details JSON
+```
+
+#### Electrical Tab (BOPMS-style)
+```
+1. Select Electrical Fee Type (7 options):
+   - Total Connected Load (kVA) → ELEC_TCL
+   - Total Transformer Capacity (kVA) → ELEC_TRANS
+   - Total UPS/Generator Capacity (kVA) → ELEC_UPS
+   - Power Supply Pole Location → ELEC_POLE
+   - Guying Attachment → ELEC_POLE
+   - Electric Meter Fee → ELEC_MISC_METER
+   - Wiring Permit Issuance → ELEC_MISC_WIRING
+2. For kVA types: enter capacity → server looks up FeeSchedule by range
+   Compute: base_fee = fixed_fee + (kva × fee_per_unit)
+3. For pole/misc types: select sub-type → server looks up fixed_fee
+4. Inspection fee auto-computed: base_fee × percentage (from settings)
+5. Total amount = base_fee + inspection_fee
+```
+
+#### Other Tabs (Generic)
+```
+1. Select fee type from category dropdown
+2. Enter quantity and unit fee
+3. Amount = quantity × unit_fee
+4. Create assessment_item
 ```
 
 ---

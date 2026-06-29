@@ -81,6 +81,10 @@
 | Skip locational clearance | DONE | Bypass planning office, goes to submitted status directly |
 | Dedicated zoning fee tables | DONE | land_use_and_zoning_fees (162 rows), certification_zoning_fees (P500) |
 | Zoning fee settings page | DONE | /settings/zoning-fees — manage fees by occupancy group/sub-group with accordion UI |
+| Zoning other fees (Variance/Non-Conforming) | DONE | Dedicated table + settings UI |
+| Zoning fee type selector (4 types) | DONE | LC, LC Manual, Certification, Others matching BOPMS |
+| Zoning checkbox select-all / bulk delete | DONE | Multi-select with fetch API bulk delete |
+| Zoning finalize password confirmation | DONE | Hash::check() modal with password entry |
 | Zoning certification PDF | DONE | Template exists |
 | Locational clearance PDF | DONE | Template exists |
 
@@ -102,7 +106,11 @@
 | Excess fee calculation | DONE | Threshold, per-unit excess, every-N grouping |
 | Min/max constraints | DONE | |
 | Construction fee data | DONE | Seeded via FeeScheduleSeeder |
-| Electrical fee data | DONE | |
+| Construction tab (BOPMS-style) | DONE | Part of Building + Division + Area → auto fee lookup, Total Area row |
+| Electrical fee data | DONE | 6 active types: TCL, TRANS, UPS, POLE, MISC_METER, MISC_WIRING (split from merged TUG) |
+| Electrical tab (BOPMS-style) | DONE | 7 fee options, server-side range computation, auto inspection fee from settings |
+| Electrical inspection fee setting | DONE | `assessment.electrical_inspection_percentage` (default 10%) in Settings |
+| BP assessment tabbed navigation | DONE | 8 category tabs + Summary, item count badges, scrollbar hidden |
 | Mechanical fee data | DONE | |
 | Plumbing fee data | DONE | |
 | Electronics fee data | DONE | |

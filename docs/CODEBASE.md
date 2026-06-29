@@ -83,6 +83,7 @@ engineering-app/
 | FeeSchedule | fee_schedules | belongsTo: feeType, occupancyDivision, occupancySubGroup |
 | LandUseAndZoningFee | land_use_and_zoning_fees | belongsTo: occupancySubGroup. Range-based locational clearance fees (162 rows) |
 | CertificationZoningFee | certification_zoning_fees | belongsTo: occupancySubGroup. Flat certification fee (P500) |
+| LandUseAndZoningOtherFee | land_use_and_zoning_other_fees | Variance/Non-Conforming zoning fees |
 
 ### Auth/System Models
 
@@ -142,6 +143,7 @@ engineering-app/
 | update | PUT /settings/zoning-fees/{id} | Update a land_use_and_zoning_fees row |
 | store | POST /settings/zoning-fees/{subGroup} | Add new fee schedule row for sub-group |
 | updateCert | PUT /settings/zoning-fees/cert/{id} | Update certification fee amount |
+| updateOther | PUT /settings/zoning-fees/other/{id} | Update other zoning fee (Variance/Non-Conforming) |
 | destroy | DELETE /settings/zoning-fees/{id} | Delete a fee schedule row |
 
 ### AssessmentController
@@ -149,8 +151,10 @@ engineering-app/
 |--------|-------|---------|
 | index | GET /assessments | BP assessment list |
 | occupancyIndex | GET /assessments/occupancy | OP assessment list |
-| assess | GET /assessments/{id} | BP fee item entry form |
-| addItem | POST /assessments/{id}/item | BP add line item |
+| assess | GET /assessments/{id} | BP fee item entry form (tabbed: Construction, Electrical, etc.) |
+| addConstructionItem | POST /assessments/{id}/construction-item | BP add construction item (BOPMS-style: Part + Division + Area → auto fee lookup) |
+| addElectricalItem | POST /assessments/{id}/electrical-item | BP add electrical item (BOPMS-style: 7 fee types, auto-computed inspection fee) |
+| addItem | POST /assessments/{id}/item | BP add generic line item (other tabs) |
 | removeItem | DELETE /assessments/item/{id} | Remove item |
 | summary | GET /assessments/{id}/summary | BP summary view |
 | finalize | POST /assessments/{id}/finalize | BP → engineering_assessed |

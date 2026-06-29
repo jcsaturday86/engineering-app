@@ -219,7 +219,7 @@
 | range_from | decimal(15,2) | Default: 0 |
 | range_to | decimal(15,2) | Default: 0 |
 | fixed_fee | decimal(15,2) | Default: 0 |
-| fee_per_unit | decimal(15,2) | Default: 0 |
+| fee_per_unit | decimal(15,4) | Default: 0 |
 | percentage | decimal(8,4) | Default: 0 |
 | excess_threshold | decimal(15,2) | Default: 0 |
 | excess_fee | decimal(15,2) | Default: 0 |
@@ -263,6 +263,18 @@
 | id | bigint PK | |
 | occupancy_sub_group_id | FK → occupancy_sub_groups | Yes | NULL = applies to all |
 | amount | decimal(15,2) | Fixed certification fee (P500) |
+| is_active | boolean | Default: true |
+
+### `land_use_and_zoning_other_fees`
+
+> Variance/Non-Conforming zoning fees.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | bigint PK | |
+| name | string | Fee name (Variance, Non-Conforming Use) |
+| code | string (unique) | VARIANCE, NON_CONFORMING |
+| amount | decimal(15,2) | Fee amount |
 | is_active | boolean | Default: true |
 
 ---

@@ -44,6 +44,59 @@
     </div>
     @endif
 
+    {{-- Other Zoning Fees --}}
+    @if($otherFees->count())
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+        <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
+            <span class="inline-flex items-center justify-center w-7 h-7 bg-orange-600 text-white text-xs font-bold rounded-full mr-2"><i class="fas fa-list-alt text-xs"></i></span>
+            Other Zoning Fees
+        </h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                        <th class="text-left px-4 py-2 font-medium text-gray-500">Fee Name</th>
+                        <th class="text-left px-4 py-2 font-medium text-gray-500">Code</th>
+                        <th class="text-right px-4 py-2 font-medium text-gray-500">Amount</th>
+                        <th class="text-right px-4 py-2 font-medium text-gray-500">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @foreach($otherFees as $fee)
+                    <tr x-data="{ editing: false }">
+                        <td class="px-4 py-2 text-gray-900">{{ $fee->name }}</td>
+                        <td class="px-4 py-2 text-gray-500 font-mono text-xs">{{ $fee->code }}</td>
+                        <td class="px-4 py-2 text-right font-semibold text-gray-900" x-show="!editing">&#8369;{{ number_format($fee->amount, 2) }}</td>
+                        <td class="px-4 py-2 text-right" x-show="!editing">
+                            <button @click="editing = true" class="text-blue-500 hover:text-blue-700" title="Edit">
+                                <i class="fas fa-pencil-alt"></i>
+                            </button>
+                        </td>
+                        <template x-if="editing">
+                            <td class="px-4 py-2" colspan="2">
+                                <form action="{{ route('settings.zoning-fees.updateOther', $fee) }}" method="POST" class="flex items-center justify-end gap-2" autocomplete="off">
+                                    @csrf
+                                    @method('PUT')
+                                    <span class="text-sm text-gray-500">&#8369;</span>
+                                    <input type="number" name="amount" value="{{ $fee->amount }}" step="0.01" min="0"
+                                        class="w-32 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500">
+                                    <button type="submit" class="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    <button type="button" @click="editing = false" class="px-2 py-1 bg-gray-400 text-white text-xs rounded hover:bg-gray-500">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </template>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
+
     {{-- Locational Clearance Fees by Group --}}
     <div class="bg-white rounded-xl border border-gray-200 p-5">
         <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">

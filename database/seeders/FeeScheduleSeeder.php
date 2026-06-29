@@ -333,27 +333,42 @@ class FeeScheduleSeeder extends Seeder
             'Fee based on total connected load in kVA'
         );
         $this->syncSchedules($feeTypeId, [
-            ['range_from' => 0, 'range_to' => 5, 'fixed_fee' => 200, 'fee_per_unit' => 0],
-            ['range_from' => 6, 'range_to' => 50, 'fixed_fee' => 200, 'fee_per_unit' => 20],
-            ['range_from' => 51, 'range_to' => 300, 'fixed_fee' => 1100, 'fee_per_unit' => 10],
-            ['range_from' => 301, 'range_to' => 1500, 'fixed_fee' => 3600, 'fee_per_unit' => 5],
-            ['range_from' => 1501, 'range_to' => 6000, 'fixed_fee' => 9600, 'fee_per_unit' => 2.5],
-            ['range_from' => 6001, 'range_to' => 1000000, 'fixed_fee' => 20850, 'fee_per_unit' => 1.25],
+            ['range_from' => 0, 'range_to' => 5.99, 'fixed_fee' => 200, 'fee_per_unit' => 0],
+            ['range_from' => 6, 'range_to' => 50.99, 'fixed_fee' => 200, 'fee_per_unit' => 20],
+            ['range_from' => 51, 'range_to' => 300.99, 'fixed_fee' => 1100, 'fee_per_unit' => 10],
+            ['range_from' => 301, 'range_to' => 1500.99, 'fixed_fee' => 3600, 'fee_per_unit' => 5],
+            ['range_from' => 1501, 'range_to' => 6000.99, 'fixed_fee' => 9600, 'fee_per_unit' => 2.5],
+            ['range_from' => 6001, 'range_to' => 100000000, 'fixed_fee' => 20850, 'fee_per_unit' => 1.25],
         ]);
 
-        // --- Transformer / UPS / Generator ---
+        // --- Total Transformer Capacity ---
         $feeTypeId = $this->upsertFeeType(
-            'ELEC', 'ELEC_TUG', 'Transformer / UPS / Generator Capacity (kVA)',
+            'ELEC', 'ELEC_TRANS', 'Total Transformer Capacity (kVA)',
             'range_based', false, false, ++$order,
-            'Fee based on transformer, UPS, or generator capacity in kVA'
+            'Fee based on total transformer capacity in kVA'
         );
         $this->syncSchedules($feeTypeId, [
-            ['range_from' => 0, 'range_to' => 5, 'fixed_fee' => 40, 'fee_per_unit' => 0],
-            ['range_from' => 6, 'range_to' => 50, 'fixed_fee' => 40, 'fee_per_unit' => 4],
-            ['range_from' => 51, 'range_to' => 300, 'fixed_fee' => 220, 'fee_per_unit' => 2],
-            ['range_from' => 301, 'range_to' => 1500, 'fixed_fee' => 720, 'fee_per_unit' => 1],
-            ['range_from' => 1501, 'range_to' => 6000, 'fixed_fee' => 1920, 'fee_per_unit' => 0.5],
-            ['range_from' => 6001, 'range_to' => 1000000, 'fixed_fee' => 4170, 'fee_per_unit' => 0.25],
+            ['range_from' => 0, 'range_to' => 5.99, 'fixed_fee' => 40, 'fee_per_unit' => 0],
+            ['range_from' => 6, 'range_to' => 50.99, 'fixed_fee' => 40, 'fee_per_unit' => 4],
+            ['range_from' => 51, 'range_to' => 300.99, 'fixed_fee' => 220, 'fee_per_unit' => 2],
+            ['range_from' => 301, 'range_to' => 1500.99, 'fixed_fee' => 720, 'fee_per_unit' => 1],
+            ['range_from' => 1501, 'range_to' => 6000.99, 'fixed_fee' => 1920, 'fee_per_unit' => 0.5],
+            ['range_from' => 6001, 'range_to' => 100000000, 'fixed_fee' => 4170, 'fee_per_unit' => 0.25],
+        ]);
+
+        // --- Total UPS/Generator Capacity ---
+        $feeTypeId = $this->upsertFeeType(
+            'ELEC', 'ELEC_UPS', 'Total UPS/Generator Capacity (kVA)',
+            'range_based', false, false, ++$order,
+            'Fee based on total UPS or generator capacity in kVA'
+        );
+        $this->syncSchedules($feeTypeId, [
+            ['range_from' => 0, 'range_to' => 5.99, 'fixed_fee' => 40, 'fee_per_unit' => 0],
+            ['range_from' => 6, 'range_to' => 50.99, 'fixed_fee' => 40, 'fee_per_unit' => 4],
+            ['range_from' => 51, 'range_to' => 300.99, 'fixed_fee' => 220, 'fee_per_unit' => 2],
+            ['range_from' => 301, 'range_to' => 1500.99, 'fixed_fee' => 720, 'fee_per_unit' => 1],
+            ['range_from' => 1501, 'range_to' => 6000.99, 'fixed_fee' => 1920, 'fee_per_unit' => 0.5],
+            ['range_from' => 6001, 'range_to' => 100000000, 'fixed_fee' => 4170, 'fee_per_unit' => 0.25],
         ]);
 
         // --- Pole Attachment / Location ---
@@ -367,13 +382,6 @@ class FeeScheduleSeeder extends Seeder
         ]);
 
         // --- Miscellaneous Electrical Fees (per occupancy) ---
-        // Occupancy 1 = Residential, 2 = Commercial/Industrial, 3 = Institutional
-        $miscData = [
-            ['occ' => 'Residential', 'meter' => 15, 'wiring' => 15],
-            ['occ' => 'Commercial/Industrial', 'meter' => 60, 'wiring' => 36],
-            ['occ' => 'Institutional', 'meter' => 30, 'wiring' => 12],
-        ];
-
         $feeTypeId = $this->upsertFeeType(
             'ELEC', 'ELEC_MISC_METER', 'Miscellaneous - Electric Meter Fee',
             'per_unit', false, false, ++$order,
@@ -393,6 +401,9 @@ class FeeScheduleSeeder extends Seeder
             ['formula' => 'Commercial/Industrial', 'fixed_fee' => 36],
             ['formula' => 'Institutional', 'fixed_fee' => 12],
         ]);
+
+        // Deactivate old merged ELEC_TUG if it exists
+        \App\Models\FeeType::where('code', 'ELEC_TUG')->update(['is_active' => false]);
     }
 
     // =========================================================================

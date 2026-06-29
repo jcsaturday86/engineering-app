@@ -123,6 +123,13 @@ class SettingsSeeder extends Seeder
                 'type' => 'decimal',
                 'description' => 'Default processing fee amount',
             ],
+            [
+                'group' => 'assessment',
+                'key' => 'assessment.electrical_inspection_percentage',
+                'value' => '10',
+                'type' => 'decimal',
+                'description' => 'Electrical inspection fee percentage (e.g. 10 = 10% of fee amount)',
+            ],
         ];
 
         foreach ($settings as $setting) {

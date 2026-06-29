@@ -56,8 +56,16 @@ Six computation methods: `fixed`, `per_unit`, `range_based`, `cumulative_range`,
 Zoning fees use dedicated tables matching BOPMS naming:
 - `land_use_and_zoning_fees` — locational clearance fees by occupancy sub-group with range-based + excess computation (162 rows across 52 sub-groups, 6 fee patterns)
 - `certification_zoning_fees` — flat certification fee (P500)
+- `land_use_and_zoning_other_fees` — Variance/Non-Conforming fees
 
 Auto-compute in `ZoningController::autoCompute()` queries these tables directly, matching BOPMS `TransactionController::zoningAutoCompute()` logic.
+
+### BOPMS-Style Assessment Tabs
+The BP assessment page (`/assessments/{id}`) uses tabbed navigation with fee category tabs (Construction, Electrical, Mechanical, Plumbing, Electronics, Accessories, Accessory, Surcharges) plus a Summary tab. Each tab has a dedicated form matching the original BOPMS UI:
+
+- **Construction tab** — BOPMS-style form: Part of Building + Division (filtered by occupancy groups) + Area → server-side fee lookup from `fee_schedules` by division code + area range. Formula: `amount = area × fee_per_unit`.
+- **Electrical tab** — BOPMS-style form: 7 fee types (TCL, Transformer, UPS/Generator, Pole Location, Guying, Meter, Wiring) with conditional fields. Range-based kVA types use formula: `amount = fixed_fee + (kva × fee_per_unit)`. Fixed types use `amount = fixed_fee`. Inspection fee auto-computed as `amount × percentage` from `assessment.electrical_inspection_percentage` setting (default 10%). Total amount = base fee + inspection fee.
+- **Other tabs** — Generic form: select Fee Type, enter Quantity + Unit Fee.
 
 ### Self-Healing Service Provider
 `SelfHealingServiceProvider` auto-creates database, runs migrations, and seeds roles/settings/admin if missing on every application boot. Ensures the system works even on a fresh install.

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CertificationZoningFee;
 use App\Models\LandUseAndZoningFee;
+use App\Models\LandUseAndZoningOtherFee;
 use App\Models\OccupancyGroup;
 use App\Models\OccupancySubGroup;
 use Illuminate\Http\Request;
@@ -23,8 +24,9 @@ class ZoningFeeController extends Controller
             ->groupBy('occupancy_sub_group_id');
 
         $certFee = CertificationZoningFee::where('is_active', true)->first();
+        $otherFees = LandUseAndZoningOtherFee::where('is_active', true)->get();
 
-        return view('settings.zoning-fees', compact('groups', 'lcSchedules', 'certFee'));
+        return view('settings.zoning-fees', compact('groups', 'lcSchedules', 'certFee', 'otherFees'));
     }
 
     public function update(Request $request, LandUseAndZoningFee $landUseAndZoningFee)
@@ -87,5 +89,16 @@ class ZoningFeeController extends Controller
         $landUseAndZoningFee->delete();
 
         return back()->with('success', 'Fee schedule row deleted.');
+    }
+
+    public function updateOther(Request $request, LandUseAndZoningOtherFee $landUseAndZoningOtherFee)
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0',
+        ]);
+
+        $landUseAndZoningOtherFee->update(['amount' => $validated['amount']]);
+
+        return back()->with('success', 'Other zoning fee updated.');
     }
 }

@@ -6,9 +6,13 @@ use App\Contracts\PermitApplicationContract;
 use App\Models\Application;
 use App\Models\Assessment;
 use App\Models\AssessmentItem;
+use App\Models\BuildingPart;
 use App\Models\FeeCategory;
+use App\Models\FeeSchedule;
 use App\Models\FeeType;
+use App\Models\OccupancyDivision;
 use App\Models\OccupancyApplication;
+use App\Models\Setting;
 use App\Notifications\AssessmentCompleteNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -67,15 +71,259 @@ class AssessmentController extends Controller
             ->orderBy('sort_order')
             ->get();
 
-        $totals = $this->calculateTotals($assessment);
+        $excludedTabs = ['ZONING_LC', 'ZONING_CERT', 'ANN_INSP', 'VIOLATION'];
+        $tabCategories = $feeCategories->filter(fn ($c) => !in_array($c->code, $excludedTabs));
+
         $assessmentItems = $assessment->assessmentItems->where('is_active', true);
+        $itemsByCategory = $assessmentItems->groupBy('fee_category_id');
+        $totals = $this->calculateTotals($assessment);
+
+        $activeTab = request('tab', $tabCategories->first()?->code ?? 'CONST');
+
+        $buildingParts = BuildingPart::where('is_active', true)->get();
+
+        $applicationGroupIds = [];
+        if (method_exists($application, 'applicationOccupancyGroups')) {
+            $application->load('applicationOccupancyGroups');
+            $applicationGroupIds = $application->applicationOccupancyGroups
+                ->pluck('occupancy_group_id')->unique()->values()->toArray();
+        }
+
+        $occupancyDivisions = OccupancyDivision::where('is_active', true)
+            ->when(!empty($applicationGroupIds), fn ($q) => $q->whereIn('occupancy_group_id', $applicationGroupIds))
+            ->orderBy('code')
+            ->get();
 
         $isOp = $permitCode === 'OP';
 
-        return view('assessments.assess', compact('application', 'assessment', 'feeCategories', 'totals', 'assessmentItems', 'isOp'));
+        return view('assessments.assess', compact(
+            'application', 'assessment', 'feeCategories', 'tabCategories',
+            'totals', 'assessmentItems', 'itemsByCategory', 'activeTab', 'isOp',
+            'buildingParts', 'occupancyDivisions'
+        ));
     }
 
     // BP add item
+    public function addConstructionItem(Request $request, Application $application)
+    {
+        $validated = $request->validate([
+            'building_part_id' => 'required|exists:building_parts,id',
+            'occupancy_division_id' => 'required|exists:occupancy_divisions,id',
+            'area' => 'required|numeric|min:0.01',
+        ]);
+
+        $assessment = Assessment::firstOrCreate(
+            [
+                'applicationable_type' => 'bp',
+                'applicationable_id' => $application->id,
+                'assessment_type' => 'building',
+            ],
+            ['status' => 'draft', 'assessed_by' => Auth::id()]
+        );
+
+        $division = OccupancyDivision::findOrFail($validated['occupancy_division_id']);
+        $buildingPart = BuildingPart::findOrFail($validated['building_part_id']);
+        $area = (float) $validated['area'];
+
+        $feeType = FeeType::where('code', 'CONST_' . $division->code)->first();
+        if (!$feeType) {
+            return back()->with('error', 'No construction fee type found for division ' . $division->code . '.');
+        }
+
+        $feeSchedule = FeeSchedule::where('fee_type_id', $feeType->id)
+            ->where('range_from', '<=', $area)
+            ->where('range_to', '>=', $area)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$feeSchedule) {
+            return back()->with('error', 'No fee schedule found for ' . $division->name . ' at ' . number_format($area, 2) . ' sq.m.');
+        }
+
+        $unitFee = (float) $feeSchedule->fee_per_unit;
+        $amount = round($area * $unitFee, 2);
+
+        $constCategory = FeeCategory::where('code', 'CONST')->first();
+
+        AssessmentItem::create([
+            'assessment_id' => $assessment->id,
+            'fee_category_id' => $constCategory->id,
+            'fee_type_id' => $feeType->id,
+            'fee_code' => $feeType->code,
+            'description' => $buildingPart->name . ' - ' . $division->name,
+            'quantity' => $area,
+            'unit_fee' => $unitFee,
+            'excess_fee' => 0,
+            'inspection_fee' => 0,
+            'amount' => $amount,
+            'computation_details' => [
+                'building_part_id' => $buildingPart->id,
+                'building_part' => $buildingPart->name,
+                'division_id' => $division->id,
+                'division_code' => $division->code,
+                'fee_schedule_id' => $feeSchedule->id,
+            ],
+            'is_active' => true,
+        ]);
+
+        return redirect()->route('assessments.assess', ['application' => $application->id, 'tab' => 'CONST'])
+            ->with('success', 'Construction fee item added.');
+    }
+
+    public function addElectricalItem(Request $request, Application $application)
+    {
+        $validated = $request->validate([
+            'electrical_fee_type' => 'required|string|in:ELEC_TCL,ELEC_TRANS,ELEC_UPS,ELEC_POLE,ELEC_MISC_METER,ELEC_MISC_WIRING',
+            'kva' => 'nullable|numeric|min:0.01',
+            'pole_type' => 'nullable|string',
+            'occupancy_type' => 'nullable|string',
+        ]);
+
+        $assessment = Assessment::firstOrCreate(
+            [
+                'applicationable_type' => 'bp',
+                'applicationable_id' => $application->id,
+                'assessment_type' => 'building',
+            ],
+            ['status' => 'draft', 'assessed_by' => Auth::id()]
+        );
+
+        $feeTypeCode = $validated['electrical_fee_type'];
+        $feeType = FeeType::where('code', $feeTypeCode)->first();
+        if (!$feeType) {
+            return back()->with('error', 'Electrical fee type not found: ' . $feeTypeCode);
+        }
+
+        $elecCategory = FeeCategory::where('code', 'ELEC')->first();
+        $inspectionPct = (float) (Setting::where('key', 'assessment.electrical_inspection_percentage')->value('value') ?? 10);
+
+        if (in_array($feeTypeCode, ['ELEC_TCL', 'ELEC_TRANS', 'ELEC_UPS'])) {
+            $kva = (float) $validated['kva'];
+            if (!$kva) {
+                return back()->with('error', 'Capacity (kVA) is required for this fee type.');
+            }
+
+            $feeSchedule = FeeSchedule::where('fee_type_id', $feeType->id)
+                ->where('range_from', '<=', $kva)
+                ->where('range_to', '>=', $kva)
+                ->where('is_active', true)
+                ->first();
+
+            if (!$feeSchedule) {
+                return back()->with('error', 'No fee schedule found for ' . $feeType->name . ' at ' . number_format($kva, 2) . ' kVA.');
+            }
+
+            $fixedFee = (float) $feeSchedule->fixed_fee;
+            $feePerUnit = (float) $feeSchedule->fee_per_unit;
+            $baseFee = round($fixedFee + ($kva * $feePerUnit), 2);
+            $inspectionFee = round($baseFee * $inspectionPct / 100, 2);
+            $amount = $baseFee + $inspectionFee;
+            $description = $feeType->name . ' - ' . number_format($kva, 2) . ' kVA';
+
+            AssessmentItem::create([
+                'assessment_id' => $assessment->id,
+                'fee_category_id' => $elecCategory->id,
+                'fee_type_id' => $feeType->id,
+                'fee_code' => $feeType->code,
+                'description' => $description,
+                'quantity' => $kva,
+                'unit_fee' => $feePerUnit,
+                'excess_fee' => 0,
+                'inspection_fee' => $inspectionFee,
+                'amount' => $amount,
+                'computation_details' => [
+                    'fee_type_code' => $feeTypeCode,
+                    'fee_schedule_id' => $feeSchedule->id,
+                    'input_kva' => $kva,
+                    'fixed_fee' => $fixedFee,
+                    'fee_per_unit' => $feePerUnit,
+                    'range' => $feeSchedule->range_from . ' - ' . $feeSchedule->range_to,
+                ],
+                'is_active' => true,
+            ]);
+        } elseif ($feeTypeCode === 'ELEC_POLE') {
+            $poleType = $validated['pole_type'];
+            if (!$poleType) {
+                return back()->with('error', 'Pole type is required.');
+            }
+
+            $feeSchedule = FeeSchedule::where('fee_type_id', $feeType->id)
+                ->where('formula', $poleType)
+                ->where('is_active', true)
+                ->first();
+
+            if (!$feeSchedule) {
+                return back()->with('error', 'No fee schedule found for ' . $poleType . '.');
+            }
+
+            $baseFee = (float) $feeSchedule->fixed_fee;
+            $inspectionFee = round($baseFee * $inspectionPct / 100, 2);
+            $amount = $baseFee + $inspectionFee;
+
+            AssessmentItem::create([
+                'assessment_id' => $assessment->id,
+                'fee_category_id' => $elecCategory->id,
+                'fee_type_id' => $feeType->id,
+                'fee_code' => $feeType->code,
+                'description' => $poleType,
+                'quantity' => 1,
+                'unit_fee' => 0,
+                'excess_fee' => 0,
+                'inspection_fee' => $inspectionFee,
+                'amount' => $amount,
+                'computation_details' => [
+                    'fee_type_code' => $feeTypeCode,
+                    'fee_schedule_id' => $feeSchedule->id,
+                    'pole_type' => $poleType,
+                    'fixed_fee' => $amount,
+                ],
+                'is_active' => true,
+            ]);
+        } else {
+            $occupancyType = $validated['occupancy_type'];
+            if (!$occupancyType) {
+                return back()->with('error', 'Occupancy type is required.');
+            }
+
+            $feeSchedule = FeeSchedule::where('fee_type_id', $feeType->id)
+                ->where('formula', $occupancyType)
+                ->where('is_active', true)
+                ->first();
+
+            if (!$feeSchedule) {
+                return back()->with('error', 'No fee schedule found for ' . $occupancyType . '.');
+            }
+
+            $baseFee = (float) $feeSchedule->fixed_fee;
+            $inspectionFee = round($baseFee * $inspectionPct / 100, 2);
+            $amount = $baseFee + $inspectionFee;
+            $description = $feeType->name . ' - ' . $occupancyType;
+
+            AssessmentItem::create([
+                'assessment_id' => $assessment->id,
+                'fee_category_id' => $elecCategory->id,
+                'fee_type_id' => $feeType->id,
+                'fee_code' => $feeType->code,
+                'description' => $description,
+                'quantity' => 1,
+                'unit_fee' => 0,
+                'excess_fee' => 0,
+                'inspection_fee' => $inspectionFee,
+                'amount' => $amount,
+                'computation_details' => [
+                    'fee_type_code' => $feeTypeCode,
+                    'fee_schedule_id' => $feeSchedule->id,
+                    'occupancy_type' => $occupancyType,
+                    'fixed_fee' => $amount,
+                ],
+                'is_active' => true,
+            ]);
+        }
+
+        return redirect()->route('assessments.assess', ['application' => $application->id, 'tab' => 'ELEC'])
+            ->with('success', 'Electrical fee item added.');
+    }
+
     public function addItem(Request $request, Application $application)
     {
         return $this->doAddItem($request, $application, 'building', 'BP');
@@ -126,7 +374,12 @@ class AssessmentController extends Controller
             'amount' => $amount,
         ]);
 
-        return back()->with('success', 'Fee item added.');
+        $tabCode = $feeCategory->code;
+        $route = $permitCode === 'OP'
+            ? route('assessments.assess.op', ['occupancyApplication' => $application->id, 'tab' => $tabCode])
+            : route('assessments.assess', ['application' => $application->id, 'tab' => $tabCode]);
+
+        return redirect($route)->with('success', 'Fee item added.');
     }
 
     public function removeItem(AssessmentItem $assessmentItem)

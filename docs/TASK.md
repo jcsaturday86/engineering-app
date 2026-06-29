@@ -29,6 +29,27 @@ Added zoning fee auto-compute matching BOPMS `zoningAutoCompute()` logic, with d
 - **Validation:** Backend validation aligned with HTML required fields on BP/OP forms. Error summary banner, section card highlighting, auto-scroll to errors.
 - **Other:** Browser autofill disabled on all 41 forms. `ApplicationSeeder` creates 5 BP + 5 OP test records. `FeeComputationService::applyExcess()` fixed for percentage-based excess.
 
+### Zoning Assessment UX Improvements -- COMPLETED
+
+Enhanced the zoning assessment page with BOPMS-matching features:
+
+- **Fee type selector:** 4 fee types (Locational Clearance, LC Manual Entry, Certification, Others) matching BOPMS, with conditional form fields per type.
+- **Other zoning fees:** New `land_use_and_zoning_other_fees` table (Variance, Non-Conforming) with settings UI.
+- **Checkbox select-all / bulk delete:** Multi-select with fetch API for bulk item removal.
+- **Password confirmation on finalize:** Modal with `Hash::check()` validation before finalizing.
+- **HTML form nesting fix:** Resolved issue where modal forms submitted to wrong route due to browser HTML parsing.
+
+### BP Assessment Tabbed Navigation & BOPMS-Style Forms -- COMPLETED
+
+Redesigned the BP assessment page with tabbed navigation and BOPMS-matching forms:
+
+- **Tabbed navigation:** 8 fee category tabs (Construction, Electrical, Mechanical, Plumbing, Electronics, Accessories, Accessory, Surcharges) + Summary tab with item count badges.
+- **Construction tab (BOPMS-style):** Part of Building + Division (filtered by occupancy groups) + Area → server-side fee lookup from `fee_schedules`. Formula: `amount = area × fee_per_unit`. Total Area row in table footer.
+- **Electrical tab (BOPMS-style):** 7 fee type options with conditional fields. Split `ELEC_TUG` into `ELEC_TRANS` + `ELEC_UPS` matching BOPMS. Range-based kVA computation: `amount = fixed_fee + (kva × fee_per_unit)`. Fixed fees for pole/meter/wiring types. Inspection fee auto-computed from `assessment.electrical_inspection_percentage` setting (default 10%). Total amount = base fee + inspection fee.
+- **Seeder updates:** Building parts changed to BOPMS values. Fee category names shortened. Electrical fee schedules updated with `.99` range boundaries matching BOPMS. Old `ELEC_TUG` deactivated.
+- **New setting:** `assessment.electrical_inspection_percentage` — configurable in Settings > Assessment group.
+- **New routes:** `POST /assessments/{id}/construction-item`, `POST /assessments/{id}/electrical-item`.
+
 ---
 
 ## Upcoming Tasks

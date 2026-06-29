@@ -339,7 +339,7 @@ class ReferenceDataSeeder extends Seeder
      */
     private function seedBuildingParts(): void
     {
-        $parts = ['Concrete', 'Steel', 'Wood', 'Mixed'];
+        $parts = ['Building Residential', 'Building Area Office', 'Carport', 'Others'];
 
         foreach ($parts as $part) {
             BuildingPart::updateOrCreate(
@@ -443,13 +443,13 @@ class ReferenceDataSeeder extends Seeder
 
         // Building Permit fee categories
         $bpCategories = [
-            ['code' => 'CONST',     'name' => 'Construction Fees',            'sort_order' => 1],
-            ['code' => 'ELEC',      'name' => 'Electrical Fees',              'sort_order' => 2],
-            ['code' => 'MECH',      'name' => 'Mechanical Fees',              'sort_order' => 3],
-            ['code' => 'PLUMB',     'name' => 'Plumbing/Sanitary Fees',       'sort_order' => 4],
-            ['code' => 'ELECT',     'name' => 'Electronics Fees',             'sort_order' => 5],
-            ['code' => 'ACC_BLDG',  'name' => 'Accessories of the Building',  'sort_order' => 6],
-            ['code' => 'ACC_FEE',   'name' => 'Accessory Fees',               'sort_order' => 7],
+            ['code' => 'CONST',     'name' => 'Construction',  'sort_order' => 1],
+            ['code' => 'ELEC',      'name' => 'Electrical',   'sort_order' => 2],
+            ['code' => 'MECH',      'name' => 'Mechanical',   'sort_order' => 3],
+            ['code' => 'PLUMB',     'name' => 'Plumbing',     'sort_order' => 4],
+            ['code' => 'ELECT',     'name' => 'Electronics',  'sort_order' => 5],
+            ['code' => 'ACC_BLDG',  'name' => 'Accessories',  'sort_order' => 6],
+            ['code' => 'ACC_FEE',   'name' => 'Accessory',    'sort_order' => 7],
             ['code' => 'SURCHARGE', 'name' => 'Surcharges',                   'sort_order' => 8],
             ['code' => 'VIOLATION', 'name' => 'Violations',                   'sort_order' => 9],
         ];
