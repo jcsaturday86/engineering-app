@@ -20,6 +20,41 @@ use Illuminate\Support\Facades\DB;
 
 class AssessmentController extends Controller
 {
+    // Reads the NBC permit inspection fee from the MECH_INSP fee_schedules rows.
+    // MECH_REFRIG → FeeType code INSP_REFRIG (range_based = flat), MECH_ELEV_PASS → INSP_ELEV_PASS (cumulative_range = tiered).
+    private function resolveInspectionFee(string $code, float $unit): array
+    {
+        $default = ['fee' => 0, 'excess_threshold' => 0, 'excess_fee' => 0, 'every' => 1, 'method' => 'per_unit'];
+
+        $feeType = FeeType::where('code', 'INSP_' . substr($code, 5))->first();
+        if (!$feeType) {
+            return $default;
+        }
+
+        $query    = FeeSchedule::where('fee_type_id', $feeType->id)->where('is_active', true);
+        $schedule = ($feeType->computation_method === 'range_based')
+            ? $query->where('range_from', '<=', $unit)->where('range_to', '>=', $unit)->first()
+            : $query->orderBy('id')->first();
+
+        if (!$schedule) {
+            return $default;
+        }
+
+        $method = match ($feeType->computation_method) {
+            'cumulative_range' => 'tiered',
+            'per_unit'         => 'per_unit',
+            default            => ($schedule->fee_per_unit > 0) ? 'per_unit' : 'flat',
+        };
+
+        return [
+            'fee'              => (float) ($schedule->fee_per_unit > 0 ? $schedule->fee_per_unit : $schedule->fixed_fee),
+            'excess_threshold' => (float) $schedule->excess_threshold,
+            'excess_fee'       => (float) $schedule->excess_fee,
+            'every'            => max(1, (float) $schedule->excess_every),
+            'method'           => $method,
+        ];
+    }
+
     public function index()
     {
         $applications = Application::with('permitType')
@@ -71,7 +106,7 @@ class AssessmentController extends Controller
             ->orderBy('sort_order')
             ->get();
 
-        $excludedTabs = ['ZONING_LC', 'ZONING_CERT', 'ANN_INSP', 'VIOLATION'];
+        $excludedTabs = ['ZONING_LC', 'ZONING_CERT', 'ANN_INSP', 'VIOLATION', 'MECH_INSP'];
         $tabCategories = $feeCategories->filter(fn ($c) => !in_array($c->code, $excludedTabs));
 
         $assessmentItems = $assessment->assessmentItems->where('is_active', true);
@@ -324,6 +359,163 @@ class AssessmentController extends Controller
             ->with('success', 'Electrical fee item added.');
     }
 
+    public function addMechanicalItem(Request $request, Application $application)
+    {
+        $allCodes = implode(',', [
+            'MECH_REFRIG','MECH_ICE','MECH_CENTRAL_AC','MECH_WINDOW_AC','MECH_VENT',
+            'MECH_ESC_KW','MECH_ESC_RANGE','MECH_FUNIC_KW','MECH_FUNIC_LM','MECH_CABLE_KW','MECH_CABLE_LM',
+            'MECH_ELEV_DUMB','MECH_ELEV_CONST','MECH_ELEV_PASS','MECH_ELEV_FRT','MECH_ELEV_CAR',
+            'MECH_BOILER','MECH_DIESEL','MECH_INT_COMB',
+            'MECH_WATER_HEATER','MECH_WATER_PUMP','MECH_SPRINKLER','MECH_COMPRESSED','MECH_GAS_METER',
+            'MECH_POWER_PIPE','MECH_PRESSURE_V','MECH_OTHER_EQUIP','MECH_PNEUMATIC','MECH_WEIGH_SCALE',
+        ]);
+
+        $validated = $request->validate([
+            'mechanical_fee_type' => 'required|string|in:' . $allCodes,
+            'unit'                => 'required|numeric|min:0.01',
+        ]);
+
+        $assessment = Assessment::firstOrCreate(
+            [
+                'applicationable_type' => 'bp',
+                'applicationable_id'   => $application->id,
+                'assessment_type'      => 'building',
+            ],
+            ['status' => 'draft', 'assessed_by' => Auth::id()]
+        );
+
+        $feeTypeCode = $validated['mechanical_fee_type'];
+        $unit        = (float) $validated['unit'];
+
+        $feeType = FeeType::where('code', $feeTypeCode)->first();
+        if (!$feeType) {
+            return back()->with('error', 'Mechanical fee type not found: ' . $feeTypeCode);
+        }
+
+        $mechCategory = FeeCategory::where('code', 'MECH')->first();
+        $isRangeBased = $feeType->computation_method === 'range_based';
+
+        $scheduleQuery = FeeSchedule::where('fee_type_id', $feeType->id)->where('is_active', true);
+        if ($isRangeBased) {
+            $scheduleQuery->where('range_from', '<=', $unit)->where('range_to', '>=', $unit);
+        }
+        $schedule = $scheduleQuery->first();
+
+        if (!$schedule) {
+            return back()->with('error', 'No fee schedule found for ' . $feeType->name . ' at unit ' . number_format($unit, 2) . '.');
+        }
+
+        $excessFee = 0;
+        $unitFee   = 0;
+
+        switch ($feeType->computation_method) {
+            case 'per_unit':
+                $unitFee = (float) $schedule->fee_per_unit;
+                $baseFee = round($unit * $unitFee, 2);
+                break;
+
+            case 'fixed':
+                $unitFee = (float) $schedule->fixed_fee;
+                $baseFee = round($unit * $unitFee, 2);
+                break;
+
+            case 'range_based':
+                $threshold = (float) $schedule->excess_threshold;
+                if ($threshold > 0) {
+                    // Flat base + excess per unit over threshold (Boiler 75+, Escalator 21+)
+                    $excess    = max(0, $unit - $threshold);
+                    $excessFee = round($excess * (float) $schedule->excess_fee, 2);
+                    $baseFee   = round((float) $schedule->fixed_fee + $excessFee, 2);
+                    $unitFee   = 0;
+                } elseif ((float) $schedule->fee_per_unit > 0) {
+                    // Range per-unit (Diesel, ICE, Central AC)
+                    $unitFee = (float) $schedule->fee_per_unit;
+                    $baseFee = round($unit * $unitFee, 2);
+                } else {
+                    // Flat fixed_fee regardless of unit count (Boiler ranges 0–74.9)
+                    $baseFee = round((float) $schedule->fixed_fee, 2);
+                    $unitFee = 0;
+                }
+                break;
+
+            default:
+                $baseFee = 0;
+        }
+
+        // Inspection fee — reads from MECH_INSP fee_schedules (INSP_* fee types, mirrors BOPMS ann_inspection_f* tables).
+        $insp                = $this->resolveInspectionFee($feeTypeCode, $unit);
+        $inspFee             = $insp['fee'];
+        $inspMethod          = $insp['method'];
+        $inspExcessThreshold = $insp['excess_threshold'];
+        $inspExcessFee       = $insp['excess_fee'];
+        $inspExcessEvery     = $insp['every'];
+
+        switch ($inspMethod) {
+            case 'flat':
+                // Flat fee for the range band regardless of unit count (A. refrigeration/AC/vent)
+                if ($inspExcessThreshold > 0 && $unit > $inspExcessThreshold) {
+                    $inspectionFee = round($inspFee + (($unit - $inspExcessThreshold) / $inspExcessEvery) * $inspExcessFee, 2);
+                } else {
+                    $inspectionFee = round($inspFee, 2);
+                }
+                break;
+
+            case 'tiered':
+                // First N units at insp_fee, remaining at insp_excess_fee (C elevators)
+                if ($inspExcessThreshold > 0 && $unit > $inspExcessThreshold) {
+                    $inspectionFee = round($inspExcessThreshold * $inspFee + ($unit - $inspExcessThreshold) * $inspExcessFee, 2);
+                } else {
+                    $inspectionFee = round($unit * $inspFee, 2);
+                }
+                break;
+
+            default: // per_unit — B escalators, D boiler, H diesel, L ICE, most O
+                if ($inspExcessThreshold > 0 && $unit > $inspExcessThreshold) {
+                    // Base: threshold × insp_fee; excess: ((unit-threshold)/every) × excess_fee
+                    $inspectionFee = round($inspExcessThreshold * $inspFee + (($unit - $inspExcessThreshold) / $inspExcessEvery) * $inspExcessFee, 2);
+                } else {
+                    $inspectionFee = round($unit * $inspFee, 2);
+                }
+        }
+
+        // amount = base fee only; inspection_fee is stored separately so the
+        // grand total formula (sum(amount) + sum(inspection_fee)) gives the correct total.
+        $amount = $baseFee;
+
+        AssessmentItem::create([
+            'assessment_id'       => $assessment->id,
+            'fee_category_id'     => $mechCategory->id,
+            'fee_type_id'         => $feeType->id,
+            'fee_code'            => $feeType->code,
+            'description'         => $feeType->name,
+            'quantity'            => $unit,
+            'unit_fee'            => $unitFee,
+            'excess_fee'          => $excessFee,
+            'inspection_fee'      => $inspectionFee,
+            'amount'              => $amount,
+            'computation_details' => [
+                'fee_type_code'        => $feeTypeCode,
+                'fee_schedule_id'      => $schedule->id,
+                'input_unit'           => $unit,
+                'computation_method'   => $feeType->computation_method,
+                'fixed_fee'            => (float) $schedule->fixed_fee,
+                'fee_per_unit'         => (float) $schedule->fee_per_unit,
+                'excess_threshold'     => (float) $schedule->excess_threshold,
+                'excess_fee_rate'      => (float) $schedule->excess_fee,
+                'range'                => $isRangeBased ? ($schedule->range_from . ' - ' . $schedule->range_to) : null,
+                'insp_method'           => $inspMethod,
+                'insp_fee'              => $inspFee,
+                'insp_excess_threshold' => $inspExcessThreshold,
+                'insp_excess_fee'       => $inspExcessFee,
+                'insp_excess_every'     => $inspExcessEvery,
+            ],
+            'is_active'           => true,
+        ]);
+
+        return redirect()->route('assessments.assess', ['application' => $application->id, 'tab' => 'MECH'])
+            ->with('success', 'Mechanical fee item added.');
+    }
+
     public function addItem(Request $request, Application $application)
     {
         return $this->doAddItem($request, $application, 'building', 'BP');
@@ -384,10 +576,20 @@ class AssessmentController extends Controller
 
     public function removeItem(AssessmentItem $assessmentItem)
     {
+        $assessment = $assessmentItem->assessment;
+        $feeCategory = \App\Models\FeeCategory::find($assessmentItem->fee_category_id);
+        $tab = $feeCategory?->code ?? 'CONST';
+
         $assessmentItem->update(['is_active' => false]);
         $assessmentItem->delete();
 
-        return back()->with('success', 'Fee item removed.');
+        if ($assessment->applicationable_type === 'op') {
+            return redirect()->route('assessments.assess.op', ['occupancyApplication' => $assessment->applicationable_id, 'tab' => $tab])
+                ->with('success', 'Fee item removed.');
+        }
+
+        return redirect()->route('assessments.assess', ['application' => $assessment->applicationable_id, 'tab' => $tab])
+            ->with('success', 'Fee item removed.');
     }
 
     // BP summary

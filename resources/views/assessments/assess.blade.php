@@ -208,6 +208,96 @@
                     <p class="text-xs text-gray-400 mt-2">Fee and amount are auto-computed based on BOPMS electrical fee schedule.</p>
                 </form>
             </div>
+            @elseif($cat->code === 'MECH')
+            {{-- Mechanical Fee Form (BOPMS-style) --}}
+            <div x-data="{
+                feeCode: '',
+                unitLabels: {
+                    MECH_REFRIG:'ton(s)', MECH_ICE:'ton(s)', MECH_CENTRAL_AC:'ton(s) TR',
+                    MECH_WINDOW_AC:'unit(s)', MECH_VENT:'kW',
+                    MECH_ESC_KW:'kW', MECH_ESC_RANGE:'lineal meter(s)',
+                    MECH_FUNIC_KW:'kW', MECH_FUNIC_LM:'lineal meter(s)',
+                    MECH_CABLE_KW:'kW', MECH_CABLE_LM:'lineal meter(s)',
+                    MECH_ELEV_DUMB:'unit(s)', MECH_ELEV_CONST:'unit(s)',
+                    MECH_ELEV_PASS:'unit(s)', MECH_ELEV_FRT:'unit(s)', MECH_ELEV_CAR:'unit(s)',
+                    MECH_BOILER:'kW', MECH_DIESEL:'kW', MECH_INT_COMB:'kW',
+                    MECH_WATER_HEATER:'unit(s)', MECH_WATER_PUMP:'kW',
+                    MECH_SPRINKLER:'head(s)', MECH_COMPRESSED:'outlet(s)',
+                    MECH_GAS_METER:'unit(s)', MECH_POWER_PIPE:'lineal meter(s)',
+                    MECH_PRESSURE_V:'cu. meter(s)', MECH_OTHER_EQUIP:'kW',
+                    MECH_PNEUMATIC:'lineal meter(s)', MECH_WEIGH_SCALE:'ton(s)'
+                },
+                get unitLabel() { return this.unitLabels[this.feeCode] || 'unit'; }
+            }">
+                <h4 class="text-sm font-semibold text-gray-700 mb-3">
+                    <i class="fas fa-plus-circle text-blue-500 mr-1"></i> Add Mechanical Fee Item
+                </h4>
+                <form action="{{ route('assessments.mechanicalItem', $application) }}" method="POST" autocomplete="off">
+                    @csrf
+                    <input type="hidden" name="mechanical_fee_type" :value="feeCode">
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Mechanical Fee <span class="text-red-500">*</span></label>
+                            <select @change="feeCode = $event.target.value" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">-- Select --</option>
+                                <optgroup label="a. Refrigeration, Air Conditioning and Mech. Ventilation:">
+                                    <option value="MECH_REFRIG">i. Refrigeration (cold storage), per ton or fraction thereof</option>
+                                    <option value="MECH_ICE">ii. Ice Plants, per ton or fraction thereof</option>
+                                    <option value="MECH_CENTRAL_AC">iii. Packaged/Centralized Air Conditioning Systems</option>
+                                    <option value="MECH_WINDOW_AC">v. Window type air conditioners, per unit</option>
+                                    <option value="MECH_VENT">vi. Mechanical Ventilation, per kW or fraction thereof</option>
+                                </optgroup>
+                                <optgroup label="b. Escalators and Moving Walks, Funiculars and the like:">
+                                    <option value="MECH_ESC_KW">i. Escalator and moving walk, per kW or fraction thereof</option>
+                                    <option value="MECH_ESC_RANGE">ii. Escalator and moving walks, per lineal meter travel</option>
+                                    <option value="MECH_FUNIC_KW">iv. Funicular, per kW or fraction thereof</option>
+                                    <option value="MECH_FUNIC_LM">iv.a. Funicular, per lineal meter travel</option>
+                                    <option value="MECH_CABLE_KW">v. Cable car, per kW or fraction thereof</option>
+                                    <option value="MECH_CABLE_LM">v.a. Cable car, per lineal meter travel</option>
+                                </optgroup>
+                                <optgroup label="c. Elevators per unit:">
+                                    <option value="MECH_ELEV_DUMB">i. Motor driven dumbwaiters</option>
+                                    <option value="MECH_ELEV_CONST">ii. Construction elevators for material</option>
+                                    <option value="MECH_ELEV_PASS">iii. Passenger elevators</option>
+                                    <option value="MECH_ELEV_FRT">iv. Freight elevators</option>
+                                    <option value="MECH_ELEV_CAR">v. Car elevators</option>
+                                </optgroup>
+                                <optgroup label="Others:">
+                                    <option value="MECH_BOILER">d. Boilers, per rated capacity in kW</option>
+                                    <option value="MECH_WATER_HEATER">e. Pressurized water heaters, per unit</option>
+                                    <option value="MECH_WATER_PUMP">f. Water/sump/sewage pumps (commercial/industrial), per kW</option>
+                                    <option value="MECH_SPRINKLER">g. Automatic fire sprinkler system, per sprinkler head</option>
+                                    <option value="MECH_DIESEL">h. Diesel/Gasoline ICE, Steam, Gas Turbine/Engine and the like, per kW</option>
+                                    <option value="MECH_COMPRESSED">i. Compressed Air/Vacuum/Industrial Gases, per outlet</option>
+                                    <option value="MECH_GAS_METER">j. Gas Meter, per unit</option>
+                                    <option value="MECH_POWER_PIPE">k. Power piping for gas/steam/etc., per lineal meter</option>
+                                    <option value="MECH_INT_COMB">l. Other Internal Combustion Engines (cranes, forklifts, etc.), per kW</option>
+                                    <option value="MECH_PRESSURE_V">m. Pressure Vessels, per cu. meter</option>
+                                    <option value="MECH_OTHER_EQUIP">n. Other Machinery/Equipment (commercial/industrial), per kW</option>
+                                    <option value="MECH_PNEUMATIC">o. Pneumatic tubes/Conveyors/Monorails, per lineal meter</option>
+                                    <option value="MECH_WEIGH_SCALE">p. Weighing Scale Structure, per ton</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">
+                                Unit
+                                <span x-show="feeCode" x-cloak class="ml-1 text-blue-600 font-semibold" x-text="'(' + unitLabel + ')'"></span>
+                                <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number" name="unit" step="0.01" min="0.01" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit" class="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">Fee and amount are auto-computed based on BOPMS mechanical fee schedule.</p>
+                </form>
+            </div>
             @else
             {{-- Generic Fee Item Form (other tabs) --}}
             <div x-data="{
@@ -281,7 +371,7 @@
                                             headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' }
                                         });
                                     });
-                                    setTimeout(() => window.location.reload(), 300);
+                                    setTimeout(() => window.location.href = window.location.pathname + '?tab={{ $cat->code }}', 300);
                                 }
                             "
                             class="inline-flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition">
@@ -308,6 +398,13 @@
                             <th class="text-right px-4 py-3 font-medium text-gray-500">kVA/Unit</th>
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Fixed Fee</th>
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Additional</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Inspection</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Amount</th>
+                            @elseif($cat->code === 'MECH')
+                            <th class="text-left px-4 py-3 font-medium text-gray-500">Mechanical Fee</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Unit</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Fee/Unit</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Excess/Add.</th>
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Inspection</th>
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Amount</th>
                             @else
@@ -346,6 +443,13 @@
                             <td class="px-4 py-3 text-right text-gray-700">&#8369;{{ number_format($additionalFee, 2) }}</td>
                             <td class="px-4 py-3 text-right text-gray-700">&#8369;{{ number_format($item->inspection_fee, 2) }}</td>
                             <td class="px-4 py-3 text-right font-medium text-gray-900">&#8369;{{ number_format($item->amount, 2) }}</td>
+                            @elseif($cat->code === 'MECH')
+                            <td class="px-4 py-3 text-gray-900 text-xs">{{ $item->description }}</td>
+                            <td class="px-4 py-3 text-right text-gray-700">{{ number_format($item->quantity, 2) }}</td>
+                            <td class="px-4 py-3 text-right text-gray-700">@if($item->unit_fee > 0)&#8369;{{ number_format($item->unit_fee, 2) }}@else-@endif</td>
+                            <td class="px-4 py-3 text-right text-gray-700">@if($item->excess_fee > 0)&#8369;{{ number_format($item->excess_fee, 2) }}@else-@endif</td>
+                            <td class="px-4 py-3 text-right text-gray-700">&#8369;{{ number_format($item->inspection_fee, 2) }}</td>
+                            <td class="px-4 py-3 text-right font-medium text-gray-900">&#8369;{{ number_format($item->amount, 2) }}</td>
                             @else
                             <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ $item->fee_code }}</td>
                             <td class="px-4 py-3 text-gray-900">{{ $item->description }}</td>
@@ -375,6 +479,11 @@
                             <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('amount'), 2) }}</td>
                             <td></td>
                             @elseif($cat->code === 'ELEC')
+                            <td colspan="5" class="px-4 py-3 text-right font-semibold text-gray-700">Subtotal</td>
+                            <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('inspection_fee'), 2) }}</td>
+                            <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('amount'), 2) }}</td>
+                            <td></td>
+                            @elseif($cat->code === 'MECH')
                             <td colspan="5" class="px-4 py-3 text-right font-semibold text-gray-700">Subtotal</td>
                             <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('inspection_fee'), 2) }}</td>
                             <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('amount'), 2) }}</td>

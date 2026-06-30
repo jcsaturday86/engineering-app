@@ -130,6 +130,13 @@ class SettingsSeeder extends Seeder
                 'type' => 'decimal',
                 'description' => 'Electrical inspection fee percentage (e.g. 10 = 10% of fee amount)',
             ],
+            [
+                'group' => 'assessment',
+                'key' => 'assessment.mechanical_inspection_percentage',
+                'value' => '10',
+                'type' => 'decimal',
+                'description' => 'Mechanical inspection fee percentage (e.g. 10 = 10% of base amount)',
+            ],
         ];
 
         foreach ($settings as $setting) {
@@ -138,5 +145,8 @@ class SettingsSeeder extends Seeder
                 $setting
             );
         }
+
+        // Remove legacy mech_insp.* JSON settings — rates are now in fee_schedules table.
+        Setting::where('group', 'mech_insp')->delete();
     }
 }

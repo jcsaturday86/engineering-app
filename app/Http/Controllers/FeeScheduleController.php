@@ -18,6 +18,7 @@ class FeeScheduleController extends Controller
         $permitTypes = PermitType::where('is_active', true)
             ->with(['feeCategories' => function ($q) {
                 $q->where('is_active', true)
+                    ->where('code', '!=', 'MECH_INSP')
                     ->orderBy('sort_order')
                     ->withCount('feeTypes');
             }])

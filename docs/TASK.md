@@ -4,51 +4,46 @@
 
 ## Completed Tasks
 
-### Separate BP and OP into Different Database Tables -- COMPLETED
+### Separate BP and OP into Different Database Tables — COMPLETED
 
-BP and OP applications now live in separate database tables with polymorphic downstream relationships. Implementation summary:
+- `applications` = BP only; new `occupancy_applications` = OP only
+- 7 downstream tables use polymorphic `applicationable_type`/`applicationable_id` (morph map: bp/op)
+- New `OccupancyApplication` model + `OccupancyApplicationService` + `OccupancyApplicationDTO`
+- New `OccupancyApplicationController` + `/occupancy-applications/*` routes + views
+- Parallel `*Op()` methods in Assessment/Billing/Collection/Permit controllers
+- 4 notification classes accept `Model` instead of `Application`
+- `ApplicationStatus::allowedTransitionsFor(string $permitTypeCode)` for OP flow
 
-- **Database:** `applications` table is BP-only (OP-specific columns removed). New `occupancy_applications` table for OP. 7 downstream tables (assessments, billings, collections, permits, documents, application_requirements, application_occupancy_groups) use polymorphic `applicationable_type` + `applicationable_id` columns. Morph map: `bp` → Application, `op` → OccupancyApplication.
-- **Models:** New `OccupancyApplication` model. Shared behavior via `PermitApplicationContract` interface + `HasPermitApplicationBehavior` trait. 7 downstream models use `MorphTo` with backward-compat accessor. Total: 32 models.
-- **Controllers:** New `OccupancyApplicationController` for OP CRUD. AssessmentController has parallel `*Op()` methods. BillingController/CollectionController/PermitController have `*Op()` methods. DashboardController aggregates both tables. OnlineApplicationController branches BP/OP. Total: 14 controllers.
-- **Services/DTOs:** New `OccupancyApplicationService` (8 total). New `OccupancyApplicationDTO` (4 total).
-- **Routes:** `/occupancy-applications/*` for OP CRUD. Parallel OP routes for assessment/billing/collection/permit. Total: 100+ routes.
-- **Views:** New `occupancy-applications/` directory (index, form, show). Sidebar has separate BP and OP nav sections. Assessment views are route-aware ($isOp flag).
-- **Notifications:** 4 notification classes accept `Model` instead of `Application`.
-- **Enums:** `ApplicationStatus::allowedTransitionsFor(string $permitTypeCode)` for OP flow (skips zoning_assessed).
+### Zoning Assessment Fee Auto-Compute & Settings — COMPLETED
 
-### Zoning Assessment Fee Auto-Compute & Settings -- COMPLETED
+- New `land_use_and_zoning_fees` table (162 rows, 52 sub-groups, 6 fee patterns) + `certification_zoning_fees` (P500)
+- `ZoningController::autoCompute()` matches BOPMS `zoningAutoCompute()` logic
+- New `ZoningFeeController` + `/settings/zoning-fees` accordion settings page
+- `land_use_and_zoning_other_fees` table (Variance/Non-Conforming) + settings UI
+- New `for_zoning_assessment` status; `submitted` = skip-LC path
+- Browser autofill disabled on all forms; `ApplicationSeeder` with 5 BP + 5 OP test records
 
-Added zoning fee auto-compute matching BOPMS `zoningAutoCompute()` logic, with dedicated fee tables and settings UI:
+### Zoning Assessment UX Improvements — COMPLETED
 
-- **Database:** New `land_use_and_zoning_fees` table (162 rows, 52 sub-groups, 6 fee patterns) and `certification_zoning_fees` table (P500 flat). Migrated data from generic `fee_schedules`. Made `application_id` nullable on 7 downstream tables. Added `project_title` to `occupancy_applications`.
-- **Models:** New `LandUseAndZoningFee`, `CertificationZoningFee`.
-- **Controllers:** `ZoningController` updated with `autoCompute()` (queries new tables directly), `addItem()`, `removeItem()`. New `ZoningFeeController` for settings CRUD.
-- **View:** Zoning form restyled to BP/OP card pattern (numbered badges). Section 5 (Evaluation) removed. Fee items table with Auto Compute button, per-row delete, and manual add form. New `/settings/zoning-fees` page with accordion by occupancy group.
-- **Workflow:** New `for_zoning_assessment` status for BP apps routed to planning. `submitted` status now means skip-LC (direct to engineering).
-- **Validation:** Backend validation aligned with HTML required fields on BP/OP forms. Error summary banner, section card highlighting, auto-scroll to errors.
-- **Other:** Browser autofill disabled on all 41 forms. `ApplicationSeeder` creates 5 BP + 5 OP test records. `FeeComputationService::applyExcess()` fixed for percentage-based excess.
+- 4 fee type selector (LC, LC Manual, Certification, Others) matching BOPMS
+- Checkbox select-all / bulk delete via fetch API
+- Password confirmation modal on finalize (Hash::check())
 
-### Zoning Assessment UX Improvements -- COMPLETED
+### BP Assessment Tabbed Navigation & BOPMS-Style Forms — COMPLETED
 
-Enhanced the zoning assessment page with BOPMS-matching features:
+- 8 fee category tabs + Summary tab with item count badges
+- **Construction tab:** Part of Building + Division + Area → server-side fee lookup. `amount = area × fee_per_unit`
+- **Electrical tab:** 7 fee types, conditional fields, range kVA: `base = fixed_fee + (kva × fee_per_unit)`. Inspection fee = `base × electrical_inspection_percentage` (setting, 10%). `amount` = base; `inspection_fee` stored separately
+- Split `ELEC_TUG` → `ELEC_TRANS` + `ELEC_UPS` matching BOPMS
+- New routes: `POST /assessments/{id}/construction-item`, `POST /assessments/{id}/electrical-item`
 
-- **Fee type selector:** 4 fee types (Locational Clearance, LC Manual Entry, Certification, Others) matching BOPMS, with conditional form fields per type.
-- **Other zoning fees:** New `land_use_and_zoning_other_fees` table (Variance, Non-Conforming) with settings UI.
-- **Checkbox select-all / bulk delete:** Multi-select with fetch API for bulk item removal.
-- **Password confirmation on finalize:** Modal with `Hash::check()` validation before finalizing.
-- **HTML form nesting fix:** Resolved issue where modal forms submitted to wrong route due to browser HTML parsing.
+### Mechanical Fee Assessment with NBC Inspection Fees — COMPLETED
 
-### BP Assessment Tabbed Navigation & BOPMS-Style Forms -- COMPLETED
-
-Redesigned the BP assessment page with tabbed navigation and BOPMS-matching forms:
-
-- **Tabbed navigation:** 8 fee category tabs (Construction, Electrical, Mechanical, Plumbing, Electronics, Accessories, Accessory, Surcharges) + Summary tab with item count badges.
-- **Construction tab (BOPMS-style):** Part of Building + Division (filtered by occupancy groups) + Area → server-side fee lookup from `fee_schedules`. Formula: `amount = area × fee_per_unit`. Total Area row in table footer.
-- **Electrical tab (BOPMS-style):** 7 fee type options with conditional fields. Split `ELEC_TUG` into `ELEC_TRANS` + `ELEC_UPS` matching BOPMS. Range-based kVA computation: `amount = fixed_fee + (kva × fee_per_unit)`. Fixed fees for pole/meter/wiring types. Inspection fee auto-computed from `assessment.electrical_inspection_percentage` setting (default 10%). Total amount = base fee + inspection fee.
-- **Seeder updates:** Building parts changed to BOPMS values. Fee category names shortened. Electrical fee schedules updated with `.99` range boundaries matching BOPMS. Old `ELEC_TUG` deactivated.
-- **New setting:** `assessment.electrical_inspection_percentage` — configurable in Settings > Assessment group.
-- **New routes:** `POST /assessments/{id}/construction-item`, `POST /assessments/{id}/electrical-item`.
+- **MECH_INSP fee category:** 29 `INSP_*` fee types with 55 schedule rows; NBC rates sourced from BOPMS `ann_inspection_f*` SQL tables (I through XIX). Category hidden from assessment tab bar.
+- **Mechanical tab (BOPMS-style):** `addMechanicalItem()` computes base permit fee (MECH schedules) + NBC inspection fee (`resolveInspectionFee()` maps `MECH_REFRIG` → `INSP_REFRIG`). `amount` = base only; `inspection_fee` stored separately. Consistent grand total: `sum(amount) + sum(inspection_fee)`
+- Three inspection fee formulas: `flat` (range-band fixed_fee ± excess), `per_unit` (rate × unit ± excess), `tiered` (cumulative for elevators: first N floors × rate + excess × rate2)
+- Route: `POST /assessments/{id}/mechanical-item`
+- `MECH_INSP` added to `$excludedTabs` so it never appears as a manual-entry tab
 
 ---
 
@@ -56,9 +51,9 @@ Redesigned the BP assessment page with tabbed navigation and BOPMS-matching form
 
 | Task | Priority | Notes |
 |------|----------|-------|
+| Plumbing tab (BOPMS-style) | High | Next: BOPMS-style form for PLUMB fee types, auto-computed inspection fees from PLUMB_INSP or plumbing-specific NBC rates |
+| Electronics / Accessories tabs | Medium | Currently generic form; may need BOPMS-style upgrades |
 | Additional permit types (FP, EP, DP, etc.) | Medium | Currently only BP and OP are active |
-| Enhanced fee schedule seeding | Medium | Some fee categories may need more data |
-| Document requirement upload UI | Low | Model exists, UI needs improvement |
+| Document requirement upload UI | Low | Model/route exists, UI needs improvement |
 | Email notification configuration | Low | SMTP settings, notification templates |
-| Advanced reporting | Low | More report types, dashboard charts |
-| Annual inspection module | Future | Not in current requirements |
+| Annual inspection module (non-mech) | Future | Not in current requirements |

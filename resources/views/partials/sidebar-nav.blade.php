@@ -223,6 +223,7 @@
         @can('manage-fee-schedules')
         <a href="{{ route('settings.fees') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Fee Schedules</a>
         <a href="{{ route('settings.zoning-fees') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Zoning Fees</a>
+        <a href="{{ route('settings.mech-insp-fees') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Mech Inspection Fees</a>
         @endcan
         @can('manage-signatories')
         <a href="{{ route('settings.signatories') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Signatories</a>

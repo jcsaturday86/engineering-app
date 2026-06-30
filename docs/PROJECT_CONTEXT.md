@@ -4,7 +4,7 @@
 
 The **Engineering Permit Management System (EPMS)** is a web application for the City of San Fernando, La Union, Philippines. It manages the full lifecycle of building and occupancy permits — from application intake through assessment, billing, payment, and permit issuance.
 
-This system replaces the legacy BOPMS (Building and Occupancy Permit Management System). See `docs/BOPMS_*.md` for legacy reference.
+This system replaces the legacy BOPMS (Building and Occupancy Permit Management System).
 
 ---
 
@@ -39,18 +39,21 @@ Business logic lives in `app/Services/`, controllers are thin. Services handle: 
 Building Permit (BP) and Occupancy Permit (OP) applications live in separate database tables: `applications` (BP only) and `occupancy_applications` (OP only). Seven downstream tables (assessments, billings, collections, permits, documents, application_requirements, application_occupancy_groups) use polymorphic columns (`applicationable_type`, `applicationable_id`) to reference either model. A morph map (`bp` → Application, `op` → OccupancyApplication) is registered in `AppServiceProvider`.
 
 ### Interface + Trait Pattern for Shared Behavior
-`app/Contracts/PermitApplicationContract.php` defines the shared interface. `app/Concerns/HasPermitApplicationBehavior.php` provides a trait with shared accessors and polymorphic relationships (assessments, billings, collections, permits, documents, etc.). Both `Application` and `OccupancyApplication` implement the contract and use the trait, keeping BP-specific logic (scope of work, cost fields, zoning, engineer/PEE/SEW) in `Application` only.
+`app/Contracts/PermitApplicationContract.php` defines the shared interface. `app/Concerns/HasPermitApplicationBehavior.php` provides a trait with shared accessors and polymorphic relationships. Both `Application` and `OccupancyApplication` implement the contract and use the trait, keeping BP-specific logic in `Application` only.
 
 ### Enum-Based State Machine
-`app/Enums/ApplicationStatus.php` defines the complete workflow with `allowedTransitions()` and `allowedTransitionsFor(string $permitTypeCode)` for strict state validation. BP applications without skip LC go to `for_zoning_assessment` status. OP flow skips zoning entirely. No invalid transitions possible.
+`app/Enums/ApplicationStatus.php` defines the complete workflow with `allowedTransitions()` and `allowedTransitionsFor(string $permitTypeCode)` for strict state validation.
 
 ### Consolidated Fee Schedule
 BOPMS had 100+ individual fee tables. Engineering-app consolidates into 3 tables:
-- `fee_categories` — groups by permit type (BP construction fees, OP occupancy fees, etc.)
+- `fee_categories` — groups by permit type (CONST, ELEC, MECH, PLUMB, etc.)
 - `fee_types` — individual fee items with computation method
 - `fee_schedules` — rate rows with ranges, fixed fees, excess thresholds
 
 Six computation methods: `fixed`, `per_unit`, `range_based`, `cumulative_range`, `percentage`, `formula`.
+
+### MECH_INSP Fee Category (Hidden)
+A special `MECH_INSP` fee category holds 29 `INSP_*` fee types that mirror BOPMS `ann_inspection_f*` tables — the NBC mechanical permit inspection fee rates. This category is excluded from the assessment tab bar; inspection fees are auto-computed by `AssessmentController::resolveInspectionFee()` whenever a mechanical item is added. `amount` stores the base permit fee only; `inspection_fee` stores the NBC inspection fee separately so the grand total formula (`sum(amount) + sum(inspection_fee)`) works correctly across all categories.
 
 ### Dedicated Zoning Fee Tables
 Zoning fees use dedicated tables matching BOPMS naming:
@@ -61,20 +64,21 @@ Zoning fees use dedicated tables matching BOPMS naming:
 Auto-compute in `ZoningController::autoCompute()` queries these tables directly, matching BOPMS `TransactionController::zoningAutoCompute()` logic.
 
 ### BOPMS-Style Assessment Tabs
-The BP assessment page (`/assessments/{id}`) uses tabbed navigation with fee category tabs (Construction, Electrical, Mechanical, Plumbing, Electronics, Accessories, Accessory, Surcharges) plus a Summary tab. Each tab has a dedicated form matching the original BOPMS UI:
+The BP assessment page uses tabbed navigation with fee category tabs plus a Summary tab. Each implemented tab matches the original BOPMS UI:
 
-- **Construction tab** — BOPMS-style form: Part of Building + Division (filtered by occupancy groups) + Area → server-side fee lookup from `fee_schedules` by division code + area range. Formula: `amount = area × fee_per_unit`.
-- **Electrical tab** — BOPMS-style form: 7 fee types (TCL, Transformer, UPS/Generator, Pole Location, Guying, Meter, Wiring) with conditional fields. Range-based kVA types use formula: `amount = fixed_fee + (kva × fee_per_unit)`. Fixed types use `amount = fixed_fee`. Inspection fee auto-computed as `amount × percentage` from `assessment.electrical_inspection_percentage` setting (default 10%). Total amount = base fee + inspection fee.
-- **Other tabs** — Generic form: select Fee Type, enter Quantity + Unit Fee.
+- **Construction tab** — Part of Building + Division (filtered by occupancy groups) + Area → server-side fee lookup. Formula: `amount = area × fee_per_unit`.
+- **Electrical tab** — 7 fee types with conditional fields. Range-based kVA: `amount = fixed_fee + (kva × fee_per_unit)`. Inspection fee = `base × electrical_inspection_percentage` (setting, default 10%). Total = base + inspection.
+- **Mechanical tab** — Select mechanical equipment type + unit count → auto-computes base permit fee (MECH schedules) + NBC inspection fee (MECH_INSP schedules via `resolveInspectionFee()`). Three inspection formulas: flat (range band), per_unit (rate × count), tiered (cumulative for elevators). `amount` = base only; `inspection_fee` stored separately.
+- **Other tabs** — Generic form: select Fee Type, enter Quantity.
 
 ### Self-Healing Service Provider
-`SelfHealingServiceProvider` auto-creates database, runs migrations, and seeds roles/settings/admin if missing on every application boot. Ensures the system works even on a fresh install.
+`SelfHealingServiceProvider` auto-creates database, runs migrations, and seeds roles/settings/admin if missing on every application boot.
 
 ### Spatie Permission (RBAC)
 9 roles with 30+ granular permissions. Each route protected with `middleware('can:permission-name')`.
 
 ### Spatie Activitylog (Audit Trail)
-Activity logging on Application, Assessment, Collection, Permit models. Tracks who changed what, when.
+Activity logging on Application, Assessment, Collection, Permit models.
 
 ---
 
@@ -84,23 +88,12 @@ Activity logging on Application, Assessment, Collection, Permit models. Tracks w
 |---------|-------|
 | Server | XAMPP on Windows 11 |
 | MariaDB | `C:\Program Files\MariaDB 12.3\bin\` |
-| DB Host | 127.0.0.1 |
 | DB Name | `epms_db` |
-| DB User | root |
-| DB Password | sfcity98 |
+| DB User/Pass | root / sfcity98 |
 | App URL | http://localhost:8100 (artisan serve) |
-| Alt URL | http://localhost/engineering-app/public |
-
-### Running
 
 ```bash
 php artisan serve --port=8100
-```
-
-### Testing
-
-```bash
-php artisan test
 ```
 
 ---
@@ -137,6 +130,6 @@ php artisan test
 - **Soft deletes** — All transaction tables use soft deletes for audit trail
 - **Activity logging** — All major model changes tracked
 - **State machine** — Strict workflow validation via enum-based transitions
-- **No BFP module** — Fire safety (FSEC/FSIC) is intentionally excluded from this system
+- **No BFP module** — Fire safety (FSEC/FSIC) is intentionally excluded
 - **Separate portals** — Staff login (`/staff/login`) and client login (`/login`) are separate
 - **CDN dependencies** — Tailwind CSS and Alpine.js loaded via CDN (no build step)

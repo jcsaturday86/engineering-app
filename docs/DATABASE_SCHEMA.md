@@ -10,24 +10,17 @@
 
 | Column | Type | Nullable | Description |
 |--------|------|----------|-------------|
-| id | bigint PK | | Auto-increment |
+| id | bigint PK | | |
 | name | string | | Display name |
-| email | string (unique) | | Login email |
-| password | string | | Hashed password |
-| email_verified_at | timestamp | Yes | Verification date |
-| remember_token | string(100) | Yes | Session token |
-| first_name | string | Yes | First name |
-| middle_name | string | Yes | Middle name |
-| last_name | string | Yes | Last name |
-| suffix | string(20) | Yes | Name suffix |
-| phone | string(20) | Yes | Phone number |
-| department | string | Yes | Department |
-| position | string | Yes | Job position |
-| avatar | string | Yes | Avatar file path |
+| email | string unique | | Login email |
+| password | string | | Hashed |
+| first_name / middle_name / last_name / suffix | string | Yes | |
+| phone | string(20) | Yes | |
+| department / position | string | Yes | |
+| avatar | string | Yes | File path |
 | is_active | boolean | | Default: true |
 | must_change_password | boolean | | Default: false |
-| last_login_at | timestamp | Yes | Last login time |
-| last_login_ip | string(45) | Yes | Last login IP |
+| last_login_at / last_login_ip | timestamp/string | Yes | |
 | deleted_at | timestamp | Yes | Soft delete |
 
 ### `settings`
@@ -36,145 +29,48 @@
 |--------|------|-------------|
 | id | bigint PK | |
 | group | string | Default: 'general' |
-| key | string (unique) | Setting key |
+| key | string unique | Setting key |
 | value | text | Setting value |
-| type | string | Default: 'string' |
+| type | string | string, decimal, boolean, json |
 | description | string | Human description |
 
-### Spatie Permission Tables
-- `permissions` — id, name, guard_name
-- `roles` — id, team_foreign_key, name, guard_name
-- `model_has_permissions` — permission_id, model_type, model_id
-- `model_has_roles` — role_id, model_type, model_id
-- `role_has_permissions` — permission_id, role_id
+**Key settings:** `assessment.electrical_inspection_percentage` (default 10), `assessment.default_filing_fee`, `assessment.default_processing_fee`.
 
-### Spatie Activity Log
-- `activity_log` — id, log_name, description, subject_type/id, causer_type/id, properties (json), event, batch_uuid
-
-### Laravel System Tables
-- `password_reset_tokens` — email (PK), token, created_at
-- `sessions` — id (PK), user_id (FK), ip_address, user_agent, payload, last_activity
-- `cache` / `cache_locks` — key, value, expiration
-- `jobs` / `job_batches` / `failed_jobs` — standard Laravel queue tables
-- `notifications` — id, type, notifiable_type/id, data, read_at
+### Spatie / Laravel System Tables
+- `permissions`, `roles`, `model_has_permissions`, `model_has_roles`, `role_has_permissions`
+- `activity_log` — id, log_name, description, subject_type/id, causer_type/id, properties (json), event
+- `password_reset_tokens`, `sessions`, `cache`, `jobs`, `failed_jobs`, `notifications`
 
 ---
 
 ## Geographic Tables
 
-### `provinces`
+### `provinces` / `cities` / `barangays`
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| psgc_code | string | Philippine Standard Geographic Code |
-| name | string | Province name |
-| region | string | Yes | Region name |
-| is_active | boolean | Default: true |
-
-### `cities`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| province_id | FK → provinces (cascade) | |
-| psgc_code | string | PSGC code |
-| name | string | City/municipality name |
-| zip_code | string(10) | Yes | Postal code |
-| is_active | boolean | Default: true |
-
-### `barangays`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| city_id | FK → cities (cascade) | |
-| psgc_code | string | PSGC code |
-| name | string | Barangay name |
-| is_active | boolean | Default: true |
+Standard hierarchical geo tables with `psgc_code`, `name`, `is_active`. ~42K barangay records seeded from Philippine PSA data.
 
 ---
 
 ## Reference Tables
 
 ### `permit_types`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| code | string(20) unique | BP, OP, FP, EP, DP, SP, ELP, MP, PP, ECP |
-| name | string | Full name |
-| description | text | Yes |
-| is_active | boolean | Default: true |
-| sort_order | integer | Display order |
+`code` (BP, OP, FP, EP, DP, SP, ELP, MP, PP, ECP), `name`, `is_active`, `sort_order`
 
 ### `application_types`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| permit_type_id | FK → permit_types | Yes | Links type to permit |
-| name | string | New, Renewal, Amendatory (BP); Full, Partial (OP) |
-| description | text | Yes |
-| is_active | boolean | Default: true |
-| sort_order | integer | Display order |
+`permit_type_id`, `name` (New/Renewal/Amendatory for BP; Full/Partial for OP), `is_active`, `sort_order`
 
 ### `scope_of_works`
+`name`, `category` (construction/other), `is_active`, `sort_order`
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| name | string | e.g., New Construction, Addition, Renovation |
-| category | string | Yes | construction, other |
-| is_active | boolean | Default: true |
-| sort_order | integer | Display order |
-
-### `form_of_ownerships`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| name | string | e.g., Sole Proprietorship, Partnership, Corporation |
-| is_active | boolean | Default: true |
-
-### `occupancy_groups`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| code | string(10) | A through J |
-| name | string | Group name |
-| description | text | Yes |
-| is_active | boolean | Default: true |
-| sort_order | integer | Display order |
-
-### `occupancy_sub_groups`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| occupancy_group_id | FK → occupancy_groups (cascade) | |
-| code | string(20) | Yes | Sub-group code |
-| name | string | Sub-group name |
-| description | text | Yes |
-| is_active | boolean | Default: true |
-| sort_order | integer | Display order |
-
-### `occupancy_divisions`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| occupancy_group_id | FK → occupancy_groups (cascade) | |
-| code | string(20) | Division code (A1, A2, B1, etc.) |
-| name | string | Division name |
-| assessment_mode | enum | 'cumulative' or 'non_cumulative' |
-| is_active | boolean | Default: true |
+### `occupancy_groups` / `occupancy_sub_groups` / `occupancy_divisions`
+- Groups: A–J (10 groups, 40+ sub-groups)
+- Divisions: code (A1, B1, etc.), `assessment_mode` (cumulative/non_cumulative)
 
 ### Other Reference Tables
 - `building_parts` — id, name, is_active
 - `signatories` — id, role, name, title, designation, department, license_no, is_active
 - `land_classifications` — id, name, code, is_active
+- `form_of_ownerships` — id, name, is_active
 
 ---
 
@@ -185,51 +81,54 @@
 | Column | Type | Description |
 |--------|------|-------------|
 | id | bigint PK | |
-| permit_type_id | FK → permit_types (cascade) | |
-| code | string(30) unique | e.g., CON, ELEC, MECH, PLUMB, OCC |
+| permit_type_id | FK → permit_types | |
+| code | string(30) unique | CONST, ELEC, MECH, MECH_INSP, PLUMB, etc. |
 | name | string | Category name |
-| description | text | Yes |
 | is_active | boolean | Default: true |
-| sort_order | integer | Display order |
+| sort_order | integer | |
+
+> `MECH_INSP` is a hidden category (excluded from assessment tabs). It holds the NBC mechanical permit inspection fee rates (29 INSP_* fee types, 55 schedule rows) mirroring BOPMS `ann_inspection_f*` tables.
 
 ### `fee_types`
 
 | Column | Type | Description |
 |--------|------|-------------|
 | id | bigint PK | |
-| fee_category_id | FK → fee_categories (cascade) | |
-| code | string(50) | Unique within category |
-| name | string | Fee type name |
-| description | text | Yes |
+| fee_category_id | FK → fee_categories | |
+| code | string(50) | e.g., CONST_A1, ELEC_TCL, MECH_REFRIG, INSP_REFRIG |
+| name | string | |
 | computation_method | enum | fixed, per_unit, range_based, cumulative_range, percentage, formula |
-| has_excess | boolean | Default: false |
-| has_minimum | boolean | Default: false |
-| has_maximum | boolean | Default: false |
+| has_excess / has_minimum / has_maximum | boolean | Default: false |
 | is_active | boolean | Default: true |
-| sort_order | integer | Display order |
+| sort_order | integer | |
 
 ### `fee_schedules`
 
 | Column | Type | Description |
 |--------|------|-------------|
 | id | bigint PK | |
-| fee_type_id | FK → fee_types (cascade) | |
+| fee_type_id | FK → fee_types | |
 | occupancy_division_id | FK → occupancy_divisions | Yes |
 | occupancy_sub_group_id | FK → occupancy_sub_groups | Yes |
-| range_from | decimal(15,2) | Default: 0 |
-| range_to | decimal(15,2) | Default: 0 |
-| fixed_fee | decimal(15,2) | Default: 0 |
-| fee_per_unit | decimal(15,4) | Default: 0 |
-| percentage | decimal(8,4) | Default: 0 |
-| excess_threshold | decimal(15,2) | Default: 0 |
-| excess_fee | decimal(15,2) | Default: 0 |
-| excess_every | decimal(15,2) | Default: 0 |
-| minimum_fee | decimal(15,2) | Default: 0 |
-| maximum_fee | decimal(15,2) | Default: 0 |
-| formula | text | Yes |
+| range_from / range_to | decimal(15,2) | Default: 0 |
+| fixed_fee | decimal(15,2) | Flat fee or range-band amount |
+| fee_per_unit | decimal(15,4) | Per-unit rate |
+| percentage | decimal(8,4) | For percentage method |
+| excess_threshold | decimal(15,2) | Unit count where excess kicks in |
+| excess_fee | decimal(15,2) | Rate per unit above threshold |
+| excess_every | decimal(15,2) | Excess groups (÷ N units) |
+| minimum_fee / maximum_fee | decimal(15,2) | |
+| formula | text | Yes | For formula method |
+| insp_fee | decimal(15,4) | Reserved — not used by current implementation |
+| insp_method | enum(flat,per_unit,tiered) | Reserved — not used by current implementation |
+| insp_excess_threshold | decimal(15,2) | Reserved — not used by current implementation |
+| insp_excess_fee | decimal(15,4) | Reserved — not used by current implementation |
+| insp_excess_every | decimal(10,2) | Reserved — not used by current implementation |
 | is_active | boolean | Default: true |
 
 **Index:** [fee_type_id, range_from, range_to]
+
+> The `insp_*` columns are schema artifacts added during development. The active implementation uses separate INSP_* fee types in the MECH_INSP category instead.
 
 ---
 
@@ -237,45 +136,23 @@
 
 ### `land_use_and_zoning_fees`
 
-> Dedicated table for locational clearance fees, matching BOPMS `land_use_and_zoning_fees`. Organized by occupancy sub-group with range-based + excess computation.
-
 | Column | Type | Description |
 |--------|------|-------------|
 | id | bigint PK | |
-| occupancy_sub_group_id | FK → occupancy_sub_groups | Which sub-group this rate applies to |
-| range_from | decimal(15,2) | Cost range start |
-| range_to | decimal(15,2) | Cost range end |
-| amount | decimal(15,2) | Base/fixed fee for this range |
-| excess_of | decimal(15,2) | Threshold above which excess applies |
-| percentage | decimal(10,6) | Per-peso rate for excess (e.g., 0.001) |
+| occupancy_sub_group_id | FK → occupancy_sub_groups | |
+| range_from / range_to | decimal(15,2) | Cost range |
+| amount | decimal(15,2) | Base fee for this range |
+| excess_of | decimal(15,2) | Threshold for excess |
+| percentage | decimal(10,6) | Per-peso excess rate |
 | is_active | boolean | Default: true |
 
-**Index:** [occupancy_sub_group_id, range_from, range_to]
-
-**162 rows** across 52 sub-groups, organized in 6 fee patterns (Residential, Commercial, Mid-Tier, Heavy, Flat, Top-Tier).
+**162 rows** across 52 sub-groups, 6 fee patterns. **Index:** [occupancy_sub_group_id, range_from, range_to]
 
 ### `certification_zoning_fees`
-
-> Flat certification fee, matching BOPMS `certification_zoning_fees`.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| occupancy_sub_group_id | FK → occupancy_sub_groups | Yes | NULL = applies to all |
-| amount | decimal(15,2) | Fixed certification fee (P500) |
-| is_active | boolean | Default: true |
+`occupancy_sub_group_id` (nullable = applies to all), `amount` (P500 flat), `is_active`
 
 ### `land_use_and_zoning_other_fees`
-
-> Variance/Non-Conforming zoning fees.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| name | string | Fee name (Variance, Non-Conforming Use) |
-| code | string (unique) | VARIANCE, NON_CONFORMING |
-| amount | decimal(15,2) | Fee amount |
-| is_active | boolean | Default: true |
+`name`, `code` (VARIANCE, NON_CONFORMING), `amount`, `is_active`
 
 ---
 
@@ -283,81 +160,38 @@
 
 ### `applications` (Building Permit only)
 
-> OP-specific columns (bp_number, bp_issued_date, fsec_no, fsec_issued_date, completion_date, applies_for) have been removed. OP applications are now in the separate `occupancy_applications` table. The `permit_type_id` column is retained for now.
-
 | Column Group | Columns |
 |-------------|---------|
 | **Identity** | id, permit_type_id (FK), application_type_id (FK), app_year, app_month, app_counter, application_number (unique), area_number |
 | **Status** | status (default: 'draft'), source (walk_in/online) |
 | **Header** | complexity, applies_to |
-| **Applicant** | applicant_first_name, applicant_middle_name, applicant_last_name, applicant_suffix, applicant_tin, applicant_contact_no, applicant_email, applicant_govt_id, applicant_id_date_issued, applicant_id_place_issued, applicant_date_signed |
+| **Applicant** | applicant_first/middle/last_name, suffix, tin, contact_no, email, govt_id, id_date_issued, id_place_issued, date_signed |
 | **Enterprise** | enterprise_name, form_of_ownership_id (FK) |
-| **Applicant Address** | applicant_province_id (FK), applicant_city_id (FK), applicant_barangay_id (FK), applicant_street, applicant_zip_code |
+| **Applicant Address** | province_id, city_id, barangay_id, street, zip_code (all FK where applicable) |
 | **Project** | project_title, scope_of_work_id (FK), scope_of_work_details |
 | **Building Location** | lot_no, block_no, tct_no, tax_dec_no, land_classification_id (FK), building_street, building_barangay_id (FK) |
 | **Building Specs** | no_of_storeys, no_of_units, occupancy_classified, total_floor_area, lot_area |
-| **Costs** | building_cost, electrical_cost, mechanical_cost, electronics_cost, plumbing_cost, other_equipment_cost, equipment_cost_1-4, total_estimated_cost |
+| **Costs** | building_cost, electrical_cost, mechanical_cost, electronics_cost, plumbing_cost, other_equipment_cost, equipment_cost_1–4, total_estimated_cost |
 | **Timeline** | proposed_construction_date, expected_completion_date |
-| **Engineer** | engineer_name, engineer_prc_no, engineer_prc_validity, engineer_ptr_no, engineer_ptr_date_issued, engineer_ptr_issued_at, engineer_tin, engineer_address, engineer_date_signed |
-| **PEE** | pee_name, pee_prc_no, pee_prc_validity, pee_date_signed, pee_ptr_no, pee_ptr_date_issued, pee_ptr_issued_at, pee_address, pee_tin |
-| **SEW** | sew_profession, sew_name, sew_prc_no, sew_prc_validity, sew_date_signed, sew_ptr_no, sew_ptr_date_issued, sew_ptr_issued_at, sew_address, sew_tin |
-| **Owner** | owner_name, owner_address, owner_govt_id, owner_id_date_issued, owner_id_place_issued, owner_date_signed |
+| **Engineer** | engineer_name, prc_no, prc_validity, ptr_no, ptr_date_issued, ptr_issued_at, tin, address, date_signed |
+| **PEE** | pee_name, prc_no, prc_validity, date_signed, ptr_no, ptr_date_issued, ptr_issued_at, address, tin |
+| **SEW** | sew_profession, name, prc_no, prc_validity, date_signed, ptr_no, ptr_date_issued, ptr_issued_at, address, tin |
+| **Owner** | owner_name, address, govt_id, id_date_issued, id_place_issued, date_signed |
 | **Electrical** | include_electrical, total_connected_load, total_transformer_capacity, total_generator_capacity |
-| **Processing** | entered_by (FK), assessed_by (FK), approved_by (FK), client_user_id (FK), submitted_at, assessed_at, approved_at, paid_at, released_at, cancelled_at, cancellation_reason, issued_date |
-| **System** | remarks, deleted_at, created_at, updated_at |
+| **Processing** | entered_by, assessed_by, approved_by, client_user_id (all FK → users), submitted/assessed/approved/paid/released/cancelled_at, cancellation_reason, issued_date |
+| **System** | remarks, deleted_at |
 
 **Indexes:** [permit_type_id, status], [app_year, app_month], [status]
 
 ### `occupancy_applications` (Occupancy Permit only)
 
-> Separate table for OP applications. Shares common fields with `applications` but has OP-specific fields and omits BP-specific fields (no cost fields, no engineer/PEE/SEW, no electrical, no scope_of_work, no complexity).
-
-| Column Group | Columns |
-|-------------|---------|
-| **Identity** | id, application_type_id (FK), app_year, app_month, app_counter, application_number (unique), area_number |
-| **Status** | status (default: 'draft'), source (walk_in/online) |
-| **Applicant** | applicant_first_name, applicant_middle_name, applicant_last_name, applicant_suffix, applicant_tin, applicant_contact_no, applicant_email, applicant_govt_id, applicant_id_date_issued, applicant_id_place_issued, applicant_date_signed |
-| **Enterprise** | enterprise_name, form_of_ownership_id (FK) |
-| **Applicant Address** | applicant_province_id (FK), applicant_city_id (FK), applicant_barangay_id (FK), applicant_street, applicant_zip_code |
-| **Project** | project_title |
-| **Building Location** | lot_no, block_no, tct_no, tax_dec_no, land_classification_id (FK), building_street, building_barangay_id (FK) |
-| **Building Specs** | no_of_storeys, no_of_units, occupancy_classified, total_floor_area, lot_area |
-| **OP-Specific** | bp_number, bp_issued_date, fsec_no, fsec_issued_date, completion_date |
-| **Owner** | owner_name, owner_address, owner_govt_id, owner_id_date_issued, owner_id_place_issued, owner_date_signed |
-| **Processing** | entered_by (FK), assessed_by (FK), approved_by (FK), client_user_id (FK), submitted_at, assessed_at, approved_at, paid_at, released_at, cancelled_at, cancellation_reason, issued_date |
-| **System** | remarks, deleted_at, created_at, updated_at |
-
-**Indexes:** [status], [app_year, app_month]
+Same structure as `applications` minus BP-specific columns (no cost fields, no engineer/PEE/SEW, no electrical, no scope_of_work, no complexity). Adds OP-specific: `bp_number`, `bp_issued_date`, `fsec_no`, `fsec_issued_date`, `completion_date`, `project_title`.
 
 ### `application_occupancy_groups`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| applicationable_type | varchar(10) | Morph type: 'bp' or 'op' |
-| applicationable_id | bigint unsigned | FK to applications or occupancy_applications |
-| application_id | bigint unsigned | Yes | Legacy column, nullable. Use applicationable_type/id instead |
-| occupancy_group_id | FK → occupancy_groups (cascade) | |
-| occupancy_sub_group_id | FK → occupancy_sub_groups | Yes |
-| others_text | string | Yes | Free text for "Others" |
-
-**Unique:** [applicationable_type, applicationable_id, occupancy_sub_group_id]
+Polymorphic (`applicationable_type` / `applicationable_id`), `occupancy_group_id`, `occupancy_sub_group_id`, `others_text`.
 
 ### `application_requirements`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| applicationable_type | varchar(10) | Morph type: 'bp' or 'op' |
-| applicationable_id | bigint unsigned | FK to applications or occupancy_applications |
-| application_id | bigint unsigned | Yes | Legacy column, nullable. Use applicationable_type/id instead |
-| requirement_name | string | |
-| file_path | string | |
-| original_filename | string | |
-| status | enum | pending, approved, rejected |
-| reviewer_remarks | text | Yes |
-| reviewed_by | FK → users | Yes |
-| reviewed_at | timestamp | Yes |
+Polymorphic, `requirement_name`, `file_path`, `original_filename`, `status` (pending/approved/rejected), `reviewer_remarks`, `reviewed_by`, `reviewed_at`.
 
 ---
 
@@ -368,183 +202,66 @@
 | Column | Type | Description |
 |--------|------|-------------|
 | id | bigint PK | |
-| applicationable_type | varchar(10) | Morph type: 'bp' or 'op' |
-| applicationable_id | bigint unsigned | FK to applications or occupancy_applications |
-| application_id | bigint unsigned | Yes | Legacy column, nullable. Use applicationable_type/id instead |
+| applicationable_type / applicationable_id | varchar(10) / bigint | Polymorphic: 'bp' or 'op' |
 | assessment_type | string(30) | building, occupancy, zoning |
-| filing_fee | decimal(15,2) | Default: 0 |
-| processing_fee | decimal(15,2) | Default: 0 |
-| total_amount | decimal(15,2) | Default: 0 |
+| filing_fee / processing_fee / total_amount | decimal(15,2) | Default: 0 |
 | status | enum | draft, finalized |
 | assessed_by | FK → users | Yes |
-| finalized_at | timestamp | Yes |
-| deleted_at | timestamp | Yes |
-
-**Index:** [application_id, assessment_type]
+| finalized_at / deleted_at | timestamp | Yes |
 
 ### `assessment_items`
 
 | Column | Type | Description |
 |--------|------|-------------|
 | id | bigint PK | |
-| assessment_id | FK → assessments (cascade) | |
-| fee_category_id | FK → fee_categories | Yes |
-| fee_type_id | FK → fee_types | Yes |
+| assessment_id | FK → assessments | |
+| fee_category_id / fee_type_id | FK | Yes |
 | fee_code | string(50) | |
 | description | string | |
-| quantity | decimal(15,2) | Default: 0 |
-| unit_fee | decimal(15,2) | Default: 0 |
-| excess_fee | decimal(15,2) | Default: 0 |
-| inspection_fee | decimal(15,2) | Default: 0 |
-| amount | decimal(15,2) | Default: 0 |
-| computation_details | json | Yes |
+| quantity | decimal(15,2) | |
+| unit_fee | decimal(15,2) | Base rate shown in table |
+| excess_fee | decimal(15,2) | Excess portion of base fee |
+| inspection_fee | decimal(15,2) | NBC inspection fee (ELEC: % of base; MECH: from INSP_* schedules) |
+| amount | decimal(15,2) | Base permit fee only (does NOT include inspection_fee) |
+| computation_details | json | Yes | Inputs/outputs for audit |
 | is_active | boolean | Default: true |
 | deleted_at | timestamp | Yes |
+
+> **Grand total formula:** `sum(amount) + sum(inspection_fee) + filing_fee + processing_fee` — this is consistent across CONST, ELEC, and MECH categories.
 
 **Index:** [assessment_id, fee_code]
 
 ### `zoning_assessments`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| application_id | FK → applications (cascade, unique) | 1:1 |
-| project_lifespan | string | Yes |
-| project_significance | string | Yes |
-| project_classification | string | Yes |
-| site_zoning_classification | string | Yes |
-| right_over_lands | string | Yes |
-| radius_covered | string | Yes |
-| land_use_radius | string | Yes |
-| findings_evaluation | text | Yes |
-| decision_recommended | text | Yes |
-| date_evaluation | date | Yes |
-| certificate_date | date | Yes |
-| project_status | string | Yes |
-| boundary_north/south/east/west | string | Yes |
-| building_coverage | string | Yes |
-| secure_ecc | boolean | Default: false |
-| off_street_parking | boolean | Default: false |
-| decision_no | unsignedInt | Yes |
-| assessed_by | FK → users | Yes |
-| deleted_at | timestamp | Yes |
+1:1 with `applications` (BP only). Stores zoning compliance fields, boundaries, classification, decision info.
 
 ---
 
 ## Billing & Collection Tables
 
 ### `billings`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| applicationable_type | varchar(10) | Morph type: 'bp' or 'op' |
-| applicationable_id | bigint unsigned | FK to applications or occupancy_applications |
-| application_id | bigint unsigned | Yes | Legacy column, nullable. Use applicationable_type/id instead |
-| billing_number | string(30) unique | BL-YYYY-MM-NNNNN |
-| total_amount | decimal(15,2) | Default: 0 |
-| status | enum | unpaid, partial, paid, void |
-| generated_by | FK → users | Yes |
-| deleted_at | timestamp | Yes |
+Polymorphic, `billing_number` (BL-YYYY-MM-NNNNN), `total_amount`, `status` (unpaid/partial/paid/void), `generated_by`.
 
 ### `billing_items`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| billing_id | FK → billings (cascade) | |
-| category | string | Fee category |
-| description | string | Fee description |
-| amount | decimal(15,2) | Default: 0 |
-| sort_order | integer | Display order |
+`billing_id`, `category`, `description`, `amount`, `sort_order`.
 
 ### `collections`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| applicationable_type | varchar(10) | Morph type: 'bp' or 'op' |
-| applicationable_id | bigint unsigned | FK to applications or occupancy_applications |
-| application_id | bigint unsigned | Yes | Legacy column, nullable. Use applicationable_type/id instead |
-| billing_id | FK → billings | Yes |
-| or_number | string(30) unique | Official Receipt number |
-| or_date | date | Receipt date |
-| paid_by | string | Payer name |
-| amount_due | decimal(15,2) | |
-| amount_received | decimal(15,2) | |
-| change_amount | decimal(15,2) | |
-| payment_mode | enum | cash, check, online |
-| bank_name | string | Yes | For check payments |
-| check_number | string | Yes | For check payments |
-| check_date | date | Yes | For check payments |
-| online_reference | string | Yes | For online payments |
-| collected_by | FK → users | Yes |
-| status | enum | active, void |
-| deleted_at | timestamp | Yes |
+Polymorphic, `billing_id`, `or_number`, `or_date`, `paid_by`, `amount_due/received/change`, `payment_mode` (cash/check/online), bank/check/online fields, `collected_by`, `status` (active/void).
 
 ### `collection_details`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| collection_id | FK → collections (cascade) | |
-| fee_category | string | Category name |
-| description | string | Fee description |
-| amount | decimal(15,2) | Default: 0 |
-| is_active | boolean | Default: true |
+`collection_id`, `fee_category`, `description`, `amount`.
 
 ### `void_transactions`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| collection_id | FK → collections (cascade) | |
-| or_number | string(30) | Voided OR number |
-| reason | text | Void reason |
-| voided_by | FK → users | |
-| voided_at | timestamp | |
+`collection_id`, `or_number`, `reason`, `voided_by`, `voided_at`.
 
 ---
 
 ## Permit & Document Tables
 
 ### `permits`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| applicationable_type | varchar(10) | Morph type: 'bp' or 'op' |
-| applicationable_id | bigint unsigned | FK to applications or occupancy_applications |
-| application_id | bigint unsigned | Yes | Legacy column, nullable. Use applicationable_type/id instead |
-| permit_type_id | FK → permit_types (cascade) | |
-| permit_year | year | |
-| permit_month | tinyint | |
-| permit_counter | unsignedInt | |
-| permit_number | string(30) unique | CODE-YYYY-MM-NNNNN |
-| issued_date | date | |
-| processed_by | FK → users | Yes |
-| approved_by | FK → users | Yes |
-| status | enum | generated, signed, released |
-| deleted_at | timestamp | Yes |
-
-**Index:** [permit_type_id, permit_year]
+Polymorphic, `permit_type_id`, `permit_year/month/counter`, `permit_number` (CODE-YYYY-MM-NNNNN), `issued_date`, `processed_by`, `approved_by`, `status` (generated/signed/released).
 
 ### `documents`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | bigint PK | |
-| applicationable_type | varchar(10) | Morph type: 'bp' or 'op' |
-| applicationable_id | bigint unsigned | FK to applications or occupancy_applications |
-| application_id | bigint unsigned | Yes | Legacy column, nullable. Use applicationable_type/id instead |
-| document_type | string(50) | e.g., pdf.building-permit |
-| title | string | |
-| file_path | string | Yes |
-| counter | unsignedInt | Yes |
-| document_date | date | |
-| generated_by | FK → users | Yes |
-
-**Index:** [applicationable_type, applicationable_id, document_type]
+Polymorphic, `document_type` (e.g., pdf.building-permit), `title`, `file_path`, `counter`, `document_date`, `generated_by`.
 
 ---
 
@@ -557,4 +274,4 @@ Registered in `AppServiceProvider`:
 | `bp` | `App\Models\Application` |
 | `op` | `App\Models\OccupancyApplication` |
 
-The 7 downstream tables (assessments, billings, collections, permits, documents, application_occupancy_groups, application_requirements) use `applicationable_type` (varchar 10) + `applicationable_id` (bigint unsigned) to reference either BP or OP applications. The old `application_id` column is kept on each table for backward compatibility during transition.
+The 7 downstream tables (assessments, billings, collections, permits, documents, application_occupancy_groups, application_requirements) use `applicationable_type` + `applicationable_id` to reference either BP or OP. Legacy `application_id` column is kept nullable for backward compatibility.

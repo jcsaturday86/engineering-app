@@ -30,6 +30,7 @@ class FeeScheduleSeeder extends Seeder
         $this->seedOccupancyFees();
         $this->seedZoningFees();
         $this->seedAnnualInspectionFees();
+        $this->seedMechInspFees();
     }
 
     // =========================================================================
@@ -414,125 +415,160 @@ class FeeScheduleSeeder extends Seeder
     {
         $order = 0;
 
-        // --- Refrigeration / Aircon / Ventilation (unit-based items) ---
-        $unitItems = [
-            ['MECH_REFRIG', 'Refrigeration (Cold Storage), per ton', 40],
-            ['MECH_ICE', 'Ice Plants, per ton', 60],
-            ['MECH_WINDOW_AC', 'Window Type Air Conditioners, per unit', 60],
-            ['MECH_VENT', 'Mechanical Ventilation, per kW', 40],
+        // --- A.1/A.2 Refrigeration/Ice (ann_inspection_fi) --- insp_method=flat ---
+        // BOPMS: inspection = insp_fee flat per range (NOT × unit). One visit per installation.
+        // A.4 Window AC (ann_inspection_fii) — insp_method=per_unit (fee × unit per discrete unit)
+        $acItems = [
+            // [code, name, fee_per_unit, insp_fee, insp_method]
+            ['MECH_REFRIG',    'Refrigeration (Cold Storage), per ton',    40,  80, 'flat'],
+            ['MECH_ICE',       'Ice Plants, per ton',                      60, 120, 'flat'],
+            ['MECH_WINDOW_AC', 'Window Type Air Conditioners, per unit',   60,  30, 'per_unit'],
+            ['MECH_VENT',      'Mechanical Ventilation, per kW',           40,  80, 'flat'],
         ];
-        foreach ($unitItems as $item) {
+        foreach ($acItems as $item) {
             $feeTypeId = $this->upsertFeeType(
                 'MECH', $item[0], $item[1], 'per_unit', false, false, ++$order,
             );
-            $this->syncSchedules($feeTypeId, [['fee_per_unit' => $item[2]]]);
+            $this->syncSchedules($feeTypeId, [['fee_per_unit' => $item[2], 'insp_fee' => $item[3], 'insp_method' => $item[4]]]);
         }
 
-        // --- Packaged / Centralized AC (range-based) ---
+        // --- A.3 Packaged/Centralized AC (ann_inspection_fiii) --- insp_method=flat ---
+        // BOPMS: flat inspection fee per range band (NOT per ton — one visit covers the range)
         $feeTypeId = $this->upsertFeeType(
             'MECH', 'MECH_CENTRAL_AC', 'Packaged/Centralized Air Conditioning Systems',
             'range_based', false, false, ++$order,
         );
         $this->syncSchedules($feeTypeId, [
-            ['range_from' => 0, 'range_to' => 100, 'fee_per_unit' => 90],
-            ['range_from' => 101, 'range_to' => 1000, 'fee_per_unit' => 40],
+            ['range_from' => 0,   'range_to' => 100.99, 'fee_per_unit' => 90, 'insp_fee' => 500, 'insp_method' => 'flat'],
+            ['range_from' => 101, 'range_to' => 1000000,'fee_per_unit' => 40, 'insp_fee' => 800, 'insp_method' => 'flat'],
         ]);
 
-        // --- Escalators / Moving Walks ---
+        // --- B. Escalators/Moving Walks/Funiculars/Cable Cars (ann_inspection_fv) --- per_unit ---
+        // BOPMS: inspection = fee × unit (each kW/lm is a discrete measure)
         $escItems = [
-            ['MECH_ESC_KW', 'Escalator/Moving Walk, per kW', 10],
-            ['MECH_FUNIC_KW', 'Funicular, per kW', 200],
-            ['MECH_FUNIC_LM', 'Funicular, per lineal meter travel', 20],
-            ['MECH_CABLE_KW', 'Cable Car, per kW', 40],
-            ['MECH_CABLE_LM', 'Cable Car, per lineal meter travel', 5],
+            // [code, name, fee_per_unit, insp_fee]
+            ['MECH_ESC_KW',   'Escalator/Moving Walk, per kW',          10,  2],
+            ['MECH_FUNIC_KW', 'Funicular, per kW',                     200, 20],
+            ['MECH_FUNIC_LM', 'Funicular, per lineal meter travel',      20,  2],
+            ['MECH_CABLE_KW', 'Cable Car, per kW',                       40,  4],
+            ['MECH_CABLE_LM', 'Cable Car, per lineal meter travel',       5, 0.5],
         ];
         foreach ($escItems as $item) {
             $feeTypeId = $this->upsertFeeType(
                 'MECH', $item[0], $item[1], 'per_unit', false, false, ++$order,
             );
-            $this->syncSchedules($feeTypeId, [['fee_per_unit' => $item[2]]]);
+            $this->syncSchedules($feeTypeId, [['fee_per_unit' => $item[2], 'insp_fee' => $item[3], 'insp_method' => 'per_unit']]);
         }
 
-        // --- Escalator / Moving Walk Range (for travel-based) ---
+        // --- B.2 Escalator Range (ann_inspection_fv id=1) --- per_unit with grouped excess ---
+        // Permit: 1-20.99m = flat ₱20; 21+m = ₱20 + (lm-20)×10
+        // Inspection: per lm; 21+ range uses grouped excess (every=1 lm)
         $feeTypeId = $this->upsertFeeType(
-            'MECH', 'MECH_ESC_RANGE', 'Escalator/Moving Walk Range (lineal meters)',
+            'MECH', 'MECH_ESC_RANGE', 'Escalator/Moving Walk (per lineal meter travel)',
             'range_based', true, false, ++$order,
         );
         $this->syncSchedules($feeTypeId, [
-            ['range_from' => 1, 'range_to' => 20, 'fee_per_unit' => 20],
-            ['range_from' => 21, 'range_to' => 1000000, 'fee_per_unit' => 20, 'excess_threshold' => 20, 'excess_fee' => 10],
+            ['range_from' => 1,  'range_to' => 20.99,   'fixed_fee' => 20, 'fee_per_unit' => 0,
+             'insp_fee' => 2,  'insp_method' => 'per_unit'],
+            ['range_from' => 21, 'range_to' => 1000000, 'fixed_fee' => 20, 'fee_per_unit' => 0,
+             'excess_threshold' => 20, 'excess_fee' => 10,
+             'insp_fee' => 2, 'insp_method' => 'per_unit'],
         ]);
 
-        // --- Elevators ---
+        // --- C. Elevators (ann_inspection_fvi) --- tiered ---
+        // BOPMS: inspection = min(unit, excess) × fee + max(0, unit-excess) × excess_fee
+        // First N units at standard rate; additional units at lower rate (shared infrastructure)
+        // excess = threshold where rate changes (e.g. first 3 elevators at ₱X, rest at ₱Y)
         $elevItems = [
-            ['MECH_ELEV_DUMB', 'Motor Driven Dumbwaiters', 600],
-            ['MECH_ELEV_CONST', 'Construction Elevators for Material', 2000],
-            ['MECH_ELEV_PASS', 'Passenger Elevators', 5000],
-            ['MECH_ELEV_FRT', 'Freight Elevators', 5000],
-            ['MECH_ELEV_CAR', 'Car Elevators', 5000.5],
+            // [code, name, fixed_fee, insp_fee/unit, insp_excess_threshold, insp_excess_fee]
+            ['MECH_ELEV_DUMB',  'Motor Driven Dumbwaiters',             600,    60,  3, 40],
+            ['MECH_ELEV_CONST', 'Construction Elevators for Material', 2000,   200,  3, 150],
+            ['MECH_ELEV_PASS',  'Passenger Elevators',                 5000,   500,  3, 350],
+            ['MECH_ELEV_FRT',   'Freight Elevators',                   5000,   500,  3, 350],
+            ['MECH_ELEV_CAR',   'Car Elevators',                       5000.5, 500,  3, 350],
         ];
         foreach ($elevItems as $item) {
             $feeTypeId = $this->upsertFeeType(
                 'MECH', $item[0], $item[1], 'fixed', false, false, ++$order,
             );
-            $this->syncSchedules($feeTypeId, [['fixed_fee' => $item[2]]]);
+            $this->syncSchedules($feeTypeId, [[
+                'fixed_fee'              => $item[2],
+                'insp_fee'               => $item[3],
+                'insp_excess_threshold'  => $item[4],
+                'insp_excess_fee'        => $item[5],
+                'insp_method'            => 'tiered',
+            ]]);
         }
 
-        // --- Boilers ---
+        // --- D. Boilers (ann_inspection_fvii_range_fees) --- per_unit with grouped excess ---
+        // BOPMS: insp = fee × unit per kW within range; 75+ uses grouped excess ÷ every
+        // Permit: ranges 0-74.9 flat; 75+ = ₱1600 + (kW-75)×5
         $feeTypeId = $this->upsertFeeType(
             'MECH', 'MECH_BOILER', 'Boilers (per rated capacity in kW)',
             'range_based', true, false, ++$order,
         );
         $this->syncSchedules($feeTypeId, [
-            ['range_from' => 0, 'range_to' => 7.5, 'fixed_fee' => 500],
-            ['range_from' => 7.51, 'range_to' => 22, 'fixed_fee' => 700],
-            ['range_from' => 23, 'range_to' => 37, 'fixed_fee' => 900],
-            ['range_from' => 38, 'range_to' => 52, 'fixed_fee' => 1200],
-            ['range_from' => 53, 'range_to' => 67, 'fixed_fee' => 1400],
-            ['range_from' => 68, 'range_to' => 74, 'fixed_fee' => 1600],
-            ['range_from' => 75, 'range_to' => 1000000, 'fixed_fee' => 1600, 'fee_per_unit' => 5],
+            // insp_fee = per-kW inspection rate; derived ≈10% of flat_fee / mid-range
+            ['range_from' => 0,    'range_to' => 7.5,    'fixed_fee' => 500,  'fee_per_unit' => 0,
+             'insp_fee' => 13,  'insp_method' => 'per_unit'],
+            ['range_from' => 7.51, 'range_to' => 22.9,   'fixed_fee' => 700,  'fee_per_unit' => 0,
+             'insp_fee' => 5,   'insp_method' => 'per_unit'],
+            ['range_from' => 23,   'range_to' => 37.9,   'fixed_fee' => 900,  'fee_per_unit' => 0,
+             'insp_fee' => 3,   'insp_method' => 'per_unit'],
+            ['range_from' => 38,   'range_to' => 52.9,   'fixed_fee' => 1200, 'fee_per_unit' => 0,
+             'insp_fee' => 3,   'insp_method' => 'per_unit'],
+            ['range_from' => 53,   'range_to' => 67.9,   'fixed_fee' => 1400, 'fee_per_unit' => 0,
+             'insp_fee' => 2,   'insp_method' => 'per_unit'],
+            ['range_from' => 68,   'range_to' => 74.9,   'fixed_fee' => 1600, 'fee_per_unit' => 0,
+             'insp_fee' => 2,   'insp_method' => 'per_unit'],
+            // 75+: base = 75×2=150; excess = ((kW-75)/1)×0.5 per kW
+            ['range_from' => 75,   'range_to' => 1000000, 'fixed_fee' => 1600, 'fee_per_unit' => 0,
+             'excess_threshold' => 75, 'excess_fee' => 5,
+             'insp_fee' => 2, 'insp_excess_threshold' => 75, 'insp_excess_fee' => 0.5,
+             'insp_excess_every' => 1, 'insp_method' => 'per_unit'],
         ]);
 
-        // --- Other Mechanical Fees (unit-based) ---
+        // --- O. Others --- per_unit (most) or per_unit+range (O.2 pump, O.8 machinery) ---
         $otherItems = [
-            ['MECH_WATER_HEATER', 'Pressurized Water Heaters, per unit', 200],
-            ['MECH_WATER_PUMP', 'Water/Sump/Sewage Pumps (Commercial/Industrial), per kW', 60],
-            ['MECH_SPRINKLER', 'Automatic Fire Sprinkler System, per sprinkler head', 4],
-            ['MECH_COMPRESSED', 'Compressed Air/Vacuum/Gases, per outlet', 20],
-            ['MECH_GAS_METER', 'Gas Meter, per unit', 100],
-            ['MECH_POWER_PIPE', 'Power Piping (gas/steam/etc.), per lineal meter', 4],
-            ['MECH_PRESSURE_V', 'Pressure Vessels, per cu. meter', 60],
-            ['MECH_OTHER_EQUIP', 'Other Machinery/Equipment (Commercial/Industrial), per kW', 60],
-            ['MECH_PNEUMATIC', 'Pneumatic Tubes/Conveyors/Monorails, per lineal meter', 10],
-            ['MECH_WEIGH_SCALE', 'Weighing Scale Structure, per ton', 50],
+            // [code, name, fee_per_unit, insp_fee]
+            ['MECH_WATER_HEATER', 'Pressurized Water Heaters, per unit',                        200,  20],
+            ['MECH_WATER_PUMP',   'Water/Sump/Sewage Pumps (Commercial/Industrial), per kW',     60,   6],
+            ['MECH_SPRINKLER',    'Automatic Fire Sprinkler System, per sprinkler head',           4, 0.4],
+            ['MECH_COMPRESSED',   'Compressed Air/Vacuum/Gases, per outlet',                      20,   2],
+            ['MECH_GAS_METER',    'Gas Meter, per unit',                                         100,  10],
+            ['MECH_POWER_PIPE',   'Power Piping (gas/steam/etc.), per lineal meter',               4, 0.4],
+            ['MECH_PRESSURE_V',   'Pressure Vessels, per cu. meter',                              60,   6],
+            ['MECH_OTHER_EQUIP',  'Other Machinery/Equipment (Commercial/Industrial), per kW',    60,   6],
+            ['MECH_PNEUMATIC',    'Pneumatic Tubes/Conveyors/Monorails, per lineal meter',        10,   1],
+            ['MECH_WEIGH_SCALE',  'Weighing Scale Structure, per ton',                            50,   5],
         ];
         foreach ($otherItems as $item) {
             $feeTypeId = $this->upsertFeeType(
                 'MECH', $item[0], $item[1], 'per_unit', false, false, ++$order,
             );
-            $this->syncSchedules($feeTypeId, [['fee_per_unit' => $item[2]]]);
+            $this->syncSchedules($feeTypeId, [['fee_per_unit' => $item[2], 'insp_fee' => $item[3], 'insp_method' => 'per_unit']]);
         }
 
-        // --- Diesel / Gasoline Engines ---
+        // --- H. Diesel / Gasoline Engines (ann_inspection_fxi_range_fees) --- per_unit ---
         $feeTypeId = $this->upsertFeeType(
             'MECH', 'MECH_DIESEL', 'Diesel/Gasoline Engines (per kW)',
             'range_based', false, false, ++$order,
         );
         $this->syncSchedules($feeTypeId, [
-            ['range_from' => 0, 'range_to' => 50, 'fee_per_unit' => 25],
-            ['range_from' => 51, 'range_to' => 100, 'fee_per_unit' => 20],
-            ['range_from' => 101, 'range_to' => 100000, 'fee_per_unit' => 3],
+            ['range_from' => 0,   'range_to' => 50.99,  'fee_per_unit' => 25, 'insp_fee' => 2.5, 'insp_method' => 'per_unit'],
+            ['range_from' => 51,  'range_to' => 100.99, 'fee_per_unit' => 20, 'insp_fee' => 2,   'insp_method' => 'per_unit'],
+            ['range_from' => 101, 'range_to' => 1000000,'fee_per_unit' => 3,  'insp_fee' => 0.3, 'insp_method' => 'per_unit'],
         ]);
 
-        // --- Other Internal Combustion ---
+        // --- L. Other Internal Combustion (ann_inspection_fxiv_range_fees) --- per_unit ---
         $feeTypeId = $this->upsertFeeType(
             'MECH', 'MECH_INT_COMB', 'Other Internal Combustion Engines (per kW)',
             'range_based', false, false, ++$order,
         );
         $this->syncSchedules($feeTypeId, [
-            ['range_from' => 1, 'range_to' => 50, 'fee_per_unit' => 10],
-            ['range_from' => 51, 'range_to' => 100, 'fee_per_unit' => 12],
-            ['range_from' => 101, 'range_to' => 1000000, 'fee_per_unit' => 3],
+            ['range_from' => 1,   'range_to' => 50.9,   'fee_per_unit' => 10, 'insp_fee' => 1,   'insp_method' => 'per_unit'],
+            ['range_from' => 51,  'range_to' => 100.9,  'fee_per_unit' => 12, 'insp_fee' => 1.2, 'insp_method' => 'per_unit'],
+            ['range_from' => 101, 'range_to' => 1000000,'fee_per_unit' => 3,  'insp_fee' => 0.3, 'insp_method' => 'per_unit'],
         ]);
     }
 
@@ -1610,5 +1646,215 @@ class FeeScheduleSeeder extends Seeder
             'per_unit', false, false, ++$order,
         );
         $this->syncSchedules($feeTypeId, [['fee_per_unit' => 30]]);
+    }
+
+    // =========================================================================
+    // NBC MECHANICAL PERMIT INSPECTION FEES (MECH_INSP category)
+    // Mirrors BOPMS ann_inspection_f* tables — one FeeType per MECH fee type.
+    // computation_method:
+    //   range_based      = flat fee per band (A types) or per_unit-with-range (D/H/L/O)
+    //   per_unit         = simple fee × unit (B types, most O types)
+    //   cumulative_range = tiered: first N × fee + remainder × excess_fee (C elevators)
+    // =========================================================================
+
+    private function seedMechInspFees(): void
+    {
+        $bpPermitType = \App\Models\PermitType::where('code', 'BP')->first();
+        if (!$bpPermitType) {
+            return;
+        }
+
+        FeeCategory::updateOrCreate(
+            ['code' => 'MECH_INSP'],
+            [
+                'permit_type_id' => $bpPermitType->id,
+                'name'           => 'Mechanical Permit Inspection Fees (NBC)',
+                'description'    => 'Annual inspection fee component of MECH permit assessment. Mirrors BOPMS ann_inspection_f* tables.',
+                'sort_order'     => 20,
+            ]
+        );
+
+        $o = 0;
+
+        // ── A. Refrigeration / Air-conditioning / Ventilation ──
+        // A.1 & A.2: REFRIG and ICE share ann_inspection_fi_range_fees (flat fee per range band)
+
+        $fiRows = [
+            ['range_from' => 1,   'range_to' => 100.99, 'fixed_fee' => 25],
+            ['range_from' => 101, 'range_to' => 150.99, 'fixed_fee' => 20],
+            ['range_from' => 151, 'range_to' => 300.99, 'fixed_fee' => 15],
+            ['range_from' => 301, 'range_to' => 999999, 'fixed_fee' => 10, 'excess_threshold' => 500, 'excess_fee' => 5],
+        ];
+
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_REFRIG', 'Insp. Fee — Refrigeration Plants (per ton/kW)',
+            'range_based', false, false, ++$o);
+        $this->syncSchedules($id, $fiRows);
+
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_ICE', 'Insp. Fee — Ice Plants (per ton)',
+            'range_based', false, false, ++$o);
+        $this->syncSchedules($id, $fiRows);
+
+        // A.3: ann_inspection_fiii_range_fees — Centralized AC (flat fee per band)
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_CENTRAL_AC', 'Insp. Fee — Packaged/Centralized AC (per ton/kW)',
+            'range_based', false, false, ++$o);
+        $this->syncSchedules($id, [
+            ['range_from' => 1,   'range_to' => 100.99, 'fixed_fee' => 25],
+            ['range_from' => 101, 'range_to' => 150.99, 'fixed_fee' => 20],
+            ['range_from' => 151, 'range_to' => 999999, 'fixed_fee' => 20, 'excess_threshold' => 500, 'excess_fee' => 8],
+        ]);
+
+        // A.4: ann_inspection_fii_fees — Window AC (per unit)
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_WINDOW_AC', 'Insp. Fee — Window-Type Air Conditioners (per unit)',
+            'per_unit', false, false, ++$o);
+        $this->syncSchedules($id, [['fee_per_unit' => 40]]);
+
+        // A.5 & B.1: VENT and ESC_KW share ann_inspection_fiv_range_fees (per_unit by kW range)
+        $fivRows = [
+            ['range_from' => 1,   'range_to' => 1.99,   'fee_per_unit' => 10],
+            ['range_from' => 2,   'range_to' => 7.59,   'fee_per_unit' => 50],
+            ['range_from' => 7.6, 'range_to' => 999999, 'fee_per_unit' => 20, 'excess_threshold' => 7.5, 'excess_fee' => 20],
+        ];
+
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_VENT', 'Insp. Fee — Mechanical Ventilation (per kW)',
+            'range_based', false, false, ++$o);
+        $this->syncSchedules($id, $fivRows);
+
+        // ── B. Escalators / Funiculars / Cable Cars ──
+
+        // B.1: ann_inspection_fiv_range_fees — Escalators per kW (same as VENT)
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_ESC_KW', 'Insp. Fee — Escalators/Moving Walks per kW',
+            'range_based', false, false, ++$o);
+        $this->syncSchedules($id, $fivRows);
+
+        // B.1b–B.5: ann_inspection_fv_fees — per unit/kW/LM (simple per_unit)
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_ESC_RANGE', 'Insp. Fee — Escalators/Moving Walks per unit',
+            'per_unit', false, false, ++$o);
+        $this->syncSchedules($id, [['fee_per_unit' => 120]]);
+
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_FUNIC_KW', 'Insp. Fee — Funiculars per kW',
+            'per_unit', false, false, ++$o);
+        $this->syncSchedules($id, [['fee_per_unit' => 50]]);
+
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_FUNIC_LM', 'Insp. Fee — Funiculars per lineal meter',
+            'per_unit', false, false, ++$o);
+        $this->syncSchedules($id, [['fee_per_unit' => 10]]);
+
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_CABLE_KW', 'Insp. Fee — Cable Cars per kW',
+            'per_unit', false, false, ++$o);
+        $this->syncSchedules($id, [['fee_per_unit' => 25]]);
+
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_CABLE_LM', 'Insp. Fee — Cable Cars per lineal meter',
+            'per_unit', false, false, ++$o);
+        $this->syncSchedules($id, [['fee_per_unit' => 2]]);
+
+        // ── C. Elevators (tiered: first N landings × rate + remaining × excess_fee) ──
+        // ann_inspection_fvi_fees: excess=5 means first 5 landings at full rate, then per-landing excess_fee
+
+        foreach ([
+            ['INSP_ELEV_PASS',  'Insp. Fee — Passenger Elevators',                  500, 5, 50],
+            ['INSP_ELEV_FRT',   'Insp. Fee — Freight Elevators',                    400, 5, 50],
+            ['INSP_ELEV_DUMB',  'Insp. Fee — Motor-Driven Dumbwaiters',             50,  5, 50],
+            ['INSP_ELEV_CONST', 'Insp. Fee — Construction Elevators for Materials', 400, 5, 50],
+            ['INSP_ELEV_CAR',   'Insp. Fee — Car Elevators',                        500, 5, 50],
+        ] as [$code, $name, $fee, $threshold, $excessFee]) {
+            $id = $this->upsertFeeType('MECH_INSP', $code, $name, 'cumulative_range', true, false, ++$o);
+            $this->syncSchedules($id, [
+                ['fee_per_unit' => $fee, 'excess_threshold' => $threshold, 'excess_fee' => $excessFee],
+            ]);
+        }
+
+        // ── D. Boilers per kW — ann_inspection_fvii_range_fees (flat fee per band) ──
+
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_BOILER', 'Insp. Fee — Boilers per kW',
+            'range_based', false, false, ++$o);
+        $this->syncSchedules($id, [
+            ['range_from' => 1,     'range_to' => 7.5,    'fixed_fee' => 400],
+            ['range_from' => 7.6,   'range_to' => 22,     'fixed_fee' => 550],
+            ['range_from' => 22.01, 'range_to' => 37,     'fixed_fee' => 600],
+            ['range_from' => 37.01, 'range_to' => 52,     'fixed_fee' => 650],
+            ['range_from' => 52.01, 'range_to' => 67,     'fixed_fee' => 800],
+            ['range_from' => 67.01, 'range_to' => 999999, 'fixed_fee' => 900, 'excess_threshold' => 74, 'excess_fee' => 4],
+        ]);
+
+        // ── H. Diesel / Gasoline Engines per kW — ann_inspection_fx_range_fees (flat fee per band) ──
+
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_DIESEL', 'Insp. Fee — Diesel/Gasoline Engines per kW',
+            'range_based', false, false, ++$o);
+        $this->syncSchedules($id, [
+            ['range_from' => 1,  'range_to' => 5.99,   'fixed_fee' => 55],
+            ['range_from' => 6,  'range_to' => 10.99,  'fixed_fee' => 90],
+            ['range_from' => 11, 'range_to' => 999999, 'fixed_fee' => 90, 'excess_threshold' => 10, 'excess_fee' => 2],
+        ]);
+
+        // ── L. Other Internal Combustion Engines per kW — ann_inspection_fxi_range_fees (per_unit) ──
+
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_INT_COMB', 'Insp. Fee — Other Internal Combustion Engines per kW',
+            'range_based', false, false, ++$o);
+        $this->syncSchedules($id, [
+            ['range_from' => 1,   'range_to' => 50.99,  'fee_per_unit' => 15],
+            ['range_from' => 51,  'range_to' => 100.99, 'fee_per_unit' => 10],
+            ['range_from' => 101, 'range_to' => 999999, 'fee_per_unit' => 10, 'excess_threshold' => 100, 'excess_fee' => 2.4],
+        ]);
+
+        // ── O. Other Mechanical Equipment ──
+
+        // ann_inspection_fviii_fees — Water Heaters (per unit)
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_WATER_HEATER', 'Insp. Fee — Pressurized Water Heaters (per unit)',
+            'per_unit', false, false, ++$o);
+        $this->syncSchedules($id, [['fee_per_unit' => 120]]);
+
+        // ann_inspection_fxv_range_fees — Water Pumps (flat fee per kW band)
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_WATER_PUMP', 'Insp. Fee — Water/Sump/Sewage Pumps per kW',
+            'range_based', false, false, ++$o);
+        $this->syncSchedules($id, [
+            ['range_from' => 0.01, 'range_to' => 0.5,    'fixed_fee' => 8 ],
+            ['range_from' => 0.51, 'range_to' => 1,      'fixed_fee' => 23],
+            ['range_from' => 1.01, 'range_to' => 3,      'fixed_fee' => 39],
+            ['range_from' => 3.01, 'range_to' => 5,      'fixed_fee' => 55],
+            ['range_from' => 5.01, 'range_to' => 10,     'fixed_fee' => 80],
+            ['range_from' => 11,   'range_to' => 999999, 'fixed_fee' => 80, 'excess_threshold' => 10, 'excess_fee' => 4],
+        ]);
+
+        // ann_inspection_fix_fees — Fire Sprinklers (per head)
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_SPRINKLER', 'Insp. Fee — Automatic Fire Sprinklers (per head)',
+            'per_unit', false, false, ++$o);
+        $this->syncSchedules($id, [['fee_per_unit' => 2]]);
+
+        // ann_inspection_fxii_fees — Compressed Air/Gases (per outlet)
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_COMPRESSED', 'Insp. Fee — Compressed Air/Vacuum/Gases (per outlet)',
+            'per_unit', false, false, ++$o);
+        $this->syncSchedules($id, [['fee_per_unit' => 10]]);
+
+        // ann_inspection_fxix_fees id=2 — Gas Meters (per unit, tested and sealed)
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_GAS_METER', 'Insp. Fee — Gas Meters (per unit)',
+            'per_unit', false, false, ++$o);
+        $this->syncSchedules($id, [['fee_per_unit' => 30]]);
+
+        // ann_inspection_fxiii_fees — Power Piping (per lineal meter)
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_POWER_PIPE', 'Insp. Fee — Power Piping (per lineal meter)',
+            'per_unit', false, false, ++$o);
+        $this->syncSchedules($id, [['fee_per_unit' => 2]]);
+
+        // ann_inspection_fxvi_fees — Pressure Vessels (per cu. meter)
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_PRESSURE_V', 'Insp. Fee — Pressure Vessels (per cu. meter)',
+            'per_unit', false, false, ++$o);
+        $this->syncSchedules($id, [['fee_per_unit' => 40]]);
+
+        // No direct BOPMS table — keep reasonable per-kW rate
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_OTHER_EQUIP', 'Insp. Fee — Other Machinery/Equipment per kW',
+            'range_based', false, false, ++$o);
+        $this->syncSchedules($id, [
+            ['range_from' => 0, 'range_to' => 999999, 'fee_per_unit' => 6],
+        ]);
+
+        // ann_inspection_fxvii_fees — Pneumatic Tubes/Conveyors (per lineal meter)
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_PNEUMATIC', 'Insp. Fee — Pneumatic Tubes/Conveyors (per lineal meter)',
+            'per_unit', false, false, ++$o);
+        $this->syncSchedules($id, [['fee_per_unit' => 2.4]]);
+
+        // ann_inspection_fxviii_fees — Weighing Scale Structures (per ton)
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_WEIGH_SCALE', 'Insp. Fee — Weighing Scale Structures (per ton)',
+            'per_unit', false, false, ++$o);
+        $this->syncSchedules($id, [['fee_per_unit' => 30]]);
     }
 }

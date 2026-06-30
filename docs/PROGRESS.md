@@ -9,17 +9,16 @@
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Laravel 12 project setup | DONE | PHP 8.2, MariaDB 12.3 |
-| Self-healing boot (auto DB/migrations/seeds) | DONE | SelfHealingServiceProvider |
-| Authentication (staff portal) | DONE | /staff/login with role-based redirect |
-| Authentication (client portal) | DONE | /login, /register for online applicants |
-| Role-based access control (RBAC) | DONE | 9 roles, 30+ permissions via Spatie |
+| Self-healing boot | DONE | SelfHealingServiceProvider |
+| Staff authentication | DONE | /staff/login with role-based redirect |
+| Client authentication | DONE | /login, /register |
+| RBAC | DONE | 9 roles, 30+ permissions via Spatie |
 | Activity logging | DONE | Application, Assessment, Collection, Permit |
 | Soft deletes | DONE | All transaction tables |
-| Settings management | DONE | Key-value settings table with admin UI |
-| Browser autofill disabled | DONE | autocomplete="off" on all 41 forms |
-| Form validation UX | DONE | Error summary banner, section highlighting, scroll-to-error |
-| Backend validation aligned | DONE | Required fields match HTML required attributes |
-| Test data seeder | DONE | ApplicationSeeder: 5 BP + 5 OP with all fields populated |
+| Settings management | DONE | Key-value with admin UI |
+| Browser autofill disabled | DONE | autocomplete="off" on all forms |
+| Form validation UX | DONE | Error banner, section highlighting, scroll-to-error |
+| Test data seeder | DONE | ApplicationSeeder: 5 BP + 5 OP |
 
 ---
 
@@ -27,26 +26,14 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Application CRUD (walk-in) | DONE | Full create/edit/view/list |
-| Application CRUD (online) | DONE | Client portal with submit on create |
-| Application numbering (BP-YYYY-MM-NNNNN) | DONE | Auto-generated, unique |
-| Occupancy group selection (multi-select) | DONE | Groups A-J with sub-groups |
-| Application type (New/Renewal/Amendatory) | DONE | Linked to permit_type via application_types table |
-| Complexity (Simple/Complex) | DONE | |
-| Skip Locational Clearance | DONE | applies_to = "SKIP_LC" |
-| Applicant information | DONE | Name, TIN, contact, address, ID |
-| Enterprise/ownership | DONE | |
-| Building location | DONE | Lot/block/TCT/tax dec, barangay |
-| Scope of work | DONE | 12 scope options with details |
-| Building specifications | DONE | Storeys, units, floor area, lot area |
-| Cost estimates (9 cost fields) | DONE | Auto-totals via Alpine.js |
-| Engineer/Architect details | DONE | PRC, PTR, TIN, address |
-| PEE/SEW details | DONE | Professional electrical engineer fields |
-| Owner details | DONE | Name, address, govt ID |
-| Electrical permit data | DONE | Connected load, transformer, generator capacity |
-| Application form print (HTML) | DONE | Browser print with legal paper layout |
-| Status workflow | DONE | 8-state machine with validation |
-| Application submission + notification | DONE | Notifies engineering users |
+| Application CRUD (walk-in) | DONE | |
+| Application CRUD (online) | DONE | Client portal |
+| Application numbering | DONE | BP-YYYY-MM-NNNNN |
+| Occupancy group selection | DONE | Groups A–J with sub-groups |
+| All BP form fields | DONE | Applicant, enterprise, project, building, costs, engineers |
+| Application form print | DONE | Browser print, legal layout |
+| Status workflow | DONE | 8-state machine |
+| Submission notification | DONE | Notifies engineering users |
 
 ---
 
@@ -54,18 +41,11 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Application CRUD (walk-in) | DONE | Separate form/controller, own `occupancy_applications` table (OccupancyApplicationController) |
-| Application type (Full/Partial) | DONE | Separate types linked to OP permit type |
-| BP reference (number, date issued) | DONE | |
-| FSEC reference (number, date issued) | DONE | |
-| Project details (name, completion, location) | DONE | OP-specific section |
+| Application CRUD | DONE | Separate controller/model/table |
+| OP-specific fields | DONE | BP reference, FSEC, completion date |
 | Character of Occupancy | DONE | Shared occupancy group selection |
-| Application form print | DONE | OP-specific template |
-| Status workflow (skips zoning) | DONE | submitted → engineering_assessed directly |
-| Separate database table | DONE | Own `occupancy_applications` table, polymorphic downstream (assessments, billings, collections, permits, documents) |
-| Separate model/service/DTO | DONE | OccupancyApplication model, OccupancyApplicationService, OccupancyApplicationDTO |
-| Separate controller/routes | DONE | OccupancyApplicationController, /occupancy-applications/* routes |
-| Separate views | DONE | occupancy-applications/index, form, show |
+| Status workflow (skips zoning) | DONE | submitted → engineering_assessed |
+| Polymorphic downstream | DONE | assessments, billings, collections, permits, documents |
 
 ---
 
@@ -73,18 +53,17 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Zoning assessment form | DONE | Card-based design matching BP/OP. Project classification (BOPMS dropdowns), zoning details, boundaries, compliance |
-| Zoning fee auto-compute | DONE | Queries land_use_and_zoning_fees by occupancy sub-group + cost range. Matches BOPMS zoningAutoCompute() logic |
-| Fee items table with delete | DONE | Assessment items table with per-row delete, auto-compute button |
-| Assessment finalization | DONE | Sums items, finalizes assessment, transitions for_zoning_assessment → zoning_assessed |
-| For zoning assessment status | DONE | New status for BP apps routed to planning office |
-| Skip locational clearance | DONE | Bypass planning office, goes to submitted status directly |
-| Dedicated zoning fee tables | DONE | land_use_and_zoning_fees (162 rows), certification_zoning_fees (P500) |
-| Zoning fee settings page | DONE | /settings/zoning-fees — manage fees by occupancy group/sub-group with accordion UI |
-| Zoning other fees (Variance/Non-Conforming) | DONE | Dedicated table + settings UI |
-| Zoning fee type selector (4 types) | DONE | LC, LC Manual, Certification, Others matching BOPMS |
-| Zoning checkbox select-all / bulk delete | DONE | Multi-select with fetch API bulk delete |
-| Zoning finalize password confirmation | DONE | Hash::check() modal with password entry |
+| Zoning assessment form | DONE | BOPMS-style card layout |
+| Fee auto-compute | DONE | land_use_and_zoning_fees + certification_zoning_fees |
+| Fee items table + delete | DONE | Per-row delete, auto-compute button |
+| Assessment finalization | DONE | for_zoning_assessment → zoning_assessed |
+| Skip locational clearance | DONE | Bypass planning, → submitted |
+| Dedicated zoning fee tables | DONE | 162 LC rows, P500 cert fee |
+| Zoning fee settings page | DONE | /settings/zoning-fees accordion UI |
+| Variance/Non-Conforming fees | DONE | land_use_and_zoning_other_fees table |
+| Fee type selector (4 types) | DONE | LC, LC Manual, Certification, Others |
+| Checkbox bulk delete | DONE | fetch API bulk delete |
+| Finalize password confirm | DONE | Hash::check() modal |
 | Zoning certification PDF | DONE | Template exists |
 | Locational clearance PDF | DONE | Template exists |
 
@@ -94,29 +73,22 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Fee schedule management (admin UI) | DONE | Categories, types, schedules CRUD |
-| Zoning fee management (admin UI) | DONE | Dedicated /settings/zoning-fees page |
-| 3-table consolidated design | DONE | Replaces BOPMS's 100+ tables |
-| Fixed fee computation | DONE | |
-| Per-unit fee computation | DONE | |
-| Range-based fee computation | DONE | |
-| Cumulative range computation | DONE | |
-| Percentage computation | DONE | |
-| Formula computation | PARTIAL | Formula stored as text, evaluation may be incomplete |
-| Excess fee calculation | DONE | Threshold, per-unit excess, every-N grouping |
-| Min/max constraints | DONE | |
-| Construction fee data | DONE | Seeded via FeeScheduleSeeder |
-| Construction tab (BOPMS-style) | DONE | Part of Building + Division + Area → auto fee lookup, Total Area row |
-| Electrical fee data | DONE | 6 active types: TCL, TRANS, UPS, POLE, MISC_METER, MISC_WIRING (split from merged TUG) |
-| Electrical tab (BOPMS-style) | DONE | 7 fee options, server-side range computation, auto inspection fee from settings |
-| Electrical inspection fee setting | DONE | `assessment.electrical_inspection_percentage` (default 10%) in Settings |
-| BP assessment tabbed navigation | DONE | 8 category tabs + Summary, item count badges, scrollbar hidden |
-| Mechanical fee data | DONE | |
-| Plumbing fee data | DONE | |
-| Electronics fee data | DONE | |
-| Occupancy fee data | DONE | |
-| Zoning fee data | DONE | |
-| Accessory fee data | PARTIAL | Some accessory categories may need more seed data |
+| Fee schedule management | DONE | Categories/types/schedules CRUD |
+| Zoning fee management | DONE | /settings/zoning-fees |
+| All 6 computation methods | DONE | fixed, per_unit, range_based, cumulative_range, percentage (formula = PARTIAL) |
+| Excess/min/max | DONE | |
+| Construction fee data + tab | DONE | BOPMS-style: Part+Division+Area → auto lookup |
+| Electrical fee data + tab | DONE | BOPMS-style: 7 types, range kVA, auto inspection % |
+| Electrical inspection fee | DONE | `assessment.electrical_inspection_percentage` setting (default 10%) |
+| Mechanical fee data + tab | DONE | BOPMS-style: equipment type+unit → auto base + NBC inspection fee |
+| Mechanical NBC inspection fees | DONE | MECH_INSP category: 29 INSP_* types / 55 schedules from BOPMS ann_inspection_f* tables |
+| Mechanical inspection formulas | DONE | flat (range-band), per_unit (rate×count), tiered (cumulative for elevators) |
+| BP assessment tab navigation | DONE | 8 tabs + Summary, badges, hidden MECH_INSP tab |
+| Plumbing fee data | DONE | Seeded |
+| Plumbing tab (BOPMS-style) | PENDING | Next implementation |
+| Electronics fee data | DONE | Seeded |
+| Occupancy fee data | DONE | Seeded |
+| Accessory fee data | PARTIAL | May need more seed data |
 
 ---
 
@@ -124,11 +96,9 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Payment collection (cash) | DONE | |
-| Payment collection (check) | DONE | Bank, check number, check date |
-| Payment collection (online) | DONE | Reference number |
-| Official receipt generation | DONE | PDF with unique OR number |
-| Void transaction | DONE | Admin password verification, void tracking |
+| Payment collection (cash/check/online) | DONE | |
+| Official receipt generation | DONE | PDF, unique OR number |
+| Void transaction | DONE | Password verify, void tracking |
 | Collection history | DONE | |
 
 ---
@@ -137,7 +107,7 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Billing generation from assessments | DONE | Auto-number BL-YYYY-MM-NNNNN |
+| Billing generation | DONE | BL-YYYY-MM-NNNNN |
 | Billing statement PDF | DONE | |
 | Billing status tracking | DONE | unpaid, partial, paid, void |
 
@@ -147,11 +117,10 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Building permit PDF | DONE | Template with signatories |
-| Occupancy permit PDF | DONE | Template with signatories |
+| Building permit PDF | DONE | With signatories |
+| Occupancy permit PDF | DONE | With signatories |
 | Permit numbering | DONE | CODE-YYYY-MM-NNNNN |
-| Permit status tracking | DONE | generated, signed, released |
-| Evaluation report PDF | DONE | Template exists |
+| Evaluation report PDF | DONE | |
 
 ---
 
@@ -159,11 +128,8 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Permit reports (filter by date/type) | DONE | |
-| Revenue reports | DONE | |
-| Collection reports | DONE | |
-| Excel export | DONE | Maatwebsite Excel |
-| PDF export | DONE | DomPDF |
+| Permit / Revenue / Collection reports | DONE | |
+| Excel + PDF export | DONE | |
 
 ---
 
@@ -172,7 +138,7 @@
 | Feature | Status | Notes |
 |---------|--------|-------|
 | System settings | DONE | |
-| User management (CRUD) | DONE | |
+| User management | DONE | |
 | Role/permission matrix | DONE | |
 | Fee schedule management | DONE | |
 | Signatory management | DONE | |
@@ -183,11 +149,10 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Client registration | DONE | |
-| Client login (separate portal) | DONE | |
-| Online application submission | DONE | Auto-submits (skips draft) |
-| Application status tracking | DONE | Timeline view |
-| Document requirement upload | PARTIAL | Model/route exists, UI may need work |
+| Registration + login | DONE | Separate portal |
+| Online application submission | DONE | Auto-submits |
+| Status tracking | DONE | Timeline view |
+| Document requirement upload | PARTIAL | Model/route exists, UI needs work |
 | Permit download | DONE | When status = released |
 
 ---
@@ -196,10 +161,9 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| KPI cards (applications, pending, revenue) | DONE | |
+| KPI cards | DONE | Applications, pending, revenue |
 | Monthly revenue chart | DONE | Chart.js |
-| Recent applications list | DONE | |
-| Daily transaction count | DONE | |
+| Recent applications + daily count | DONE | |
 
 ---
 
@@ -207,7 +171,7 @@
 
 | Feature | Reason |
 |---------|--------|
-| BFP module (FSEC/FSIC) | BFP is not included in this system |
-| DB-level encryption | Not required for this deployment |
-| Annual inspection fees | Future scope, not in current requirements |
-| BFP partial payment (downpayment) | BFP excluded |
+| BFP module (FSEC/FSIC) | BFP not included in this system |
+| DB-level encryption | Not required |
+| Annual inspection (non-mechanical) | Future scope |
+| BFP partial payment | BFP excluded |
