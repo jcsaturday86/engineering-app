@@ -208,6 +208,396 @@
                     <p class="text-xs text-gray-400 mt-2">Fee and amount are auto-computed based on BOPMS electrical fee schedule.</p>
                 </form>
             </div>
+            @elseif($cat->code === 'PLUMB')
+            {{-- Plumbing Fee Form (BOPMS-style) --}}
+            <div x-data="{
+                feeCode: '',
+                unitLabels: {
+                    PLUMB_INSTALL:'unit(s)',
+                    PLUMB_FIX_WC:'fixture(s)', PLUMB_FIX_FD:'fixture(s)', PLUMB_FIX_SINK:'fixture(s)',
+                    PLUMB_FIX_LAV:'fixture(s)', PLUMB_FIX_FAUCET:'fixture(s)', PLUMB_FIX_SHOWER:'fixture(s)',
+                    PLUMB_SP_SLOP:'fixture(s)', PLUMB_SP_URINAL:'fixture(s)', PLUMB_SP_BATH:'fixture(s)',
+                    PLUMB_SP_GREASE:'fixture(s)', PLUMB_SP_GARAGE:'fixture(s)', PLUMB_SP_BIDET:'fixture(s)',
+                    PLUMB_SP_DENTAL:'fixture(s)', PLUMB_SP_GWH:'fixture(s)', PLUMB_SP_DRINK:'fixture(s)',
+                    PLUMB_SP_BAR:'fixture(s)', PLUMB_SP_LAUNDRY:'fixture(s)', PLUMB_SP_LAB:'fixture(s)',
+                    PLUMB_SP_STERIL:'fixture(s)',
+                    PLUMB_WATER_METER:'mm (diameter)', PLUMB_SEPTIC:'cu. meter(s)'
+                },
+                get unitLabel() { return this.unitLabels[this.feeCode] || 'unit'; }
+            }">
+                <h4 class="text-sm font-semibold text-gray-700 mb-3">
+                    <i class="fas fa-plus-circle text-blue-500 mr-1"></i> Add Plumbing Fee Item
+                </h4>
+                <form action="{{ route('assessments.plumbingItem', $application) }}" method="POST" autocomplete="off">
+                    @csrf
+                    <input type="hidden" name="plumbing_fee_type" :value="feeCode">
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Plumbing Fee <span class="text-red-500">*</span></label>
+                            <select @change="feeCode = $event.target.value" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">-- Select --</option>
+                                <optgroup label="Installation:">
+                                    <option value="PLUMB_INSTALL">Installation Fee (per unit: 1 WC, 2 FD, 1 lav, 1 sink, 3 faucets, 1 shower)</option>
+                                </optgroup>
+                                <optgroup label="Every Fixture:">
+                                    <option value="PLUMB_FIX_WC">Water Closet</option>
+                                    <option value="PLUMB_FIX_FD">Floor Drain</option>
+                                    <option value="PLUMB_FIX_SINK">Sink</option>
+                                    <option value="PLUMB_FIX_LAV">Lavatory</option>
+                                    <option value="PLUMB_FIX_FAUCET">Faucet</option>
+                                    <option value="PLUMB_FIX_SHOWER">Shower Head</option>
+                                </optgroup>
+                                <optgroup label="Special Plumbing Fixtures:">
+                                    <option value="PLUMB_SP_SLOP">Slop Sink</option>
+                                    <option value="PLUMB_SP_URINAL">Urinal</option>
+                                    <option value="PLUMB_SP_BATH">Bath Tub</option>
+                                    <option value="PLUMB_SP_GREASE">Grease Trap</option>
+                                    <option value="PLUMB_SP_GARAGE">Garage Trap</option>
+                                    <option value="PLUMB_SP_BIDET">Bidet</option>
+                                    <option value="PLUMB_SP_DENTAL">Dental Cuspidor</option>
+                                    <option value="PLUMB_SP_GWH">Gas-fired Water Heater</option>
+                                    <option value="PLUMB_SP_DRINK">Drinking Fountain</option>
+                                    <option value="PLUMB_SP_BAR">Bar / Soda Fountain Sink</option>
+                                    <option value="PLUMB_SP_LAUNDRY">Laundry Sink</option>
+                                    <option value="PLUMB_SP_LAB">Laboratory Sink</option>
+                                    <option value="PLUMB_SP_STERIL">Fixed-type Sterilizer</option>
+                                </optgroup>
+                                <optgroup label="Range-Based:">
+                                    <option value="PLUMB_WATER_METER">Water Meter Fee (by diameter in mm)</option>
+                                    <option value="PLUMB_SEPTIC">Septic Tank Fee (by cu. meter volume)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">
+                                Unit
+                                <span x-show="feeCode" x-cloak class="ml-1 text-blue-600 font-semibold" x-text="'(' + unitLabel + ')'"></span>
+                                <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number" name="unit" step="0.01" min="0.01" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit" class="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">Fee and amount are auto-computed based on BOPMS plumbing fee schedule.</p>
+                </form>
+            </div>
+            @elseif($cat->code === 'ELECT')
+            {{-- Electronics Fee Form (BOPMS-style) --}}
+            <div x-data="{
+                feeCode: '',
+                unitLabels: {
+                    ELECT_SWITCH:'outlet(s)', ELECT_BROADCAST:'unit(s)', ELECT_ATM:'unit(s)',
+                    ELECT_OUTLET:'outlet(s)', ELECT_SECURITY:'outlet(s)', ELECT_STUDIO:'unit(s)',
+                    ELECT_TOWER:'unit(s)', ELECT_SIGNAGE:'unit(s)',
+                    ELECT_POLE:'pole(s)', ELECT_ATTACH:'attachment(s)', ELECT_OTHER:'unit(s)'
+                },
+                get unitLabel() { return this.unitLabels[this.feeCode] || 'unit'; }
+            }">
+                <h4 class="text-sm font-semibold text-gray-700 mb-3">
+                    <i class="fas fa-plus-circle text-blue-500 mr-1"></i> Add Electronics Fee Item
+                </h4>
+                <form action="{{ route('assessments.electronicsItem', $application) }}" method="POST" autocomplete="off">
+                    @csrf
+                    <input type="hidden" name="electronics_fee_type" :value="feeCode">
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Electronics Fee Type <span class="text-red-500">*</span></label>
+                            <select @change="feeCode = $event.target.value" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">-- Select --</option>
+                                <optgroup label="Communications &amp; Broadcasting:">
+                                    <option value="ELECT_SWITCH">Central Office Switching Equipment / PABX / PBX / Communications Systems</option>
+                                    <option value="ELECT_BROADCAST">Broadcast Station / CATV / Cell Sites / Communications Centers</option>
+                                    <option value="ELECT_STUDIO">Studios / Auditoriums / Theaters for Broadcasting</option>
+                                    <option value="ELECT_TOWER">Antenna Towers / Masts for Transmission / Reception</option>
+                                </optgroup>
+                                <optgroup label="Devices, Outlets &amp; Systems:">
+                                    <option value="ELECT_ATM">ATM / Ticketing / Vending / Medical Equipment / Electronic Devices</option>
+                                    <option value="ELECT_OUTLET">Electronics / Communications Outlets (voice, data, video)</option>
+                                    <option value="ELECT_SECURITY">Security / Alarm / Fire Alarm / CATV / CCTV Systems Outlets</option>
+                                    <option value="ELECT_SIGNAGE">Electronic Signage and Display Systems</option>
+                                </optgroup>
+                                <optgroup label="Pole &amp; Attachment Fees:">
+                                    <option value="ELECT_POLE">Pole Location Fee (per pole)</option>
+                                    <option value="ELECT_ATTACH">Pole Attachment Fee (per attachment)</option>
+                                </optgroup>
+                                <optgroup label="Other:">
+                                    <option value="ELECT_OTHER">Other Electronics Devices / Equipment</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">
+                                Unit
+                                <span x-show="feeCode" x-cloak class="ml-1 text-blue-600 font-semibold" x-text="'(' + unitLabel + ')'"></span>
+                                <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number" name="unit" step="0.01" min="0.01" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit" class="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">Fee and amount are auto-computed based on BOPMS electronics fee schedule.</p>
+                </form>
+            </div>
+            @elseif($cat->code === 'ACC_BLDG')
+            {{-- Accessory Fee Form (BOPMS-style) --}}
+            <div x-data="{
+                feeCode: '',
+                unitLabels: {
+                    ACC_OPEN_PARTS:'base fee (PHP)', ACC_HEIGHT:'cu.m.', ACC_VAULT:'sq.m.', ACC_FIREWALL:'sq.m.',
+                    ACC_POOL_RES:'sq.m.', ACC_POOL_COM:'sq.m.', ACC_POOL_SOC:'sq.m.', ACC_POOL_INDIG:'sq.m.',
+                    ACC_POOL_SHR_RES:'sq.m.', ACC_POOL_SHR_COM:'sq.m.', ACC_POOL_SHR_SOC:'sq.m.',
+                    ACC_TOWER_RES:'unit(s)', ACC_TOWER_COM_SS:'meter(s)', ACC_TOWER_COM_TG:'meter(s)',
+                    ACC_TOWER_EDU_SS:'meter(s)', ACC_TOWER_EDU_TG:'meter(s)',
+                    ACC_SILO:'meter(s)', ACC_SMOKESTACK:'meter(s)', ACC_CHIMNEY:'meter(s)',
+                    ACC_OVEN:'sq.m.', ACC_KILN:'cu.m.',
+                    ACC_RC_TANK_AG:'cu.m.', ACC_RC_TANK_UG:'cu.m.', ACC_WATER_TREAT:'cu.m.',
+                    ACC_TANK_AG_SM:'cu.m.', ACC_TANK_AG_LG:'cu.m.',
+                    ACC_PULL_UG:'cu.m.', ACC_PULL_SADDLE:'cu.m.', ACC_REINST_SM:'cu.m.', ACC_REINST_LG:'cu.m.',
+                    ACC_BOOTH_PERM:'sq.m.', ACC_BOOTH_TEMP:'sq.m.', ACC_BOOTH_KNOCK:'unit(s)',
+                    ACC_CEM_TOMB:'sq.m.', ACC_CEM_SEMI:'sq.m.', ACC_CEM_ENCLOSED:'sq.m.', ACC_CEM_MULTI:'sq.m.', ACC_CEM_COLUMB:'sq.m.'
+                },
+                get unitLabel() { return this.unitLabels[this.feeCode] || 'unit'; }
+            }">
+                <h4 class="text-sm font-semibold text-gray-700 mb-3">
+                    <i class="fas fa-plus-circle text-blue-500 mr-1"></i> Add Accessory Fee Item
+                </h4>
+                <form action="{{ route('assessments.accessoryItem', $application) }}" method="POST" autocomplete="off">
+                    @csrf
+                    <input type="hidden" name="accessory_fee_type" :value="feeCode">
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Accessory Fee Type <span class="text-red-500">*</span></label>
+                            <select @change="feeCode = $event.target.value" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">-- Select --</option>
+                                <optgroup label="General:">
+                                    <option value="ACC_OPEN_PARTS">Open Parts of Buildings (balconies, terraces, lanais)</option>
+                                    <option value="ACC_HEIGHT">Buildings with Height &gt; 8.00m (per cu.m above 8m)</option>
+                                    <option value="ACC_VAULT">Bank and Records Vaults</option>
+                                    <option value="ACC_FIREWALL">Firewalls (per sq.m)</option>
+                                </optgroup>
+                                <optgroup label="Swimming Pools:">
+                                    <option value="ACC_POOL_RES">Swimming Pool - GROUP A Residential</option>
+                                    <option value="ACC_POOL_COM">Swimming Pool - Commercial/Industrial (B, E, F, G)</option>
+                                    <option value="ACC_POOL_SOC">Swimming Pool - Social/Recreational/Institutional (C, D, H, I)</option>
+                                    <option value="ACC_POOL_INDIG">Swimming Pool - Indigenous Materials</option>
+                                    <option value="ACC_POOL_SHR_RES">Pool Shower/Locker - Residential GROUP A</option>
+                                    <option value="ACC_POOL_SHR_COM">Pool Shower/Locker - Commercial (B, E, F, G)</option>
+                                    <option value="ACC_POOL_SHR_SOC">Pool Shower/Locker - Social (C, D, H)</option>
+                                </optgroup>
+                                <optgroup label="Towers &amp; Structures:">
+                                    <option value="ACC_TOWER_RES">Tower - Single Detached Dwelling Units</option>
+                                    <option value="ACC_TOWER_COM_SS">Tower - Commercial/Industrial (Self-Supporting)</option>
+                                    <option value="ACC_TOWER_COM_TG">Tower - Commercial/Industrial (Trilon/Guyed)</option>
+                                    <option value="ACC_TOWER_EDU_SS">Tower - Educational/Recreational/Institutional (Self-Supporting)</option>
+                                    <option value="ACC_TOWER_EDU_TG">Tower - Educational/Recreational/Institutional (Trilon/Guyed)</option>
+                                </optgroup>
+                                <optgroup label="Industrial:">
+                                    <option value="ACC_SILO">Storage Silos (per meter)</option>
+                                    <option value="ACC_SMOKESTACK">Construction of Smokestacks</option>
+                                    <option value="ACC_CHIMNEY">Construction of Chimney</option>
+                                    <option value="ACC_OVEN">Commercial/Industrial Fixed Ovens (per sq.m interior)</option>
+                                    <option value="ACC_KILN">Industrial Kiln/Furnace (per cu.m volume)</option>
+                                </optgroup>
+                                <optgroup label="Tanks &amp; Storage:">
+                                    <option value="ACC_RC_TANK_AG">Reinforced Concrete/Steel Tanks - Above Ground</option>
+                                    <option value="ACC_RC_TANK_UG">Reinforced Concrete/Steel Tanks - Underground</option>
+                                    <option value="ACC_WATER_TREAT">Water/Waste Water Treatment Tanks (per cu.m)</option>
+                                    <option value="ACC_TANK_AG_SM">Tanks Above Ground - Small (Groups 1-2)</option>
+                                    <option value="ACC_TANK_AG_LG">Tanks Above Ground - Large (Groups 3-10)</option>
+                                    <option value="ACC_PULL_UG">Pullout/Reinstallation - Underground (per cu.m)</option>
+                                    <option value="ACC_PULL_SADDLE">Pullout/Reinstallation - Saddle/Trestle Mounted (per cu.m)</option>
+                                    <option value="ACC_REINST_SM">Reinstallation Vertical Storage Tanks - Small (Groups 1-2)</option>
+                                    <option value="ACC_REINST_LG">Reinstallation Vertical Storage Tanks - Large (Groups 3-10)</option>
+                                </optgroup>
+                                <optgroup label="Booths &amp; Kiosks:">
+                                    <option value="ACC_BOOTH_PERM">Booth/Kiosk/Platform - Permanent Type (per sq.m)</option>
+                                    <option value="ACC_BOOTH_TEMP">Booth/Kiosk/Platform - Temporary Type (per sq.m)</option>
+                                    <option value="ACC_BOOTH_KNOCK">Booth/Kiosk/Platform - Knock-down Temporary (per unit)</option>
+                                </optgroup>
+                                <optgroup label="Cemetery Structures:">
+                                    <option value="ACC_CEM_TOMB">Tombs (per sq.m covered ground area)</option>
+                                    <option value="ACC_CEM_SEMI">Semi-enclosed Mausoleums (per sq.m)</option>
+                                    <option value="ACC_CEM_ENCLOSED">Totally Enclosed Mausoleums (per sq.m floor area)</option>
+                                    <option value="ACC_CEM_MULTI">Multi-level Interment (per sq.m per level)</option>
+                                    <option value="ACC_CEM_COLUMB">Columbarium (per sq.m)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">
+                                Unit
+                                <span x-show="feeCode" x-cloak class="ml-1 text-blue-600 font-semibold" x-text="'(' + unitLabel + ')'"></span>
+                                <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number" name="unit" step="0.01" min="0.01" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit" class="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">Fee and amount are auto-computed based on BOPMS accessory building fee schedule.</p>
+                </form>
+            </div>
+            @elseif($cat->code === 'ACC_FEE')
+            {{-- Accessory Misc. Fee Form (BOPMS-style) --}}
+            <div x-data="{
+                feeCode: '',
+                unitLabels: {
+                    ASS_LINE_GRADE:'linear meter(s)',
+                    ASS_GP_INSPECT:'inspection(s)', ASS_GP_EXCAV:'cu.m.', ASS_GP_ISSUANCE:'permit(s)',
+                    ASS_GP_FOUND:'cu.m.', ASS_GP_OTHER:'cu.m.', ASS_GP_ENCROACH:'sq.m.',
+                    ASS_FENCE_MASONRY:'meter(s) height', ASS_FENCE_INDIG:'linear meter(s)',
+                    ASS_PAVEMENT:'sq.m.', ASS_SIDEWALK:'sq.m.', ASS_SCAFFOLD:'sq.m.',
+                    ASS_SIGN_ERECT:'sq.m.',
+                    'ASS_SIGN_INSTALL|Business|Neon':'sq.m.', 'ASS_SIGN_INSTALL|Advertising|Neon':'sq.m.',
+                    'ASS_SIGN_INSTALL|Business|Illuminated':'sq.m.', 'ASS_SIGN_INSTALL|Advertising|Illuminated':'sq.m.',
+                    'ASS_SIGN_INSTALL|Business|Painted-on':'sq.m.', 'ASS_SIGN_INSTALL|Advertising|Painted-on':'sq.m.',
+                    'ASS_SIGN_INSTALL|Business|Others':'sq.m.', 'ASS_SIGN_INSTALL|Advertising|Others':'sq.m.',
+                    'ASS_SIGN_RENEW|Business|Neon':'sq.m.', 'ASS_SIGN_RENEW|Advertising|Neon':'sq.m.',
+                    'ASS_SIGN_RENEW|Business|Illuminated':'sq.m.', 'ASS_SIGN_RENEW|Advertising|Illuminated':'sq.m.',
+                    'ASS_SIGN_RENEW|Business|Painted-on':'sq.m.', 'ASS_SIGN_RENEW|Advertising|Painted-on':'sq.m.',
+                    'ASS_SIGN_RENEW|Business|Others':'sq.m.', 'ASS_SIGN_RENEW|Advertising|Others':'sq.m.',
+                    ASS_REPAIR_VERT:'sq.m.', ASS_REPAIR_HORIZ:'sq.m.', ASS_REPAIR_COST:'repair cost (PHP)',
+                    ASS_DEMO_BLDG:'sq.m.', ASS_DEMO_FRAME:'dimension', ASS_DEMO_MOVE:'sq.m.',
+                    ASS_DEMO_STRUCT:'cu.m.', ASS_DEMO_APPEND:'cu.m.'
+                },
+                get unitLabel() { return this.unitLabels[this.feeCode] || 'unit'; }
+            }">
+                <h4 class="text-sm font-semibold text-gray-700 mb-3">
+                    <i class="fas fa-plus-circle text-blue-500 mr-1"></i> Add Accessory Misc. Fee Item
+                </h4>
+                <form action="{{ route('assessments.accFeeItem', $application) }}" method="POST" autocomplete="off">
+                    @csrf
+                    <input type="hidden" name="acc_fee_type" :value="feeCode">
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Fee Type <span class="text-red-500">*</span></label>
+                            <select @change="feeCode = $event.target.value" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">-- Select --</option>
+                                <optgroup label="Line &amp; Grade:">
+                                    <option value="ASS_LINE_GRADE">Establishment of Line and Grade</option>
+                                </optgroup>
+                                <optgroup label="Ground Preparation &amp; Excavation:">
+                                    <option value="ASS_GP_INSPECT">GP - Inspection and Verification Fee</option>
+                                    <option value="ASS_GP_EXCAV">GP - Per cu.m of Excavation</option>
+                                    <option value="ASS_GP_ISSUANCE">GP - Issuance of GP &amp; EP (valid 30 days)</option>
+                                    <option value="ASS_GP_FOUND">GP - Excavation for Foundation with Basement (per cu.m)</option>
+                                    <option value="ASS_GP_OTHER">GP - Excavation Other than Foundation (per cu.m)</option>
+                                    <option value="ASS_GP_ENCROACH">GP - Encroachment of Footings to Public Areas</option>
+                                </optgroup>
+                                <optgroup label="Fencing:">
+                                    <option value="ASS_FENCE_MASONRY">Fencing - Masonry/Metal/Concrete</option>
+                                    <option value="ASS_FENCE_INDIG">Fencing - Indigenous/Barbed/Chicken/Hog Wire (per linear meter)</option>
+                                </optgroup>
+                                <optgroup label="Pavement, Streets &amp; Scaffolding:">
+                                    <option value="ASS_PAVEMENT">Construction of Pavement</option>
+                                    <option value="ASS_SIDEWALK">Use of Streets and Sidewalks</option>
+                                    <option value="ASS_SCAFFOLD">Erection of Scaffoldings (per calendar month)</option>
+                                </optgroup>
+                                <optgroup label="Signs:">
+                                    <option value="ASS_SIGN_ERECT">Sign - Erection/Anchorage of Display Surface</option>
+                                    <option value="ASS_SIGN_INSTALL|Business|Neon">Sign Install - Business / Neon</option>
+                                    <option value="ASS_SIGN_INSTALL|Advertising|Neon">Sign Install - Advertising / Neon</option>
+                                    <option value="ASS_SIGN_INSTALL|Business|Illuminated">Sign Install - Business / Illuminated</option>
+                                    <option value="ASS_SIGN_INSTALL|Advertising|Illuminated">Sign Install - Advertising / Illuminated</option>
+                                    <option value="ASS_SIGN_INSTALL|Business|Painted-on">Sign Install - Business / Painted-on</option>
+                                    <option value="ASS_SIGN_INSTALL|Advertising|Painted-on">Sign Install - Advertising / Painted-on</option>
+                                    <option value="ASS_SIGN_INSTALL|Business|Others">Sign Install - Business / Others</option>
+                                    <option value="ASS_SIGN_INSTALL|Advertising|Others">Sign Install - Advertising / Others</option>
+                                    <option value="ASS_SIGN_RENEW|Business|Neon">Sign Renewal - Business / Neon</option>
+                                    <option value="ASS_SIGN_RENEW|Advertising|Neon">Sign Renewal - Advertising / Neon</option>
+                                    <option value="ASS_SIGN_RENEW|Business|Illuminated">Sign Renewal - Business / Illuminated</option>
+                                    <option value="ASS_SIGN_RENEW|Advertising|Illuminated">Sign Renewal - Advertising / Illuminated</option>
+                                    <option value="ASS_SIGN_RENEW|Business|Painted-on">Sign Renewal - Business / Painted-on</option>
+                                    <option value="ASS_SIGN_RENEW|Advertising|Painted-on">Sign Renewal - Advertising / Painted-on</option>
+                                    <option value="ASS_SIGN_RENEW|Business|Others">Sign Renewal - Business / Others</option>
+                                    <option value="ASS_SIGN_RENEW|Advertising|Others">Sign Renewal - Advertising / Others</option>
+                                </optgroup>
+                                <optgroup label="Repairs &amp; Renovations:">
+                                    <option value="ASS_REPAIR_VERT">Repairs - Alteration/Renovation on Vertical Dimensions (per sq.m)</option>
+                                    <option value="ASS_REPAIR_HORIZ">Repairs - Alteration/Renovation on Horizontal Dimensions (per sq.m)</option>
+                                    <option value="ASS_REPAIR_COST">Repairs - Costing more than ₱5,000 (1% of cost)</option>
+                                </optgroup>
+                                <optgroup label="Demolition:">
+                                    <option value="ASS_DEMO_BLDG">Demolition - Buildings (per sq.m floor area)</option>
+                                    <option value="ASS_DEMO_FRAME">Demolition - Building Systems/Frames (per dimension)</option>
+                                    <option value="ASS_DEMO_MOVE">Moving Fee (per sq.m of area to be moved)</option>
+                                    <option value="ASS_DEMO_STRUCT">Demolition - Structures (range-based)</option>
+                                    <option value="ASS_DEMO_APPEND">Demolition - Appendages (range-based)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">
+                                Unit
+                                <span x-show="feeCode" x-cloak class="ml-1 text-blue-600 font-semibold" x-text="'(' + unitLabel + ')'"></span>
+                                <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number" name="unit" step="0.01" min="0.01" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit" class="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">Fee and amount are auto-computed based on BOPMS accessory miscellaneous fee schedule.</p>
+                </form>
+            </div>
+            @elseif($cat->code === 'SURCHARGE')
+            {{-- Surcharge Form --}}
+            <div>
+                <h4 class="text-sm font-semibold text-gray-700 mb-3">
+                    <i class="fas fa-plus-circle text-blue-500 mr-1"></i> Add Surcharge
+                </h4>
+                <form action="{{ route('assessments.surchargeItem', $application) }}" method="POST" autocomplete="off">
+                    @csrf
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Surcharge Type <span class="text-red-500">*</span></label>
+                            <select name="surcharge_type" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">-- Select --</option>
+                                <optgroup label="Violations (Fixed Amount):">
+                                    <option value="SURCHARGE_LIGHT">Light Violation — ₱5,000</option>
+                                    <option value="SURCHARGE_LESS">Less Grave Violation — ₱8,000</option>
+                                    <option value="SURCHARGE_GRAVE">Grave Violation — ₱10,000</option>
+                                </optgroup>
+                                <optgroup label="Construction Without Permit (% of Total BP Fee):">
+                                    <option value="SURCHARGE_EXCAV">Excavation for Foundation — 10%</option>
+                                    <option value="SURCHARGE_FOUND">Construction of Foundation (incl. pile driving &amp; rebar) — 25%</option>
+                                    <option value="SURCHARGE_SUPER2">Superstructure up to 2.00m above grade — 50%</option>
+                                    <option value="SURCHARGE_SUPER">Superstructure above 2.00m above grade — 100%</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit" class="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">Violation surcharges use a fixed penalty amount. Construction-stage surcharges are auto-computed as a percentage of the current total BP fee (all categories + inspection + filing + processing fees).</p>
+                </form>
+            </div>
             @elseif($cat->code === 'MECH')
             {{-- Mechanical Fee Form (BOPMS-style) --}}
             <div x-data="{
@@ -400,6 +790,29 @@
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Additional</th>
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Inspection</th>
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Amount</th>
+                            @elseif($cat->code === 'PLUMB')
+                            <th class="text-left px-4 py-3 font-medium text-gray-500">Plumbing Fee</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Unit</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Fee/Unit</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Amount</th>
+                            @elseif($cat->code === 'ELECT')
+                            <th class="text-left px-4 py-3 font-medium text-gray-500">Electronics Fee</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Unit</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Fee/Unit</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Amount</th>
+                            @elseif($cat->code === 'ACC_BLDG')
+                            <th class="text-left px-4 py-3 font-medium text-gray-500">Accessory Fee</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Unit</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Fee/Unit</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Amount</th>
+                            @elseif($cat->code === 'ACC_FEE')
+                            <th class="text-left px-4 py-3 font-medium text-gray-500">Acc. Misc. Fee</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Unit</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Fee/Unit</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Amount</th>
+                            @elseif($cat->code === 'SURCHARGE')
+                            <th class="text-left px-4 py-3 font-medium text-gray-500">Surcharge Type</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Amount</th>
                             @elseif($cat->code === 'MECH')
                             <th class="text-left px-4 py-3 font-medium text-gray-500">Mechanical Fee</th>
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Unit</th>
@@ -443,6 +856,29 @@
                             <td class="px-4 py-3 text-right text-gray-700">&#8369;{{ number_format($additionalFee, 2) }}</td>
                             <td class="px-4 py-3 text-right text-gray-700">&#8369;{{ number_format($item->inspection_fee, 2) }}</td>
                             <td class="px-4 py-3 text-right font-medium text-gray-900">&#8369;{{ number_format($item->amount, 2) }}</td>
+                            @elseif($cat->code === 'PLUMB')
+                            <td class="px-4 py-3 text-gray-900 text-xs">{{ $item->description }}</td>
+                            <td class="px-4 py-3 text-right text-gray-700">{{ number_format($item->quantity, 2) }}</td>
+                            <td class="px-4 py-3 text-right text-gray-700">@if($item->unit_fee > 0)&#8369;{{ number_format($item->unit_fee, 2) }}@else-@endif</td>
+                            <td class="px-4 py-3 text-right font-medium text-gray-900">&#8369;{{ number_format($item->amount, 2) }}</td>
+                            @elseif($cat->code === 'ELECT')
+                            <td class="px-4 py-3 text-gray-900 text-xs">{{ $item->description }}</td>
+                            <td class="px-4 py-3 text-right text-gray-700">{{ number_format($item->quantity, 2) }}</td>
+                            <td class="px-4 py-3 text-right text-gray-700">@if($item->unit_fee > 0)&#8369;{{ number_format($item->unit_fee, 2) }}@else-@endif</td>
+                            <td class="px-4 py-3 text-right font-medium text-gray-900">&#8369;{{ number_format($item->amount, 2) }}</td>
+                            @elseif($cat->code === 'ACC_BLDG')
+                            <td class="px-4 py-3 text-gray-900 text-xs">{{ $item->description }}</td>
+                            <td class="px-4 py-3 text-right text-gray-700">{{ number_format($item->quantity, 2) }}</td>
+                            <td class="px-4 py-3 text-right text-gray-700">@if($item->unit_fee > 0)&#8369;{{ number_format($item->unit_fee, 2) }}@else-@endif</td>
+                            <td class="px-4 py-3 text-right font-medium text-gray-900">&#8369;{{ number_format($item->amount, 2) }}</td>
+                            @elseif($cat->code === 'ACC_FEE')
+                            <td class="px-4 py-3 text-gray-900 text-xs">{{ $item->description }}</td>
+                            <td class="px-4 py-3 text-right text-gray-700">{{ number_format($item->quantity, 2) }}</td>
+                            <td class="px-4 py-3 text-right text-gray-700">@if($item->unit_fee > 0)&#8369;{{ number_format($item->unit_fee, 2) }}@else-@endif</td>
+                            <td class="px-4 py-3 text-right font-medium text-gray-900">&#8369;{{ number_format($item->amount, 2) }}</td>
+                            @elseif($cat->code === 'SURCHARGE')
+                            <td class="px-4 py-3 text-gray-900 text-xs">{{ $item->description }}</td>
+                            <td class="px-4 py-3 text-right font-medium text-gray-900">&#8369;{{ number_format($item->amount, 2) }}</td>
                             @elseif($cat->code === 'MECH')
                             <td class="px-4 py-3 text-gray-900 text-xs">{{ $item->description }}</td>
                             <td class="px-4 py-3 text-right text-gray-700">{{ number_format($item->quantity, 2) }}</td>
@@ -481,6 +917,26 @@
                             @elseif($cat->code === 'ELEC')
                             <td colspan="5" class="px-4 py-3 text-right font-semibold text-gray-700">Subtotal</td>
                             <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('inspection_fee'), 2) }}</td>
+                            <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('amount'), 2) }}</td>
+                            <td></td>
+                            @elseif($cat->code === 'PLUMB')
+                            <td colspan="4" class="px-4 py-3 text-right font-semibold text-gray-700">Subtotal</td>
+                            <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('amount'), 2) }}</td>
+                            <td></td>
+                            @elseif($cat->code === 'ELECT')
+                            <td colspan="4" class="px-4 py-3 text-right font-semibold text-gray-700">Subtotal</td>
+                            <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('amount'), 2) }}</td>
+                            <td></td>
+                            @elseif($cat->code === 'ACC_BLDG')
+                            <td colspan="4" class="px-4 py-3 text-right font-semibold text-gray-700">Subtotal</td>
+                            <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('amount'), 2) }}</td>
+                            <td></td>
+                            @elseif($cat->code === 'ACC_FEE')
+                            <td colspan="4" class="px-4 py-3 text-right font-semibold text-gray-700">Subtotal</td>
+                            <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('amount'), 2) }}</td>
+                            <td></td>
+                            @elseif($cat->code === 'SURCHARGE')
+                            <td colspan="2" class="px-4 py-3 text-right font-semibold text-gray-700">Subtotal</td>
                             <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('amount'), 2) }}</td>
                             <td></td>
                             @elseif($cat->code === 'MECH')

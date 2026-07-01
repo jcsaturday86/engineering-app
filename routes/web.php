@@ -20,6 +20,11 @@ use App\Http\Controllers\OnlineApplicationController;
 use App\Http\Controllers\ZoningController;
 use App\Http\Controllers\ZoningFeeController;
 use App\Http\Controllers\MechInspFeeController;
+use App\Http\Controllers\AccessoryFeeController;
+use App\Http\Controllers\AccFeeController;
+use App\Http\Controllers\SurchargeFeeController;
+use App\Http\Controllers\ElectronicsFeeController;
+use App\Http\Controllers\PlumbingFeeController;
 use Illuminate\Support\Facades\Route;
 
 // Default page = client login
@@ -111,6 +116,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/{application}/construction-item', [AssessmentController::class, 'addConstructionItem'])->name('constructionItem')->middleware('can:create-assessments');
         Route::post('/{application}/electrical-item', [AssessmentController::class, 'addElectricalItem'])->name('electricalItem')->middleware('can:create-assessments');
         Route::post('/{application}/mechanical-item', [AssessmentController::class, 'addMechanicalItem'])->name('mechanicalItem')->middleware('can:create-assessments');
+        Route::post('/{application}/plumbing-item', [AssessmentController::class, 'addPlumbingItem'])->name('plumbingItem')->middleware('can:create-assessments');
+        Route::post('/{application}/electronics-item', [AssessmentController::class, 'addElectronicsItem'])->name('electronicsItem')->middleware('can:create-assessments');
+        Route::post('/{application}/accessory-item', [AssessmentController::class, 'addAccessoryItem'])->name('accessoryItem')->middleware('can:create-assessments');
+        Route::post('/{application}/acc-fee-item', [AssessmentController::class, 'addAccFeeItem'])->name('accFeeItem')->middleware('can:create-assessments');
+        Route::post('/{application}/surcharge-item', [AssessmentController::class, 'addSurchargeItem'])->name('surchargeItem')->middleware('can:create-assessments');
         Route::get('/{application}/summary', [AssessmentController::class, 'summary'])->name('summary');
         Route::post('/{application}/finalize', [AssessmentController::class, 'finalize'])->name('finalize')->middleware('can:finalize-assessments');
         Route::get('/{application}/print', [AssessmentController::class, 'print'])->name('print');
@@ -203,6 +213,31 @@ Route::middleware('auth')->group(function () {
         Route::put('/mech-insp-fees/schedule/{feeSchedule}', [MechInspFeeController::class, 'updateSchedule'])->name('mech-insp-fees.schedule.update')->middleware('can:manage-fee-schedules');
         Route::post('/mech-insp-fees/type/{feeType}/schedule', [MechInspFeeController::class, 'storeSchedule'])->name('mech-insp-fees.schedule.store')->middleware('can:manage-fee-schedules');
         Route::delete('/mech-insp-fees/schedule/{feeSchedule}', [MechInspFeeController::class, 'destroySchedule'])->name('mech-insp-fees.schedule.destroy')->middleware('can:manage-fee-schedules');
+
+        Route::get('/electronics-fees', [ElectronicsFeeController::class, 'index'])->name('electronics-fees')->middleware('can:manage-fee-schedules');
+        Route::put('/electronics-fees/schedule/{feeSchedule}', [ElectronicsFeeController::class, 'updateSchedule'])->name('electronics-fees.schedule.update')->middleware('can:manage-fee-schedules');
+        Route::post('/electronics-fees/type/{feeType}/schedule', [ElectronicsFeeController::class, 'storeSchedule'])->name('electronics-fees.schedule.store')->middleware('can:manage-fee-schedules');
+        Route::delete('/electronics-fees/schedule/{feeSchedule}', [ElectronicsFeeController::class, 'destroySchedule'])->name('electronics-fees.schedule.destroy')->middleware('can:manage-fee-schedules');
+
+        Route::get('/accessory-fees', [AccessoryFeeController::class, 'index'])->name('accessory-fees')->middleware('can:manage-fee-schedules');
+        Route::put('/accessory-fees/schedule/{feeSchedule}', [AccessoryFeeController::class, 'updateSchedule'])->name('accessory-fees.schedule.update')->middleware('can:manage-fee-schedules');
+        Route::post('/accessory-fees/type/{feeType}/schedule', [AccessoryFeeController::class, 'storeSchedule'])->name('accessory-fees.schedule.store')->middleware('can:manage-fee-schedules');
+        Route::delete('/accessory-fees/schedule/{feeSchedule}', [AccessoryFeeController::class, 'destroySchedule'])->name('accessory-fees.schedule.destroy')->middleware('can:manage-fee-schedules');
+
+        Route::get('/acc-fees', [AccFeeController::class, 'index'])->name('acc-fees')->middleware('can:manage-fee-schedules');
+        Route::put('/acc-fees/schedule/{feeSchedule}', [AccFeeController::class, 'updateSchedule'])->name('acc-fees.schedule.update')->middleware('can:manage-fee-schedules');
+        Route::post('/acc-fees/type/{feeType}/schedule', [AccFeeController::class, 'storeSchedule'])->name('acc-fees.schedule.store')->middleware('can:manage-fee-schedules');
+        Route::delete('/acc-fees/schedule/{feeSchedule}', [AccFeeController::class, 'destroySchedule'])->name('acc-fees.schedule.destroy')->middleware('can:manage-fee-schedules');
+
+        Route::get('/surcharge-fees', [SurchargeFeeController::class, 'index'])->name('surcharge-fees')->middleware('can:manage-fee-schedules');
+        Route::put('/surcharge-fees/schedule/{feeSchedule}', [SurchargeFeeController::class, 'updateSchedule'])->name('surcharge-fees.schedule.update')->middleware('can:manage-fee-schedules');
+        Route::post('/surcharge-fees/type/{feeType}/schedule', [SurchargeFeeController::class, 'storeSchedule'])->name('surcharge-fees.schedule.store')->middleware('can:manage-fee-schedules');
+        Route::delete('/surcharge-fees/schedule/{feeSchedule}', [SurchargeFeeController::class, 'destroySchedule'])->name('surcharge-fees.schedule.destroy')->middleware('can:manage-fee-schedules');
+
+        Route::get('/plumbing-fees', [PlumbingFeeController::class, 'index'])->name('plumbing-fees')->middleware('can:manage-fee-schedules');
+        Route::put('/plumbing-fees/schedule/{feeSchedule}', [PlumbingFeeController::class, 'updateSchedule'])->name('plumbing-fees.schedule.update')->middleware('can:manage-fee-schedules');
+        Route::post('/plumbing-fees/type/{feeType}/schedule', [PlumbingFeeController::class, 'storeSchedule'])->name('plumbing-fees.schedule.store')->middleware('can:manage-fee-schedules');
+        Route::delete('/plumbing-fees/schedule/{feeSchedule}', [PlumbingFeeController::class, 'destroySchedule'])->name('plumbing-fees.schedule.destroy')->middleware('can:manage-fee-schedules');
 
         Route::get('/signatories', [SettingsController::class, 'signatories'])->name('signatories')->middleware('can:manage-signatories');
         Route::post('/signatories/{signatory}', [SettingsController::class, 'updateSignatory'])->name('signatories.update')->middleware('can:manage-signatories');

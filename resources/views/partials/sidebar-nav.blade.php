@@ -224,6 +224,11 @@
         <a href="{{ route('settings.fees') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Fee Schedules</a>
         <a href="{{ route('settings.zoning-fees') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Zoning Fees</a>
         <a href="{{ route('settings.mech-insp-fees') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Mech Inspection Fees</a>
+        <a href="{{ route('settings.plumbing-fees') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Plumbing Fees</a>
+        <a href="{{ route('settings.electronics-fees') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Electronics Fees</a>
+        <a href="{{ route('settings.accessory-fees') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Accessory Fees</a>
+        <a href="{{ route('settings.acc-fees') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Acc. Misc. Fees</a>
+        <a href="{{ route('settings.surcharge-fees') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Surcharge Fees</a>
         @endcan
         @can('manage-signatories')
         <a href="{{ route('settings.signatories') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Signatories</a>

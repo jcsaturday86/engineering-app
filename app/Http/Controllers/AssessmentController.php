@@ -17,6 +17,7 @@ use App\Notifications\AssessmentCompleteNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class AssessmentController extends Controller
 {
@@ -514,6 +515,521 @@ class AssessmentController extends Controller
 
         return redirect()->route('assessments.assess', ['application' => $application->id, 'tab' => 'MECH'])
             ->with('success', 'Mechanical fee item added.');
+    }
+
+    public function addPlumbingItem(Request $request, Application $application)
+    {
+        $allCodes = implode(',', [
+            'PLUMB_INSTALL',
+            'PLUMB_FIX_WC','PLUMB_FIX_FD','PLUMB_FIX_SINK','PLUMB_FIX_LAV','PLUMB_FIX_FAUCET','PLUMB_FIX_SHOWER',
+            'PLUMB_SP_SLOP','PLUMB_SP_URINAL','PLUMB_SP_BATH','PLUMB_SP_GREASE','PLUMB_SP_GARAGE',
+            'PLUMB_SP_BIDET','PLUMB_SP_DENTAL','PLUMB_SP_GWH','PLUMB_SP_DRINK','PLUMB_SP_BAR',
+            'PLUMB_SP_LAUNDRY','PLUMB_SP_LAB','PLUMB_SP_STERIL',
+            'PLUMB_WATER_METER','PLUMB_SEPTIC',
+        ]);
+
+        $validated = $request->validate([
+            'plumbing_fee_type' => 'required|string|in:' . $allCodes,
+            'unit'              => 'required|numeric|min:0.01',
+        ]);
+
+        $assessment = Assessment::firstOrCreate(
+            [
+                'applicationable_type' => 'bp',
+                'applicationable_id'   => $application->id,
+                'assessment_type'      => 'building',
+            ],
+            ['status' => 'draft', 'assessed_by' => Auth::id()]
+        );
+
+        $feeTypeCode  = $validated['plumbing_fee_type'];
+        $unit         = (float) $validated['unit'];
+
+        $feeType = FeeType::where('code', $feeTypeCode)->first();
+        if (!$feeType) {
+            return back()->with('error', 'Plumbing fee type not found: ' . $feeTypeCode);
+        }
+
+        $plumbCategory = FeeCategory::where('code', 'PLUMB')->first();
+        $isRangeBased  = $feeType->computation_method === 'range_based';
+
+        $scheduleQuery = FeeSchedule::where('fee_type_id', $feeType->id)->where('is_active', true);
+        if ($isRangeBased) {
+            $scheduleQuery->where('range_from', '<=', $unit)->where('range_to', '>=', $unit);
+        }
+        $schedule = $scheduleQuery->orderBy('id')->first();
+
+        if (!$schedule) {
+            return back()->with('error', 'No fee schedule found for ' . $feeType->name . ' at unit ' . number_format($unit, 2) . '.');
+        }
+
+        $excessFee = 0;
+        $unitFee   = 0;
+
+        switch ($feeType->computation_method) {
+            case 'per_unit':
+                $unitFee = (float) $schedule->fee_per_unit;
+                $baseFee = round($unit * $unitFee, 2);
+                break;
+
+            case 'range_based':
+                $threshold = (float) $schedule->excess_threshold;
+                if ($threshold > 0 && $unit > $threshold) {
+                    $excess    = $unit - $threshold;
+                    $excessFee = round($excess * (float) $schedule->excess_fee, 2);
+                    $baseFee   = round((float) $schedule->fixed_fee + $excessFee, 2);
+                } elseif ((float) $schedule->fee_per_unit > 0) {
+                    $unitFee = (float) $schedule->fee_per_unit;
+                    $baseFee = round($unit * $unitFee, 2);
+                } else {
+                    $baseFee = round((float) $schedule->fixed_fee, 2);
+                    $unitFee = 0;
+                }
+                break;
+
+            default:
+                $baseFee = 0;
+        }
+
+        AssessmentItem::create([
+            'assessment_id'       => $assessment->id,
+            'fee_category_id'     => $plumbCategory->id,
+            'fee_type_id'         => $feeType->id,
+            'fee_code'            => $feeType->code,
+            'description'         => $feeType->name,
+            'quantity'            => $unit,
+            'unit_fee'            => $unitFee,
+            'excess_fee'          => $excessFee,
+            'inspection_fee'      => 0,
+            'amount'              => $baseFee,
+            'computation_details' => [
+                'fee_type_code'      => $feeTypeCode,
+                'fee_schedule_id'    => $schedule->id,
+                'input_unit'         => $unit,
+                'computation_method' => $feeType->computation_method,
+                'fixed_fee'          => (float) $schedule->fixed_fee,
+                'fee_per_unit'       => (float) $schedule->fee_per_unit,
+                'excess_threshold'   => (float) $schedule->excess_threshold,
+                'excess_fee_rate'    => (float) $schedule->excess_fee,
+                'range'              => $isRangeBased ? ($schedule->range_from . ' - ' . $schedule->range_to) : null,
+            ],
+            'is_active'           => true,
+        ]);
+
+        return redirect()->route('assessments.assess', ['application' => $application->id, 'tab' => 'PLUMB'])
+            ->with('success', 'Plumbing fee item added.');
+    }
+
+    public function addElectronicsItem(Request $request, Application $application)
+    {
+        $allCodes = implode(',', [
+            'ELECT_SWITCH','ELECT_BROADCAST','ELECT_ATM','ELECT_OUTLET','ELECT_SECURITY',
+            'ELECT_STUDIO','ELECT_TOWER','ELECT_SIGNAGE','ELECT_POLE','ELECT_ATTACH','ELECT_OTHER',
+        ]);
+
+        $validated = $request->validate([
+            'electronics_fee_type' => 'required|string|in:' . $allCodes,
+            'unit'                 => 'required|numeric|min:0.01',
+        ]);
+
+        $assessment = Assessment::firstOrCreate(
+            [
+                'applicationable_type' => 'bp',
+                'applicationable_id'   => $application->id,
+                'assessment_type'      => 'building',
+            ],
+            ['status' => 'draft', 'assessed_by' => Auth::id()]
+        );
+
+        $feeTypeCode = $validated['electronics_fee_type'];
+        $unit        = (float) $validated['unit'];
+
+        $feeType = FeeType::where('code', $feeTypeCode)->first();
+        if (!$feeType) {
+            return back()->with('error', 'Electronics fee type not found: ' . $feeTypeCode);
+        }
+
+        $electCategory = FeeCategory::where('code', 'ELECT')->first();
+
+        $schedule = FeeSchedule::where('fee_type_id', $feeType->id)
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->first();
+
+        if (!$schedule) {
+            return back()->with('error', 'No fee schedule found for ' . $feeType->name . '.');
+        }
+
+        $unitFee = $feeType->computation_method === 'fixed'
+            ? (float) $schedule->fixed_fee
+            : (float) $schedule->fee_per_unit;
+
+        $baseFee = round($unit * $unitFee, 2);
+
+        AssessmentItem::create([
+            'assessment_id'       => $assessment->id,
+            'fee_category_id'     => $electCategory->id,
+            'fee_type_id'         => $feeType->id,
+            'fee_code'            => $feeType->code,
+            'description'         => $feeType->name,
+            'quantity'            => $unit,
+            'unit_fee'            => $unitFee,
+            'excess_fee'          => 0,
+            'inspection_fee'      => 0,
+            'amount'              => $baseFee,
+            'computation_details' => [
+                'fee_type_code'      => $feeTypeCode,
+                'fee_schedule_id'    => $schedule->id,
+                'input_unit'         => $unit,
+                'computation_method' => $feeType->computation_method,
+                'fixed_fee'          => (float) $schedule->fixed_fee,
+                'fee_per_unit'       => (float) $schedule->fee_per_unit,
+            ],
+            'is_active'           => true,
+        ]);
+
+        return redirect()->route('assessments.assess', ['application' => $application->id, 'tab' => 'ELECT'])
+            ->with('success', 'Electronics fee item added.');
+    }
+
+    public function addAccessoryItem(Request $request, Application $application)
+    {
+        $allCodes = implode(',', [
+            'ACC_OPEN_PARTS', 'ACC_HEIGHT', 'ACC_VAULT', 'ACC_FIREWALL',
+            'ACC_POOL_RES', 'ACC_POOL_COM', 'ACC_POOL_SOC', 'ACC_POOL_INDIG',
+            'ACC_POOL_SHR_RES', 'ACC_POOL_SHR_COM', 'ACC_POOL_SHR_SOC',
+            'ACC_TOWER_RES', 'ACC_TOWER_COM_SS', 'ACC_TOWER_COM_TG',
+            'ACC_TOWER_EDU_SS', 'ACC_TOWER_EDU_TG',
+            'ACC_SILO', 'ACC_SMOKESTACK', 'ACC_CHIMNEY', 'ACC_OVEN', 'ACC_KILN',
+            'ACC_RC_TANK_AG', 'ACC_RC_TANK_UG', 'ACC_WATER_TREAT',
+            'ACC_TANK_AG_SM', 'ACC_TANK_AG_LG',
+            'ACC_PULL_UG', 'ACC_PULL_SADDLE', 'ACC_REINST_SM', 'ACC_REINST_LG',
+            'ACC_BOOTH_PERM', 'ACC_BOOTH_TEMP', 'ACC_BOOTH_KNOCK',
+            'ACC_CEM_TOMB', 'ACC_CEM_SEMI', 'ACC_CEM_ENCLOSED', 'ACC_CEM_MULTI', 'ACC_CEM_COLUMB',
+        ]);
+
+        $validated = $request->validate([
+            'accessory_fee_type' => 'required|string|in:' . $allCodes,
+            'unit'               => 'required|numeric|min:0.01',
+        ]);
+
+        $assessment = Assessment::firstOrCreate(
+            [
+                'applicationable_type' => 'bp',
+                'applicationable_id'   => $application->id,
+                'assessment_type'      => 'building',
+            ],
+            ['status' => 'draft', 'assessed_by' => Auth::id()]
+        );
+
+        $feeTypeCode  = $validated['accessory_fee_type'];
+        $unit         = (float) $validated['unit'];
+
+        $feeType = FeeType::where('code', $feeTypeCode)->first();
+        if (!$feeType) {
+            return back()->with('error', 'Accessory fee type not found: ' . $feeTypeCode);
+        }
+
+        $accCategory  = FeeCategory::where('code', 'ACC_BLDG')->first();
+        $isRangeBased = $feeType->computation_method === 'range_based';
+
+        $scheduleQuery = FeeSchedule::where('fee_type_id', $feeType->id)->where('is_active', true);
+        if ($isRangeBased) {
+            $scheduleQuery->where('range_from', '<=', $unit)->where('range_to', '>=', $unit);
+        }
+        $schedule = $scheduleQuery->orderBy('id')->first();
+
+        if (!$schedule) {
+            return back()->with('error', 'No fee schedule found for ' . $feeType->name . ' at unit ' . number_format($unit, 2) . '.');
+        }
+
+        $excessFee = 0;
+        $unitFee   = 0;
+
+        switch ($feeType->computation_method) {
+            case 'per_unit':
+                $unitFee = (float) $schedule->fee_per_unit;
+                $baseFee = round($unit * $unitFee, 2);
+                break;
+
+            case 'fixed':
+                $unitFee = (float) $schedule->fixed_fee;
+                $baseFee = round($unit * $unitFee, 2);
+                break;
+
+            case 'percentage':
+                $unitFee = (float) $schedule->percentage;
+                $baseFee = round($unit * $unitFee, 2);
+                break;
+
+            case 'range_based':
+                $threshold = (float) $schedule->excess_threshold;
+                if ($threshold > 0 && $unit > $threshold) {
+                    $excess    = $unit - $threshold;
+                    $excessFee = round($excess * (float) $schedule->excess_fee, 2);
+                    $baseFee   = round((float) $schedule->fixed_fee + $excessFee, 2);
+                } elseif ((float) $schedule->fee_per_unit > 0) {
+                    $unitFee = (float) $schedule->fee_per_unit;
+                    $baseFee = round($unit * $unitFee, 2);
+                } else {
+                    $baseFee = round((float) $schedule->fixed_fee, 2);
+                    $unitFee = 0;
+                }
+                break;
+
+            default:
+                $baseFee = 0;
+        }
+
+        AssessmentItem::create([
+            'assessment_id'       => $assessment->id,
+            'fee_category_id'     => $accCategory->id,
+            'fee_type_id'         => $feeType->id,
+            'fee_code'            => $feeType->code,
+            'description'         => $feeType->name,
+            'quantity'            => $unit,
+            'unit_fee'            => $unitFee,
+            'excess_fee'          => $excessFee,
+            'inspection_fee'      => 0,
+            'amount'              => $baseFee,
+            'computation_details' => [
+                'fee_type_code'      => $feeTypeCode,
+                'fee_schedule_id'    => $schedule->id,
+                'input_unit'         => $unit,
+                'computation_method' => $feeType->computation_method,
+                'fixed_fee'          => (float) $schedule->fixed_fee,
+                'fee_per_unit'       => (float) $schedule->fee_per_unit,
+                'percentage'         => (float) $schedule->percentage,
+                'excess_threshold'   => (float) $schedule->excess_threshold,
+                'excess_fee_rate'    => (float) $schedule->excess_fee,
+                'range'              => $isRangeBased ? ($schedule->range_from . ' - ' . $schedule->range_to) : null,
+            ],
+            'is_active'           => true,
+        ]);
+
+        return redirect()->route('assessments.assess', ['application' => $application->id, 'tab' => 'ACC_BLDG'])
+            ->with('success', 'Accessory fee item added.');
+    }
+
+    public function addAccFeeItem(Request $request, Application $application)
+    {
+        $allCodes = [
+            'ASS_LINE_GRADE',
+            'ASS_GP_INSPECT', 'ASS_GP_EXCAV', 'ASS_GP_ISSUANCE',
+            'ASS_GP_FOUND', 'ASS_GP_OTHER', 'ASS_GP_ENCROACH',
+            'ASS_FENCE_MASONRY', 'ASS_FENCE_INDIG',
+            'ASS_PAVEMENT', 'ASS_SIDEWALK', 'ASS_SCAFFOLD',
+            'ASS_SIGN_ERECT',
+            'ASS_SIGN_INSTALL|Business|Neon',       'ASS_SIGN_INSTALL|Advertising|Neon',
+            'ASS_SIGN_INSTALL|Business|Illuminated', 'ASS_SIGN_INSTALL|Advertising|Illuminated',
+            'ASS_SIGN_INSTALL|Business|Painted-on',  'ASS_SIGN_INSTALL|Advertising|Painted-on',
+            'ASS_SIGN_INSTALL|Business|Others',      'ASS_SIGN_INSTALL|Advertising|Others',
+            'ASS_SIGN_RENEW|Business|Neon',          'ASS_SIGN_RENEW|Advertising|Neon',
+            'ASS_SIGN_RENEW|Business|Illuminated',   'ASS_SIGN_RENEW|Advertising|Illuminated',
+            'ASS_SIGN_RENEW|Business|Painted-on',    'ASS_SIGN_RENEW|Advertising|Painted-on',
+            'ASS_SIGN_RENEW|Business|Others',        'ASS_SIGN_RENEW|Advertising|Others',
+            'ASS_REPAIR_VERT', 'ASS_REPAIR_HORIZ', 'ASS_REPAIR_COST',
+            'ASS_DEMO_BLDG', 'ASS_DEMO_FRAME', 'ASS_DEMO_MOVE', 'ASS_DEMO_STRUCT', 'ASS_DEMO_APPEND',
+        ];
+
+        $validated = $request->validate([
+            'acc_fee_type' => ['required', 'string', Rule::in($allCodes)],
+            'unit'         => 'required|numeric|min:0.01',
+        ]);
+
+        $assessment = Assessment::firstOrCreate(
+            [
+                'applicationable_type' => 'bp',
+                'applicationable_id'   => $application->id,
+                'assessment_type'      => 'building',
+            ],
+            ['status' => 'draft', 'assessed_by' => Auth::id()]
+        );
+
+        $rawCode     = $validated['acc_fee_type'];
+        $unit        = (float) $validated['unit'];
+        $signFormula = null;
+
+        if (str_contains($rawCode, '|')) {
+            $parts       = explode('|', $rawCode, 3);
+            $feeTypeCode = $parts[0];
+            $signFormula = $parts[1] . '|' . $parts[2];
+        } else {
+            $feeTypeCode = $rawCode;
+        }
+
+        $feeType = FeeType::where('code', $feeTypeCode)->first();
+        if (!$feeType) {
+            return back()->with('error', 'Acc fee type not found: ' . $feeTypeCode);
+        }
+
+        $accFeeCategory = FeeCategory::where('code', 'ACC_FEE')->first();
+        $isRangeBased   = $feeType->computation_method === 'range_based';
+
+        $scheduleQuery = FeeSchedule::where('fee_type_id', $feeType->id)->where('is_active', true);
+        if ($isRangeBased) {
+            $scheduleQuery->where('range_from', '<=', $unit)->where('range_to', '>=', $unit);
+        } elseif ($signFormula) {
+            $scheduleQuery->where('formula', $signFormula);
+        }
+        $schedule = $scheduleQuery->orderBy('id')->first();
+
+        // Fallback for range_based when unit exceeds highest range_to (picks last applicable row)
+        if (!$schedule && $isRangeBased) {
+            $schedule = FeeSchedule::where('fee_type_id', $feeType->id)
+                ->where('is_active', true)
+                ->where('range_from', '<=', $unit)
+                ->orderBy('range_from', 'desc')
+                ->first();
+        }
+
+        if (!$schedule) {
+            return back()->with('error', 'No fee schedule found for ' . $feeType->name . '.');
+        }
+
+        $excessFee = 0;
+        $unitFee   = 0;
+
+        switch ($feeType->computation_method) {
+            case 'per_unit':
+                $unitFee = (float) $schedule->fee_per_unit;
+                $baseFee = round($unit * $unitFee, 2);
+                break;
+
+            case 'fixed':
+                $unitFee = (float) $schedule->fixed_fee;
+                $baseFee = round($unit * $unitFee, 2);
+                break;
+
+            case 'percentage':
+                $unitFee = (float) $schedule->percentage;
+                $baseFee = round($unit * $unitFee, 2);
+                break;
+
+            case 'range_based':
+                $threshold = (float) $schedule->excess_threshold;
+                if ($threshold > 0 && $unit > $threshold) {
+                    $excess    = $unit - $threshold;
+                    $excessFee = round($excess * (float) $schedule->excess_fee, 2);
+                    $baseFee   = round((float) $schedule->fixed_fee + $excessFee, 2);
+                } elseif ((float) $schedule->fee_per_unit > 0) {
+                    $unitFee = (float) $schedule->fee_per_unit;
+                    $baseFee = round($unit * $unitFee, 2);
+                } else {
+                    $baseFee = round((float) $schedule->fixed_fee, 2);
+                    $unitFee = 0;
+                }
+                break;
+
+            default:
+                $baseFee = 0;
+        }
+
+        $description = $feeType->name
+            . ($signFormula ? ' (' . str_replace('|', ' - ', $signFormula) . ')' : '');
+
+        AssessmentItem::create([
+            'assessment_id'       => $assessment->id,
+            'fee_category_id'     => $accFeeCategory->id,
+            'fee_type_id'         => $feeType->id,
+            'fee_code'            => $feeType->code,
+            'description'         => $description,
+            'quantity'            => $unit,
+            'unit_fee'            => $unitFee,
+            'excess_fee'          => $excessFee,
+            'inspection_fee'      => 0,
+            'amount'              => $baseFee,
+            'computation_details' => [
+                'fee_type_code'      => $feeTypeCode,
+                'sign_formula'       => $signFormula,
+                'fee_schedule_id'    => $schedule->id,
+                'input_unit'         => $unit,
+                'computation_method' => $feeType->computation_method,
+                'fixed_fee'          => (float) $schedule->fixed_fee,
+                'fee_per_unit'       => (float) $schedule->fee_per_unit,
+                'percentage'         => (float) $schedule->percentage,
+                'excess_threshold'   => (float) $schedule->excess_threshold,
+                'excess_fee_rate'    => (float) $schedule->excess_fee,
+                'range'              => $isRangeBased ? ($schedule->range_from . '–' . $schedule->range_to) : null,
+            ],
+            'is_active'           => true,
+        ]);
+
+        return redirect()->route('assessments.assess', ['application' => $application->id, 'tab' => 'ACC_FEE'])
+            ->with('success', 'Accessory (misc.) fee item added.');
+    }
+
+    public function addSurchargeItem(Request $request, Application $application)
+    {
+        $validated = $request->validate([
+            'surcharge_type' => 'required|string|in:SURCHARGE_LIGHT,SURCHARGE_LESS,SURCHARGE_GRAVE,SURCHARGE_EXCAV,SURCHARGE_FOUND,SURCHARGE_SUPER2,SURCHARGE_SUPER',
+        ]);
+
+        $assessment = Assessment::firstOrCreate(
+            [
+                'applicationable_type' => 'bp',
+                'applicationable_id'   => $application->id,
+                'assessment_type'      => 'building',
+            ],
+            ['status' => 'draft', 'assessed_by' => Auth::id()]
+        );
+
+        $feeTypeCode      = $validated['surcharge_type'];
+        $feeType          = FeeType::where('code', $feeTypeCode)->first();
+        $surchargeCategory = FeeCategory::where('code', 'SURCHARGE')->first();
+
+        if (!$feeType) {
+            return back()->with('error', 'Surcharge type not found: ' . $feeTypeCode);
+        }
+
+        $schedule = FeeSchedule::where('fee_type_id', $feeType->id)->where('is_active', true)->first();
+        if (!$schedule) {
+            return back()->with('error', 'No fee schedule found for ' . $feeType->name . '.');
+        }
+
+        $totalBPFeeBase = null;
+
+        if ($feeType->computation_method === 'fixed') {
+            $amount = round((float) $schedule->fixed_fee, 2);
+            $unitFee = $amount;
+        } else {
+            // Percentage: base = all non-surcharge assessment amounts + inspection fees + filing + processing
+            $nonSurchargeItems = $assessment->assessmentItems()
+                ->where('is_active', true)
+                ->where('fee_category_id', '!=', $surchargeCategory->id);
+
+            $totalBPFeeBase = $nonSurchargeItems->sum('amount')
+                + $nonSurchargeItems->sum('inspection_fee')
+                + $assessment->filing_fee
+                + $assessment->processing_fee;
+
+            $amount  = round($totalBPFeeBase * (float) $schedule->percentage, 2);
+            $unitFee = 0;
+        }
+
+        AssessmentItem::create([
+            'assessment_id'       => $assessment->id,
+            'fee_category_id'     => $surchargeCategory->id,
+            'fee_type_id'         => $feeType->id,
+            'fee_code'            => $feeType->code,
+            'description'         => $feeType->name,
+            'quantity'            => 1,
+            'unit_fee'            => $unitFee,
+            'excess_fee'          => 0,
+            'inspection_fee'      => 0,
+            'amount'              => $amount,
+            'computation_details' => [
+                'fee_type_code'      => $feeTypeCode,
+                'computation_method' => $feeType->computation_method,
+                'fixed_fee'          => (float) $schedule->fixed_fee,
+                'percentage'         => (float) $schedule->percentage,
+                'total_bp_fee_base'  => $totalBPFeeBase,
+            ],
+            'is_active'           => true,
+        ]);
+
+        return redirect()->route('assessments.assess', ['application' => $application->id, 'tab' => 'SURCHARGE'])
+            ->with('success', 'Surcharge added.');
     }
 
     public function addItem(Request $request, Application $application)
