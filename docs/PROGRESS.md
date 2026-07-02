@@ -64,6 +64,7 @@
 | Fee type selector (4 types) | DONE | LC, LC Manual, Certification, Others |
 | Checkbox bulk delete | DONE | fetch API bulk delete |
 | Finalize password confirm | DONE | Hash::check() modal |
+| Finalized lock | DONE | Add/remove/autocompute blocked after finalize; single amber banner |
 | Zoning certification PDF | DONE | Template exists |
 | Locational clearance PDF | DONE | Template exists |
 
@@ -85,10 +86,18 @@
 | Mechanical inspection formulas | DONE | flat (range-band), per_unit (rate×count), tiered (cumulative for elevators) |
 | BP assessment tab navigation | DONE | 8 tabs + Summary, badges, hidden MECH_INSP tab |
 | Plumbing fee data | DONE | Seeded |
-| Plumbing tab (BOPMS-style) | PENDING | Next implementation |
+| Plumbing tab (BOPMS-style) | DONE | 22 PLUMB_* types, dynamic unit labels |
 | Electronics fee data | DONE | Seeded |
+| Electronics tab (BOPMS-style) | DONE | 11 ELECT_* types |
+| Accessories tab (ACC_BLDG) | DONE | BOPMS-style |
+| Accessory Fees tab (ACC_FEE) | DONE | BOPMS-style |
+| Surcharge tab (SURCHARGE) | DONE | Percentage-based on violation stage |
 | Occupancy fee data | DONE | Seeded |
-| Accessory fee data | PARTIAL | May need more seed data |
+| Occupancy fee tab — OP (BOPMS-style) | DONE | 8 OCC_* types, dynamic unit label (Costing/Area/Unit/Meters); range_based w/ excess_every, per_unit, percentage all verified |
+| Assessment finalization lock | DONE | BP + zoning: add/remove/autocompute blocked after finalize (UI + server guards) |
+| Finalize stays on Summary tab | DONE | Redirects to ?tab=SUMMARY |
+| BP assessment PDF | DONE | Fire Code Fees removed; Code 128 barcode above BP number; Approved By from building_official signatory |
+| Print button on BP assessment index | DONE | Shown when status = engineering_assessed |
 
 ---
 

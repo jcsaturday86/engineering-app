@@ -45,14 +45,42 @@
 - Route: `POST /assessments/{id}/mechanical-item`
 - `MECH_INSP` added to `$excludedTabs` so it never appears as a manual-entry tab
 
+### Plumbing / Electronics / Accessories / Surcharge Tabs (BOPMS-style) — COMPLETED
+
+- **Plumbing tab:** 22 PLUMB_* fee types grouped (Installation / Fixtures / Special Fixtures / Range-Based), dynamic unit label per fee type. `addPlumbingItem()` handles per_unit and range_based (with excess) methods
+- **Electronics tab:** 11 ELECT_* fee types, `addElectronicsItem()`
+- **Accessories (ACC_BLDG), Accessory Fees (ACC_FEE), Surcharge (SURCHARGE) tabs** with dedicated add methods and routes
+- Routes: `POST /assessments/{id}/plumbing-item`, `electronics-item`, `accessory-item`, `acc-fee-item`, `surcharge-item`
+
+### Assessment Finalization Locking — COMPLETED
+
+- After BP assessment finalize: all add forms hidden, per-row and bulk Remove hidden; server-side `redirectIfFinalized()` guard in every add/remove method redirects to `?tab=SUMMARY` with error
+- After zoning finalize: autocompute, add, remove (single + bulk), and Save Details blocked; `ZoningController::abortIfZoningFinalized()` aborts 403; single amber "finalized" banner
+- Finalize (BP and OP) redirects back to the Summary tab (`?tab=SUMMARY`) instead of the first tab
+
+### BP Assessment PDF & Print Improvements — COMPLETED
+
+- Fire Code Fees section removed from the printed Summary of Computation; sections renumbered 1–10
+- Real Code 128 barcode image (picqer/php-barcode-generator, base64 PNG) rendered above the BP number
+- "Approved By" pulled from `signatories` where role = `building_official` (title + name on one line, designation below)
+- Print button on BP assessment index when status = `engineering_assessed`
+
+### OP Occupancy Fee Tab (BOPMS-style) — COMPLETED
+
+- `addOccupancyFeeItem()` + route `POST /assessments/op/{op}/occupancy-fee`
+- 8 OCC_* fee types; Unit field label switches by type: Costing (₱) / Area (sq.m) / Amount (₱) / Meters-Units
+- Server-side computation honors all three occupancy methods:
+  - `range_based` with excess: `fixed_fee + ceil(excess / excess_every) × excess_fee` (e.g. "per ₱1M or fraction thereof")
+  - `per_unit`: `unit × fee_per_unit`
+  - `percentage`: `unit × schedule.percentage` (e.g. J-II 50% of principal rate)
+- All 8 divisions verified against seeded schedules (9 samples, subtotal ₱9,250)
+
 ---
 
 ## Upcoming Tasks
 
 | Task | Priority | Notes |
 |------|----------|-------|
-| Plumbing tab (BOPMS-style) | High | Next: BOPMS-style form for PLUMB fee types, auto-computed inspection fees from PLUMB_INSP or plumbing-specific NBC rates |
-| Electronics / Accessories tabs | Medium | Currently generic form; may need BOPMS-style upgrades |
 | Additional permit types (FP, EP, DP, etc.) | Medium | Currently only BP and OP are active |
 | Document requirement upload UI | Low | Model/route exists, UI needs improvement |
 | Email notification configuration | Low | SMTP settings, notification templates |

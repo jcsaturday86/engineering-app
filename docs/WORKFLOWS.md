@@ -139,9 +139,32 @@ Select mechanical equipment type (MECH_*) + unit count
 → grand total = sum(amount) + sum(inspection_fee)
 ```
 
-#### Other Tabs (Plumbing, Electronics, Accessories, etc.)
+#### Plumbing Tab
 ```
-Select fee type + enter quantity
+Select plumbing fee (22 PLUMB_* types, grouped) + unit (dynamic label: fixtures/mm/cu.m)
+→ per_unit:    amount = unit × fee_per_unit
+→ range_based: lookup range → fixed_fee (+ excess above threshold) or fee_per_unit × unit
+```
+
+#### Electronics / Accessories / Accessory Fees / Surcharge Tabs
+```
+Select fee type + unit → schedule lookup → amount per computation method
+(dedicated add methods: addElectronicsItem, addAccessoryItem, addAccFeeItem, addSurchargeItem)
+```
+
+#### Occupancy Fee Tab (OP assessment)
+```
+Select OCC_* fee type + unit (dynamic label: Costing ₱ / Area sq.m / Amount ₱ / Meters-Units)
+→ range_based: lookup cost/area range → fixed_fee
+  · with excess: fixed_fee + ceil((unit − excess_threshold) / excess_every) × excess_fee
+    (e.g. DIV_A ₱2M → ₱800 + ceil(800k/1M)×₱800 = ₱1,600)
+→ per_unit:   amount = unit × fee_per_unit          (e.g. CHANGE_USE: sq.m × ₱5)
+→ percentage: amount = unit × schedule.percentage   (e.g. J-II RATE: principal fee × 50%)
+```
+
+#### Generic Tabs (fallback)
+```
+Select fee type + enter quantity + unit fee
 → amount = quantity × unit_fee
 ```
 
@@ -152,6 +175,15 @@ Assessment total = sum(assessment_items.amount)
                  + filing_fee
                  + processing_fee
 ```
+
+### Assessment Finalization Locking
+
+Finalize requires password confirmation (`Hash::check()`), then redirects to the Summary tab (`?tab=SUMMARY`).
+
+Once an assessment status = `finalized`:
+- **BP/OP assessment** — all add-item forms and Remove buttons are hidden; every add/remove endpoint calls `redirectIfFinalized()` which bounces to the Summary tab with an error
+- **Zoning assessment** — autocompute, add, remove (single + bulk), and Save Details are hidden; `ZoningController::abortIfZoningFinalized()` returns 403 on any mutating request
+- A single amber banner "This assessment has been finalized. No further changes can be made." is displayed
 
 ---
 
@@ -191,7 +223,7 @@ Assessment total = sum(assessment_items.amount)
 | application-form | ApplicationController::printForm |
 | building-permit | PermitController::print (BP) |
 | occupancy-permit | PermitController::print (OP) |
-| assessment-summary | AssessmentController::print |
+| assessment-summary | AssessmentController::print — Code 128 barcode above BP number; Approved By = building_official signatory; no Fire Code Fees section |
 | billing-statement | BillingController::print |
 | official-receipt | CollectionController::receipt |
 | zoning-certification | PermitController::zoningCertification |

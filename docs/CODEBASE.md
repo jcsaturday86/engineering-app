@@ -91,7 +91,9 @@ index, create, store, show, edit, update, submit, cancel, printForm
 index, create, store, show, edit, update, submit, cancel, printForm
 
 ### ZoningController
-index, assess, store, autoCompute, addItem, removeItem, finalize, skip
+index, assess, store, autoCompute, addItem, removeItems (bulk), removeItem, finalize, skip
+
+**Private helpers:** `zoningAssessmentIsFinalized()` / `abortIfZoningFinalized()` — store, autoCompute, addItem, and remove methods abort 403 once the zoning assessment is finalized.
 
 ### ZoningFeeController (Settings)
 index, update, store, updateCert, updateOther, destroy
@@ -106,20 +108,27 @@ index, update, store, updateCert, updateOther, destroy
 | addConstructionItem | POST /assessments/{id}/construction-item | BOPMS-style: Part+Division+Area → auto fee lookup |
 | addElectricalItem | POST /assessments/{id}/electrical-item | BOPMS-style: 7 types, auto inspection % |
 | addMechanicalItem | POST /assessments/{id}/mechanical-item | BOPMS-style: equipment type+unit → base fee + NBC inspection fee |
+| addPlumbingItem | POST /assessments/{id}/plumbing-item | BOPMS-style: 22 PLUMB_* types, per_unit + range_based |
+| addElectronicsItem | POST /assessments/{id}/electronics-item | BOPMS-style: 11 ELECT_* types |
+| addAccessoryItem | POST /assessments/{id}/accessory-item | ACC_BLDG tab |
+| addAccFeeItem | POST /assessments/{id}/acc-fee-item | ACC_FEE tab |
+| addSurchargeItem | POST /assessments/{id}/surcharge-item | SURCHARGE tab |
 | addItem | POST /assessments/{id}/item | Generic item for other tabs |
-| removeItem | DELETE /assessments/item/{id} | Remove item |
-| finalize | POST /assessments/{id}/finalize | BP → engineering_assessed |
+| removeItem | DELETE /assessments/item/{id} | Remove item (guarded when finalized) |
+| finalize | POST /assessments/{id}/finalize | BP → engineering_assessed; redirects to ?tab=SUMMARY |
 | summary | GET /assessments/{id}/summary | BP summary view |
-| print | GET /assessments/{id}/print | PDF summary |
+| print | GET /assessments/{id}/print | PDF summary (barcode + building_official signatory) |
 | assessOp | GET /assessments/op/{op} | OP fee entry |
 | addItemOp | POST /assessments/op/{op}/item | OP generic item |
-| finalizeOp | POST /assessments/op/{op}/finalize | OP → engineering_assessed |
+| addOccupancyFeeItem | POST /assessments/op/{op}/occupancy-fee | BOPMS-style: 8 OCC_* types; range_based (excess_every), per_unit, percentage |
+| finalizeOp | POST /assessments/op/{op}/finalize | OP → engineering_assessed; redirects to ?tab=SUMMARY |
 | summaryOp | GET /assessments/op/{op}/summary | OP summary |
 | printOp | GET /assessments/op/{op}/print | OP PDF |
 
 **Private helpers:**
 - `resolveInspectionFee(string $code, float $unit): array` — maps MECH_* code → INSP_* fee type (MECH_INSP category), does range or first-row lookup, returns {fee, excess_threshold, excess_fee, every, method}. Three methods: flat (range-band fixed), per_unit (rate × unit), tiered (cumulative for elevators).
 - `calculateTotals(Assessment $assessment): array` — returns subtotal, inspection, filing, processing, total.
+- `redirectIfFinalized(Assessment, PermitApplicationContract): ?RedirectResponse` — called by every add/remove method; when assessment status = finalized, redirects to the assess page `?tab=SUMMARY` with an error flash. `doPrint()` also generates a Code 128 barcode (picqer BarcodeGeneratorPNG, base64) and loads the `building_official` signatory for the PDF.
 
 ### BillingController
 index, generate (BP), generateOp (OP), print
@@ -215,3 +224,4 @@ application-form, building-permit, occupancy-permit, assessment-summary, billing
 | spatie/laravel-activitylog | Audit trail |
 | barryvdh/laravel-dompdf | PDF generation |
 | maatwebsite/excel | Excel exports |
+| picqer/php-barcode-generator | Code 128 barcode on assessment PDF |

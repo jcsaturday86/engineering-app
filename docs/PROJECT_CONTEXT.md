@@ -17,6 +17,7 @@ This system replaces the legacy BOPMS (Building and Occupancy Permit Management 
 | Frontend | Blade + Tailwind CSS (CDN) + Alpine.js (CDN) |
 | Charts | Chart.js |
 | PDF | DomPDF (barryvdh/laravel-dompdf) |
+| Barcode | picqer/php-barcode-generator (Code 128) |
 | Excel | Maatwebsite Excel |
 | RBAC | Spatie Laravel-Permission |
 | Audit | Spatie Laravel-Activitylog |
@@ -69,7 +70,17 @@ The BP assessment page uses tabbed navigation with fee category tabs plus a Summ
 - **Construction tab** — Part of Building + Division (filtered by occupancy groups) + Area → server-side fee lookup. Formula: `amount = area × fee_per_unit`.
 - **Electrical tab** — 7 fee types with conditional fields. Range-based kVA: `amount = fixed_fee + (kva × fee_per_unit)`. Inspection fee = `base × electrical_inspection_percentage` (setting, default 10%). Total = base + inspection.
 - **Mechanical tab** — Select mechanical equipment type + unit count → auto-computes base permit fee (MECH schedules) + NBC inspection fee (MECH_INSP schedules via `resolveInspectionFee()`). Three inspection formulas: flat (range band), per_unit (rate × count), tiered (cumulative for elevators). `amount` = base only; `inspection_fee` stored separately.
-- **Other tabs** — Generic form: select Fee Type, enter Quantity.
+- **Plumbing tab** — 22 PLUMB_* fee types (installation / fixtures / special fixtures / range-based), dynamic unit label per type.
+- **Electronics tab** — 11 ELECT_* fee types with per-type unit labels.
+- **Accessories (ACC_BLDG), Accessory Fees (ACC_FEE), Surcharge (SURCHARGE) tabs** — dedicated BOPMS-style forms and add methods.
+- **Occupancy Fee tab (OP assessment)** — 8 OCC_* fee types; Unit label switches by type (Costing ₱ / Area sq.m / Amount ₱ / Meters-Units). Server-side computation honors `range_based` (with `excess_every` "per ₱1M or fraction thereof"), `per_unit`, and `percentage` methods.
+- **Other tabs** — Generic fallback form: select Fee Type, enter Quantity + Unit Fee.
+
+### Assessment Finalization Locking
+Finalize requires password confirmation and redirects to the Summary tab. Once finalized, all mutating actions are blocked at both UI level (forms/buttons hidden, amber banner shown) and server level (`AssessmentController::redirectIfFinalized()` for BP/OP items; `ZoningController::abortIfZoningFinalized()` returns 403 for zoning).
+
+### Assessment PDF (Summary of Computation)
+`doPrint()` renders `pdf/assessment-summary` with a real Code 128 barcode (picqer/php-barcode-generator, base64 PNG for DomPDF) above the BP number, and "Approved By" sourced from the `signatories` table (`role = building_official`). Fire Code Fees are excluded (BFP is out of scope).
 
 ### Self-Healing Service Provider
 `SelfHealingServiceProvider` auto-creates database, runs migrations, and seeds roles/settings/admin if missing on every application boot.

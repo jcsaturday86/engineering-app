@@ -68,7 +68,7 @@ Standard hierarchical geo tables with `psgc_code`, `name`, `is_active`. ~42K bar
 
 ### Other Reference Tables
 - `building_parts` — id, name, is_active
-- `signatories` — id, role, name, title, designation, department, license_no, is_active
+- `signatories` — id, role, name, title, designation, department, license_no, is_active. The `building_official` role is used as "Approved By" on the assessment summary PDF and permits.
 - `land_classifications` — id, name, code, is_active
 - `form_of_ownerships` — id, name, is_active
 
@@ -116,7 +116,7 @@ Standard hierarchical geo tables with `psgc_code`, `name`, `is_active`. ~42K bar
 | percentage | decimal(8,4) | For percentage method |
 | excess_threshold | decimal(15,2) | Unit count where excess kicks in |
 | excess_fee | decimal(15,2) | Rate per unit above threshold |
-| excess_every | decimal(15,2) | Excess groups (÷ N units) |
+| excess_every | decimal(15,2) | Excess groups: fee = `ceil(excess / excess_every) × excess_fee` ("per ₱1M or fraction thereof", e.g. OCC_DIV_A) |
 | minimum_fee / maximum_fee | decimal(15,2) | |
 | formula | text | Yes | For formula method |
 | insp_fee | decimal(15,4) | Reserved — not used by current implementation |
@@ -208,6 +208,8 @@ Polymorphic, `requirement_name`, `file_path`, `original_filename`, `status` (pen
 | status | enum | draft, finalized |
 | assessed_by | FK → users | Yes |
 | finalized_at / deleted_at | timestamp | Yes |
+
+> Once `status = finalized`, assessment items can no longer be added or removed — enforced server-side in `AssessmentController` (redirect w/ error) and `ZoningController` (403).
 
 ### `assessment_items`
 
