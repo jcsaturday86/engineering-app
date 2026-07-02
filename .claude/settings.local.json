@@ -22,7 +22,31 @@
       "Bash(gh repo *)",
       "Bash(git push *)",
       "Bash(git show *)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(powershell -Command \"Get-Content 'C:\\\\xampp\\\\htdocs\\\\engineering-app\\\\storage\\\\logs\\\\laravel.log' -Tail 100\")",
+      "Bash(powershell -Command \"Get-Content 'C:\\\\xampp\\\\htdocs\\\\engineering-app\\\\storage\\\\logs\\\\laravel.log' -Tail 5 | Select-String 'local\\\\.' | Select-Object -First 3\")",
+      "Bash(powershell -Command \"\\(Get-Content 'C:\\\\xampp\\\\htdocs\\\\engineering-app\\\\storage\\\\logs\\\\laravel.log' -Tail 3\\)\")",
+      "Bash(powershell -Command \"Set-Content 'C:\\\\xampp\\\\htdocs\\\\engineering-app\\\\storage\\\\logs\\\\laravel.log' '' -Encoding utf8\")",
+      "Bash(powershell -Command \"Stop-Process -Id 14560 -Force -ErrorAction SilentlyContinue\")",
+      "PowerShell(Get-NetTCPConnection -LocalPort 8100 -ErrorAction SilentlyContinue | Select-Object OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force })",
+      "PowerShell(Get-Process php -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Force)",
+      "Bash(ls C:\\\\xampp\\\\htdocs\\\\engineering-app\\\\docs 2>/dev/null || mkdir C:\\\\xampp\\\\htdocs\\\\engineering-app\\\\docs)",
+      "Bash(git status *)",
+      "Bash(grep -A 15 \"CREATE TABLE.*\\\\`groups\\\\`\" \"C:\\\\Users\\\\Jay Carlou\\\\Documents\\\\BOPMS\\\\engineering\\\\engineering\\\\database\\\\backup\\\\db_engineering.sql\")",
+      "PowerShell(& \"C:\\\\Program Files\\\\MariaDB 12.3\\\\bin\\\\mysql.exe\" -u root -psfcity98 epms_db -e \"UPDATE fee_categories SET name='Construction' WHERE code='CONST'; UPDATE fee_categories SET name='Electrical' WHERE code='ELEC'; UPDATE fee_categories SET name='Mechanical' WHERE code='MECH'; UPDATE fee_categories SET name='Plumbing' WHERE code='PLUMB'; UPDATE fee_categories SET name='Electronics' WHERE code='ELECT'; UPDATE fee_categories SET name='Accessories' WHERE code='ACC_BLDG'; UPDATE fee_categories SET name='Accessory' WHERE code='ACC_FEE'; SELECT id, code, name FROM fee_categories WHERE permit_type_id=1 ORDER BY sort_order;\" 2>$null)",
+      "PowerShell(& \"C:\\\\Program Files\\\\MariaDB 12.3\\\\bin\\\\mysql.exe\" -u root -psfcity98 epms_db -e \"SELECT ft.code, ft.id as fee_type_id, fs.range_from, fs.range_to, fs.fee_per_unit FROM fee_types ft JOIN fee_schedules fs ON fs.fee_type_id = ft.id WHERE ft.code = 'CONST_A1' ORDER BY fs.range_from;\" 2>$null)",
+      "PowerShell(& \"C:\\\\Program Files\\\\MariaDB 12.3\\\\bin\\\\mysql.exe\" -u root -psfcity98 epms_db -e \"SELECT ft.code as fee_type_code, od.code as division_code, od.name as division_name, od.occupancy_group_id FROM fee_types ft JOIN occupancy_divisions od ON CONCAT\\('CONST_', od.code\\) = ft.code WHERE ft.fee_category_id = 1 AND ft.code LIKE 'CONST_%' AND ft.code NOT LIKE 'CONST_ADD%' ORDER BY od.occupancy_group_id;\" 2>$null)",
+      "Bash(grep -i \"mechanical\\\\|inspection\" \"C:/Users/Jay Carlou/Downloads/BOPMS/engineering/db_ebps.sql\" | grep -i \"inspection\" | head -60)",
+      "Bash(grep -A30 \"CREATE TABLE IF NOT EXISTS \\\\`ann_inspection_f\" \"C:/Users/Jay Carlou/Downloads/BOPMS/engineering/db_ebps.sql\")",
+      "Bash(grep -A3 \"INSERT INTO \\\\`ann_inspection_f\" \"C:/Users/Jay Carlou/Downloads/BOPMS/engineering/db_ebps.sql\")",
+      "Bash(grep \"INSERT INTO \\\\`ann_inspection_f\" \"C:/Users/Jay Carlou/Downloads/BOPMS/engineering/db_ebps.sql\")",
+      "Bash(ls -la \"C:\\\\Users\\\\Jay Carlou\\\\Documents\\\\BOPMS\\\\\" 2>&1 | head -50)",
+      "Bash(php artisan tinker '--execute= *)",
+      "Bash(xargs grep -l \"dompdf\\\\|DomPDF\")",
+      "PowerShell(php artisan tinker --execute=\"$a = App\\\\Models\\\\Assessment::where\\('applicationable_type','op'\\)->where\\('applicationable_id',11\\)->where\\('assessment_type','occupancy'\\)->first\\(\\); $n = App\\\\Models\\\\AssessmentItem::where\\('assessment_id', $a->id\\)->delete\\(\\); echo 'Deleted ' . $n . ' items';\")",
+      "PowerShell(php artisan tinker)",
+      "PowerShell(git add -A)"
     ]
   }
 }

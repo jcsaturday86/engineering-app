@@ -13,10 +13,14 @@ use App\Models\FeeType;
 use App\Models\OccupancyDivision;
 use App\Models\OccupancyApplication;
 use App\Models\Setting;
+use App\Models\Signatory;
+use App\Models\User;
 use App\Notifications\AssessmentCompleteNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Picqer\Barcode\BarcodeGeneratorPNG;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 class AssessmentController extends Controller
@@ -139,6 +143,18 @@ class AssessmentController extends Controller
         ));
     }
 
+    private function redirectIfFinalized(Assessment $assessment, PermitApplicationContract $application): ?\Illuminate\Http\RedirectResponse
+    {
+        if ($assessment->status === 'finalized') {
+            $isOp = $assessment->applicationable_type === 'op';
+            $route = $isOp
+                ? route('assessments.assess.op', $application) . '?tab=SUMMARY'
+                : route('assessments.assess', $application) . '?tab=SUMMARY';
+            return redirect()->to($route)->with('error', 'This assessment has been finalized and cannot be modified.');
+        }
+        return null;
+    }
+
     // BP add item
     public function addConstructionItem(Request $request, Application $application)
     {
@@ -156,6 +172,8 @@ class AssessmentController extends Controller
             ],
             ['status' => 'draft', 'assessed_by' => Auth::id()]
         );
+
+        if ($r = $this->redirectIfFinalized($assessment, $application)) return $r;
 
         $division = OccupancyDivision::findOrFail($validated['occupancy_division_id']);
         $buildingPart = BuildingPart::findOrFail($validated['building_part_id']);
@@ -223,6 +241,8 @@ class AssessmentController extends Controller
             ],
             ['status' => 'draft', 'assessed_by' => Auth::id()]
         );
+
+        if ($r = $this->redirectIfFinalized($assessment, $application)) return $r;
 
         $feeTypeCode = $validated['electrical_fee_type'];
         $feeType = FeeType::where('code', $feeTypeCode)->first();
@@ -385,6 +405,8 @@ class AssessmentController extends Controller
             ['status' => 'draft', 'assessed_by' => Auth::id()]
         );
 
+        if ($r = $this->redirectIfFinalized($assessment, $application)) return $r;
+
         $feeTypeCode = $validated['mechanical_fee_type'];
         $unit        = (float) $validated['unit'];
 
@@ -542,6 +564,8 @@ class AssessmentController extends Controller
             ['status' => 'draft', 'assessed_by' => Auth::id()]
         );
 
+        if ($r = $this->redirectIfFinalized($assessment, $application)) return $r;
+
         $feeTypeCode  = $validated['plumbing_fee_type'];
         $unit         = (float) $validated['unit'];
 
@@ -641,6 +665,8 @@ class AssessmentController extends Controller
             ['status' => 'draft', 'assessed_by' => Auth::id()]
         );
 
+        if ($r = $this->redirectIfFinalized($assessment, $application)) return $r;
+
         $feeTypeCode = $validated['electronics_fee_type'];
         $unit        = (float) $validated['unit'];
 
@@ -692,6 +718,119 @@ class AssessmentController extends Controller
             ->with('success', 'Electronics fee item added.');
     }
 
+    public function addOccupancyFeeItem(Request $request, OccupancyApplication $occupancyApplication)
+    {
+        $allCodes = implode(',', [
+            'OCC_DIV_A','OCC_DIV_B','OCC_DIV_CD','OCC_DIV_J1',
+            'OCC_DIV_J2_RATE','OCC_DIV_J2_E2','OCC_DIV_J2_E3','OCC_CHANGE_USE',
+        ]);
+
+        $validated = $request->validate([
+            'occupancy_fee_type' => 'required|string|in:' . $allCodes,
+            'unit'               => 'required|numeric|min:0.01',
+        ]);
+
+        $assessment = Assessment::firstOrCreate(
+            [
+                'applicationable_type' => 'op',
+                'applicationable_id'   => $occupancyApplication->id,
+                'assessment_type'      => 'occupancy',
+            ],
+            ['status' => 'draft', 'assessed_by' => Auth::id()]
+        );
+
+        if ($r = $this->redirectIfFinalized($assessment, $occupancyApplication)) return $r;
+
+        $feeTypeCode  = $validated['occupancy_fee_type'];
+        $unit         = (float) $validated['unit'];
+
+        $feeType = FeeType::where('code', $feeTypeCode)->first();
+        if (!$feeType) {
+            return back()->with('error', 'Occupancy fee type not found: ' . $feeTypeCode);
+        }
+
+        $occCategory  = FeeCategory::where('code', 'OCC')->first();
+        $isRangeBased = $feeType->computation_method === 'range_based';
+
+        $scheduleQuery = FeeSchedule::where('fee_type_id', $feeType->id)->where('is_active', true);
+        if ($isRangeBased) {
+            $scheduleQuery->where('range_from', '<=', $unit)->where('range_to', '>=', $unit);
+        }
+        $schedule = $scheduleQuery->orderBy('id')->first();
+
+        if (!$schedule) {
+            return back()->with('error', 'No fee schedule found for ' . $feeType->name . ' at unit ' . number_format($unit, 2) . '.');
+        }
+
+        $excessFee  = 0;
+        $unitFee    = 0;
+        $pctRate    = 0;
+        $excessUnits = 0;
+
+        switch ($feeType->computation_method) {
+            case 'per_unit':
+                $unitFee = (float) $schedule->fee_per_unit;
+                $baseFee = round($unit * $unitFee, 2);
+                break;
+
+            case 'percentage':
+                $pctRate = (float) $schedule->percentage;
+                $baseFee = round($unit * $pctRate, 2);
+                $unitFee = $pctRate;
+                break;
+
+            case 'range_based':
+                $threshold   = (float) $schedule->excess_threshold;
+                $excessEvery = max(1, (float) $schedule->excess_every);
+                if ($threshold > 0 && $unit > $threshold) {
+                    $excess      = $unit - $threshold;
+                    $excessUnits = (int) ceil($excess / $excessEvery);
+                    $excessFee   = round($excessUnits * (float) $schedule->excess_fee, 2);
+                    $baseFee     = round((float) $schedule->fixed_fee + $excessFee, 2);
+                } elseif ((float) $schedule->fee_per_unit > 0) {
+                    $unitFee = (float) $schedule->fee_per_unit;
+                    $baseFee = round($unit * $unitFee, 2);
+                } else {
+                    $baseFee = round((float) $schedule->fixed_fee, 2);
+                }
+                break;
+
+            default:
+                $baseFee = 0;
+        }
+
+        AssessmentItem::create([
+            'assessment_id'       => $assessment->id,
+            'fee_category_id'     => $occCategory->id,
+            'fee_type_id'         => $feeType->id,
+            'fee_code'            => $feeType->code,
+            'description'         => $feeType->name,
+            'quantity'            => $unit,
+            'unit_fee'            => $unitFee,
+            'excess_fee'          => $excessFee,
+            'inspection_fee'      => 0,
+            'amount'              => $baseFee,
+            'computation_details' => [
+                'fee_type_code'      => $feeTypeCode,
+                'fee_schedule_id'    => $schedule->id,
+                'input_unit'         => $unit,
+                'computation_method' => $feeType->computation_method,
+                'fixed_fee'          => (float) $schedule->fixed_fee,
+                'fee_per_unit'       => (float) $schedule->fee_per_unit,
+                'percentage'         => $pctRate,
+                'excess_threshold'   => (float) $schedule->excess_threshold,
+                'excess_every'       => (float) $schedule->excess_every,
+                'excess_units'       => $excessUnits,
+                'excess_fee_rate'    => (float) $schedule->excess_fee,
+                'range'              => $isRangeBased ? ($schedule->range_from . ' - ' . $schedule->range_to) : null,
+            ],
+            'is_active' => true,
+        ]);
+
+        return redirect()->route('assessments.assess.op', ['occupancyApplication' => $occupancyApplication->id, 'tab' => 'OCC'])
+            ->with('success', 'Occupancy fee item added.');
+    }
+
     public function addAccessoryItem(Request $request, Application $application)
     {
         $allCodes = implode(',', [
@@ -721,6 +860,8 @@ class AssessmentController extends Controller
             ],
             ['status' => 'draft', 'assessed_by' => Auth::id()]
         );
+
+        if ($r = $this->redirectIfFinalized($assessment, $application)) return $r;
 
         $feeTypeCode  = $validated['accessory_fee_type'];
         $unit         = (float) $validated['unit'];
@@ -845,6 +986,8 @@ class AssessmentController extends Controller
             ],
             ['status' => 'draft', 'assessed_by' => Auth::id()]
         );
+
+        if ($r = $this->redirectIfFinalized($assessment, $application)) return $r;
 
         $rawCode     = $validated['acc_fee_type'];
         $unit        = (float) $validated['unit'];
@@ -974,6 +1117,8 @@ class AssessmentController extends Controller
             ['status' => 'draft', 'assessed_by' => Auth::id()]
         );
 
+        if ($r = $this->redirectIfFinalized($assessment, $application)) return $r;
+
         $feeTypeCode      = $validated['surcharge_type'];
         $feeType          = FeeType::where('code', $feeTypeCode)->first();
         $surchargeCategory = FeeCategory::where('code', 'SURCHARGE')->first();
@@ -987,21 +1132,22 @@ class AssessmentController extends Controller
             return back()->with('error', 'No fee schedule found for ' . $feeType->name . '.');
         }
 
-        $totalBPFeeBase = null;
+        $totalBPFeeBase  = null;
+        $bpCategoryCodes = ['CONST', 'ELEC', 'MECH', 'PLUMB', 'ELECT', 'ACC_BLDG', 'ACC_FEE'];
 
         if ($feeType->computation_method === 'fixed') {
-            $amount = round((float) $schedule->fixed_fee, 2);
+            $amount  = round((float) $schedule->fixed_fee, 2);
             $unitFee = $amount;
         } else {
-            // Percentage: base = all non-surcharge assessment amounts + inspection fees + filing + processing
-            $nonSurchargeItems = $assessment->assessmentItems()
-                ->where('is_active', true)
-                ->where('fee_category_id', '!=', $surchargeCategory->id);
+            // Percentage: base = sum of amount + inspection_fee across the 7 core BP assessment categories
+            $bpCategoryIds = FeeCategory::whereIn('code', $bpCategoryCodes)->pluck('id');
 
-            $totalBPFeeBase = $nonSurchargeItems->sum('amount')
-                + $nonSurchargeItems->sum('inspection_fee')
-                + $assessment->filing_fee
-                + $assessment->processing_fee;
+            $bpItems = $assessment->assessmentItems()
+                ->where('is_active', true)
+                ->whereIn('fee_category_id', $bpCategoryIds)
+                ->get();
+
+            $totalBPFeeBase = $bpItems->sum('amount') + $bpItems->sum('inspection_fee');
 
             $amount  = round($totalBPFeeBase * (float) $schedule->percentage, 2);
             $unitFee = 0;
@@ -1024,6 +1170,7 @@ class AssessmentController extends Controller
                 'fixed_fee'          => (float) $schedule->fixed_fee,
                 'percentage'         => (float) $schedule->percentage,
                 'total_bp_fee_base'  => $totalBPFeeBase,
+                'base_categories'    => $bpCategoryCodes,
             ],
             'is_active'           => true,
         ]);
@@ -1062,6 +1209,8 @@ class AssessmentController extends Controller
             ['status' => 'draft', 'assessed_by' => Auth::id()]
         );
 
+        if ($r = $this->redirectIfFinalized($assessment, $application)) return $r;
+
         $feeCategory = FeeCategory::find($validated['fee_category_id']);
         $feeType = $validated['fee_type_id'] ? FeeType::find($validated['fee_type_id']) : null;
 
@@ -1093,6 +1242,11 @@ class AssessmentController extends Controller
     public function removeItem(AssessmentItem $assessmentItem)
     {
         $assessment = $assessmentItem->assessment;
+        $application = $assessment->applicationable_type === 'op'
+            ? \App\Models\OccupancyApplication::find($assessment->applicationable_id)
+            : \App\Models\Application::find($assessment->applicationable_id);
+        if ($r = $this->redirectIfFinalized($assessment, $application)) return $r;
+
         $feeCategory = \App\Models\FeeCategory::find($assessmentItem->fee_category_id);
         $tab = $feeCategory?->code ?? 'CONST';
 
@@ -1145,17 +1299,33 @@ class AssessmentController extends Controller
     }
 
     // BP finalize
-    public function finalize(Application $application)
+    public function finalize(Request $request, Application $application)
     {
+        $request->validate(['password' => 'required|string']);
+        if (!Hash::check($request->password, Auth::user()->password)) {
+            return redirect()
+                ->to(route('assessments.assess', $application) . '?tab=SUMMARY')
+                ->with('error', 'Incorrect password. Assessment not finalized.');
+        }
         $this->doFinalize($application);
-        return redirect()->route('assessments.index')->with('success', 'Assessment finalized.');
+        return redirect()
+            ->to(route('assessments.assess', $application) . '?tab=SUMMARY')
+            ->with('success', 'Assessment finalized successfully.');
     }
 
     // OP finalize
-    public function finalizeOp(OccupancyApplication $occupancyApplication)
+    public function finalizeOp(Request $request, OccupancyApplication $occupancyApplication)
     {
+        $request->validate(['password' => 'required|string']);
+        if (!Hash::check($request->password, Auth::user()->password)) {
+            return redirect()
+                ->to(route('assessments.assess.op', $occupancyApplication) . '?tab=SUMMARY')
+                ->with('error', 'Incorrect password. Assessment not finalized.');
+        }
         $this->doFinalize($occupancyApplication);
-        return redirect()->route('assessments.occupancy')->with('success', 'Assessment finalized.');
+        return redirect()
+            ->to(route('assessments.assess.op', $occupancyApplication) . '?tab=SUMMARY')
+            ->with('success', 'Assessment finalized successfully.');
     }
 
     private function doFinalize(PermitApplicationContract $application)
@@ -1207,9 +1377,50 @@ class AssessmentController extends Controller
 
     private function doPrint(PermitApplicationContract $application)
     {
-        $assessments = $application->assessments()->with('assessmentItems')->get();
+        $settings = Setting::where('group', 'general')->pluck('value', 'key');
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary', compact('application', 'assessments'));
+        $buildingAssessment = $application->assessments()
+            ->where('assessment_type', 'building')
+            ->with(['assessmentItems' => fn($q) => $q->where('is_active', true)->with('feeCategory')])
+            ->first();
+
+        $zoningAssessment = $application->assessments()
+            ->where('assessment_type', 'zoning')
+            ->with(['assessmentItems' => fn($q) => $q->where('is_active', true)->with('feeCategory')])
+            ->first();
+
+        $itemsByCategory = $buildingAssessment
+            ? $buildingAssessment->assessmentItems->groupBy(fn($i) => $i->feeCategory?->code ?? 'OTHER')
+            : collect();
+
+        $zoningByCategory = $zoningAssessment
+            ? $zoningAssessment->assessmentItems->groupBy(fn($i) => $i->feeCategory?->code ?? 'OTHER')
+            : collect();
+
+        $barangayName = '';
+        if ($application->building_barangay_id) {
+            $barangay = \App\Models\Barangay::find($application->building_barangay_id);
+            $barangayName = $barangay?->name ?? '';
+        }
+
+        $preparedBy = $buildingAssessment?->assessed_by
+            ? \App\Models\User::find($buildingAssessment->assessed_by)
+            : null;
+
+        $buildingOfficial = Signatory::where('role', 'building_official')
+            ->where('is_active', true)
+            ->first();
+
+        $generator    = new BarcodeGeneratorPNG();
+        $barcodeImage = base64_encode(
+            $generator->getBarcode($application->application_number, $generator::TYPE_CODE_128, 2, 80)
+        );
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary', compact(
+            'application', 'settings', 'buildingAssessment',
+            'zoningAssessment', 'itemsByCategory', 'zoningByCategory',
+            'barangayName', 'preparedBy', 'buildingOfficial', 'barcodeImage'
+        ));
         $pdf->setPaper('a4', 'portrait');
 
         return $pdf->stream("assessment_{$application->application_number}.pdf");

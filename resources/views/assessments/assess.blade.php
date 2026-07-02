@@ -19,6 +19,7 @@
     $tabCategories = $tabCategories ?? $feeCategories;
     $activeTab = $activeTab ?? ($tabCategories->first()?->code ?? 'CONST');
     $itemsByCategory = $itemsByCategory ?? $assessmentItems->groupBy('fee_category_id');
+    $isFinalized = $assessment && $assessment->status === 'finalized';
 @endphp
 <div class="space-y-6" x-data="{ activeTab: '{{ $activeTab }}' }">
     {{-- Header --}}
@@ -93,8 +94,15 @@
             $catFeeTypes = $cat->feeTypes;
         @endphp
         <div x-show="activeTab === '{{ $cat->code }}'" x-cloak class="p-5 space-y-4">
+            @if($isFinalized)
+            <div class="flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                <i class="fas fa-lock"></i>
+                <span>This assessment has been <strong>finalized</strong>. No further changes can be made.</span>
+            </div>
+            @endif
             @if($cat->code === 'CONST')
             {{-- Construction Fee Form (BOPMS-style) --}}
+            @if(!$isFinalized)
             <div>
                 <h4 class="text-sm font-semibold text-gray-700 mb-3">
                     <i class="fas fa-plus-circle text-blue-500 mr-1"></i> Add Construction Item
@@ -136,8 +144,10 @@
                     <p class="text-xs text-gray-400 mt-2">Fee per unit and amount are auto-computed based on division and area range.</p>
                 </form>
             </div>
+            @endif
             @elseif($cat->code === 'ELEC')
             {{-- Electrical Fee Form (BOPMS-style) --}}
+            @if(!$isFinalized)
             <div x-data="{
                 selected: '',
                 feeTypeCode: '',
@@ -208,8 +218,10 @@
                     <p class="text-xs text-gray-400 mt-2">Fee and amount are auto-computed based on BOPMS electrical fee schedule.</p>
                 </form>
             </div>
+            @endif
             @elseif($cat->code === 'PLUMB')
             {{-- Plumbing Fee Form (BOPMS-style) --}}
+            @if(!$isFinalized)
             <div x-data="{
                 feeCode: '',
                 unitLabels: {
@@ -287,8 +299,10 @@
                     <p class="text-xs text-gray-400 mt-2">Fee and amount are auto-computed based on BOPMS plumbing fee schedule.</p>
                 </form>
             </div>
+            @endif
             @elseif($cat->code === 'ELECT')
             {{-- Electronics Fee Form (BOPMS-style) --}}
+            @if(!$isFinalized)
             <div x-data="{
                 feeCode: '',
                 unitLabels: {
@@ -350,8 +364,10 @@
                     <p class="text-xs text-gray-400 mt-2">Fee and amount are auto-computed based on BOPMS electronics fee schedule.</p>
                 </form>
             </div>
+            @endif
             @elseif($cat->code === 'ACC_BLDG')
             {{-- Accessory Fee Form (BOPMS-style) --}}
+            @if(!$isFinalized)
             <div x-data="{
                 feeCode: '',
                 unitLabels: {
@@ -454,8 +470,10 @@
                     <p class="text-xs text-gray-400 mt-2">Fee and amount are auto-computed based on BOPMS accessory building fee schedule.</p>
                 </form>
             </div>
+            @endif
             @elseif($cat->code === 'ACC_FEE')
             {{-- Accessory Misc. Fee Form (BOPMS-style) --}}
+            @if(!$isFinalized)
             <div x-data="{
                 feeCode: '',
                 unitLabels: {
@@ -562,8 +580,10 @@
                     <p class="text-xs text-gray-400 mt-2">Fee and amount are auto-computed based on BOPMS accessory miscellaneous fee schedule.</p>
                 </form>
             </div>
+            @endif
             @elseif($cat->code === 'SURCHARGE')
             {{-- Surcharge Form --}}
+            @if(!$isFinalized)
             <div>
                 <h4 class="text-sm font-semibold text-gray-700 mb-3">
                     <i class="fas fa-plus-circle text-blue-500 mr-1"></i> Add Surcharge
@@ -595,11 +615,13 @@
                             </button>
                         </div>
                     </div>
-                    <p class="text-xs text-gray-400 mt-2">Violation surcharges use a fixed penalty amount. Construction-stage surcharges are auto-computed as a percentage of the current total BP fee (all categories + inspection + filing + processing fees).</p>
+                    <p class="text-xs text-gray-400 mt-2">Violation surcharges use a fixed penalty amount. Construction-stage surcharges are computed as a percentage of the total BP assessment (Construction + Electrical + Mechanical + Plumbing + Electronics + Accessory Building + Accessory Misc. amounts including inspection fees) at the time of adding.</p>
                 </form>
             </div>
+            @endif
             @elseif($cat->code === 'MECH')
             {{-- Mechanical Fee Form (BOPMS-style) --}}
+            @if(!$isFinalized)
             <div x-data="{
                 feeCode: '',
                 unitLabels: {
@@ -688,8 +710,68 @@
                     <p class="text-xs text-gray-400 mt-2">Fee and amount are auto-computed based on BOPMS mechanical fee schedule.</p>
                 </form>
             </div>
+            @endif
+            @elseif($cat->code === 'OCC')
+            {{-- Occupancy Fee Form (BOPMS-style) --}}
+            @if(!$isFinalized)
+            <div x-data="{
+                feeCode: '',
+                unitLabels: {
+                    'OCC_DIV_A':      'Costing (₱)',
+                    'OCC_DIV_B':      'Costing (₱)',
+                    'OCC_DIV_CD':     'Costing (₱)',
+                    'OCC_DIV_J1':     'Area (sq.m)',
+                    'OCC_DIV_J2_RATE':'Amount (₱)',
+                    'OCC_DIV_J2_E2':  'Area (sq.m)',
+                    'OCC_DIV_J2_E3':  'Meters / Units',
+                    'OCC_CHANGE_USE': 'Area (sq.m)',
+                },
+                get unitLabel() { return this.unitLabels[this.feeCode] || 'unit'; }
+            }">
+                <h4 class="text-sm font-semibold text-gray-700 mb-3">
+                    <i class="fas fa-plus-circle text-blue-500 mr-1"></i> Add Occupancy Fee Item
+                </h4>
+                <form action="{{ route('assessments.occupancyFeeItem', $application) }}" method="POST" autocomplete="off">
+                    @csrf
+                    <input type="hidden" name="occupancy_fee_type" :value="feeCode">
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Occupancy Fee Type <span class="text-red-500">*</span></label>
+                            <select @change="feeCode = $event.target.value" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">-- Select --</option>
+                                <option value="OCC_DIV_A">Division A – Residential (by construction cost)</option>
+                                <option value="OCC_DIV_B">Division B – Residential Hotel (by construction cost)</option>
+                                <option value="OCC_DIV_CD">Division C/D – Educational/Institutional (by construction cost)</option>
+                                <option value="OCC_DIV_J1">Division J-I – Agricultural/Special (by floor area)</option>
+                                <option value="OCC_DIV_J2_RATE">Division J-II – Garages/Carports/Balconies (50% of principal rate)</option>
+                                <option value="OCC_DIV_J2_E2">Division J-II – Aviaries/Aquariums/Zoo (by floor area)</option>
+                                <option value="OCC_DIV_J2_E3">Division J-II – Towers: Radio/TV/Cell (by meters/units)</option>
+                                <option value="OCC_CHANGE_USE">Change in Use/Occupancy (per sq.m affected)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">
+                                Unit
+                                <span x-show="feeCode" x-cloak class="ml-1 text-blue-600 font-semibold" x-text="'(' + unitLabel + ')'"></span>
+                                <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number" name="unit" step="0.01" min="0.01" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit" class="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">Fee and amount are auto-computed based on BOPMS occupancy fee schedule.</p>
+                </form>
+            </div>
+            @endif
             @else
             {{-- Generic Fee Item Form (other tabs) --}}
+            @if(!$isFinalized)
             <div x-data="{
                 quantity: 1,
                 unitFee: 0,
@@ -736,6 +818,7 @@
                     </div>
                 </form>
             </div>
+            @endif
             @endif
 
             {{-- Category Items Table --}}
@@ -894,6 +977,7 @@
                             <td class="px-4 py-3 text-right font-medium text-gray-900">&#8369;{{ number_format($item->amount, 2) }}</td>
                             @endif
                             <td class="px-4 py-3 text-right">
+                                @if(!$isFinalized)
                                 <form action="{{ route('assessments.removeItem', $item) }}" method="POST" class="inline" onsubmit="return confirm('Remove this item?');" autocomplete="off">
                                     @csrf
                                     @method('DELETE')
@@ -901,6 +985,7 @@
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </form>
+                                @endif
                             </td>
                         </tr>
                         @endforeach
@@ -1034,15 +1119,67 @@
                 </div>
             </div>
 
-            {{-- Finalize Button --}}
-            @if($assessment && $assessment->status !== 'finalized')
+            {{-- Print Button (finalized only) --}}
+            @if($assessment && $assessment->status === 'finalized')
             <div class="flex justify-end">
-                <form action="{{ $finalizeRoute }}" method="POST" onsubmit="return confirm('Are you sure you want to finalize this assessment? This action cannot be undone.');" autocomplete="off">
-                    @csrf
-                    <button type="submit" class="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition shadow-sm">
-                        <i class="fas fa-check-circle"></i> Finalize Assessment
-                    </button>
-                </form>
+                <a href="{{ $isOp ? route('assessments.print.op', $application) : route('assessments.print', $application) }}"
+                   target="_blank"
+                   class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition shadow-sm">
+                    <i class="fas fa-print"></i> Print Summary of Computation
+                </a>
+            </div>
+            @endif
+
+            {{-- Finalize Button + Password Modal --}}
+            @if($assessment && $assessment->status !== 'finalized')
+            <div x-data="{ open: false, pw: '' }" class="flex justify-end">
+
+                {{-- Trigger button --}}
+                <button @click="open = true; pw = ''"
+                    class="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition shadow-sm">
+                    <i class="fas fa-check-circle"></i> Finalize Assessment
+                </button>
+
+                {{-- Backdrop + modal --}}
+                <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center"
+                    @keydown.escape.window="open = false">
+                    <div class="absolute inset-0 bg-black/40" @click="open = false"></div>
+                    <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 z-10">
+                        <div class="flex items-start gap-3 mb-4">
+                            <span class="flex-shrink-0 w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <div>
+                                <h3 class="text-base font-semibold text-gray-900">Confirm Finalization</h3>
+                                <p class="text-sm text-gray-500 mt-0.5">
+                                    This will lock the assessment and cannot be undone. Enter your password to proceed.
+                                </p>
+                            </div>
+                        </div>
+
+                        <form action="{{ $finalizeRoute }}" method="POST" autocomplete="off">
+                            @csrf
+                            <div class="mb-4">
+                                <label class="block text-xs font-medium text-gray-600 mb-1">
+                                    Your Password <span class="text-red-500">*</span>
+                                </label>
+                                <input type="password" name="password" x-model="pw" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                    placeholder="Enter your password">
+                            </div>
+                            <div class="flex justify-end gap-2">
+                                <button type="button" @click="open = false"
+                                    class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                                    Cancel
+                                </button>
+                                <button type="submit" :disabled="!pw"
+                                    class="inline-flex items-center gap-1 px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i class="fas fa-check-circle"></i> Finalize
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             </div>
             @endif
             @endif

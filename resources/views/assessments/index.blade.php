@@ -61,9 +61,17 @@
                         </td>
                         <td class="px-4 py-3 text-gray-500">{{ $app->created_at->format('M d, Y') }}</td>
                         <td class="px-4 py-3 text-right">
-                            <a href="{{ route('assessments.assess', $app) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition">
-                                <i class="fas fa-calculator"></i> Assess
-                            </a>
+                            <div class="inline-flex items-center gap-2">
+                                @if($app->status === 'engineering_assessed')
+                                <a href="{{ route('assessments.print', $app) }}" target="_blank"
+                                   class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition">
+                                    <i class="fas fa-print"></i> Print
+                                </a>
+                                @endif
+                                <a href="{{ route('assessments.assess', $app) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition">
+                                    <i class="fas fa-calculator"></i> Assess
+                                </a>
+                            </div>
                         </td>
                     </tr>
                     @empty

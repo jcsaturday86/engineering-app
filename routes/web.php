@@ -130,6 +130,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/op/{occupancyApplication}/summary', [AssessmentController::class, 'summaryOp'])->name('summary.op');
         Route::post('/op/{occupancyApplication}/finalize', [AssessmentController::class, 'finalizeOp'])->name('finalize.op')->middleware('can:finalize-assessments');
         Route::get('/op/{occupancyApplication}/print', [AssessmentController::class, 'printOp'])->name('print.op');
+        Route::post('/op/{occupancyApplication}/occupancy-fee', [AssessmentController::class, 'addOccupancyFeeItem'])->name('occupancyFeeItem')->middleware('can:create-assessments');
         // Shared
         Route::delete('/item/{assessmentItem}', [AssessmentController::class, 'removeItem'])->name('removeItem')->middleware('can:edit-assessments');
     });

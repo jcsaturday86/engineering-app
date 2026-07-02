@@ -17,6 +17,22 @@ use Illuminate\Support\Facades\Hash;
 
 class ZoningController extends Controller
 {
+    private function zoningAssessmentIsFinalized(Application $application): bool
+    {
+        return Assessment::where('applicationable_type', 'bp')
+            ->where('applicationable_id', $application->id)
+            ->where('assessment_type', 'zoning')
+            ->where('status', 'finalized')
+            ->exists();
+    }
+
+    private function abortIfZoningFinalized(Application $application): void
+    {
+        if ($this->zoningAssessmentIsFinalized($application)) {
+            abort(403, 'Zoning assessment is finalized and cannot be modified.');
+        }
+    }
+
     public function index()
     {
         $applications = Application::with('permitType')
@@ -61,6 +77,8 @@ class ZoningController extends Controller
 
     public function store(Request $request, Application $application)
     {
+        $this->abortIfZoningFinalized($application);
+
         $validated = $request->validate([
             'project_lifespan' => 'required|in:Permanent,Temporary',
             'project_significance' => 'required|in:Regular,Special',
@@ -92,6 +110,8 @@ class ZoningController extends Controller
 
     public function autoCompute(Application $application)
     {
+        $this->abortIfZoningFinalized($application);
+
         $application->load('applicationOccupancyGroups');
 
         $assessment = Assessment::firstOrCreate(
@@ -200,6 +220,8 @@ class ZoningController extends Controller
 
     public function addItem(Request $request, Application $application)
     {
+        $this->abortIfZoningFinalized($application);
+
         $feeType = $request->input('fee_type');
 
         $assessment = Assessment::firstOrCreate(
@@ -352,6 +374,8 @@ class ZoningController extends Controller
 
     public function removeItems(Request $request, Application $application)
     {
+        $this->abortIfZoningFinalized($application);
+
         $request->validate([
             'item_ids' => 'required|array|min:1',
             'item_ids.*' => 'exists:assessment_items,id',
@@ -381,6 +405,9 @@ class ZoningController extends Controller
     public function removeItem(AssessmentItem $assessmentItem)
     {
         $assessment = $assessmentItem->assessment;
+        if ($assessment->status === 'finalized') {
+            abort(403, 'Zoning assessment is finalized and cannot be modified.');
+        }
         $assessmentItem->update(['is_active' => false]);
         $assessmentItem->delete();
 

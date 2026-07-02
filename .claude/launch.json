@@ -5,7 +5,8 @@
       "name": "epms",
       "runtimeExecutable": "php",
       "runtimeArgs": ["artisan", "serve", "--port=8100"],
-      "port": 8100
+      "port": 8100,
+      "autoPort": false
     }
   ]
 }

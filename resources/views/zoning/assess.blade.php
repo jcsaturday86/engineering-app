@@ -11,6 +11,7 @@
 @endsection
 
 @section('content')
+@php $isFinalized = $assessment && $assessment->status === 'finalized'; @endphp
 <div class="space-y-6">
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -403,11 +404,13 @@
         </div>
 
         {{-- Save Compliance Button --}}
+        @if(!$isFinalized)
         <div class="flex flex-wrap items-center gap-3">
             <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition shadow-sm">
                 <i class="fas fa-save"></i> Save Assessment Details
             </button>
         </div>
+        @endif
 
         </div>{{-- close space-y-4 --}}
     </form>
@@ -418,17 +421,25 @@
         {{-- 5. ZONING ASSESSMENT FEES --}}
         {{-- ================================================================== --}}
         @php $zSectionNum++ @endphp
+        @if($isFinalized)
+        <div class="flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+            <i class="fas fa-lock"></i>
+            <span>This assessment has been <strong>finalized</strong>. No further changes can be made.</span>
+        </div>
+        @endif
         <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
             <div class="flex items-center justify-between border-b border-gray-200 pb-2 mb-3">
                 <h3 class="text-base font-semibold text-gray-900 flex items-center">
                     <span class="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white text-xs font-bold rounded-full mr-2">{{ $zSectionNum }}</span>Zoning Assessment Fees
                 </h3>
+                @if(!$isFinalized)
                 <form action="{{ route('zoning.autoCompute', $application) }}" method="POST" class="inline" autocomplete="off">
                     @csrf
                     <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 transition">
                         <i class="fas fa-calculator"></i> Auto Compute
                     </button>
                 </form>
+                @endif
             </div>
 
             {{-- Fee Items Table --}}
@@ -445,6 +456,7 @@
                     <p class="text-xs text-gray-500" x-show="selected.length > 0" x-cloak>
                         <span x-text="selected.length"></span> item(s) selected
                     </p>
+                    @if(!$isFinalized)
                     <form x-show="selected.length > 0" x-cloak
                         action="{{ route('zoning.removeItems', $application) }}" method="POST" class="inline"
                         @submit.prevent="if(confirm('Remove ' + selected.length + ' selected item(s)?')) { $el.submit(); }" autocomplete="off">
@@ -457,6 +469,7 @@
                             <i class="fas fa-trash-alt"></i> Remove Selected
                         </button>
                     </form>
+                    @endif
                 </div>
                 @endif
                 <table class="w-full text-sm">
@@ -489,6 +502,7 @@
                             <td class="px-4 py-3 text-right text-gray-700">&#8369;{{ number_format($item->excess_fee, 2) }}</td>
                             <td class="px-4 py-3 text-right font-medium text-gray-900">&#8369;{{ number_format($item->amount, 2) }}</td>
                             <td class="px-4 py-3 text-right">
+                                @if(!$isFinalized)
                                 <form action="{{ route('zoning.removeItem', $item) }}" method="POST" class="inline" onsubmit="return confirm('Remove this item?');" autocomplete="off">
                                     @csrf
                                     @method('DELETE')
@@ -496,6 +510,7 @@
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </form>
+                                @endif
                             </td>
                         </tr>
                         @empty
@@ -523,6 +538,7 @@
         {{-- ================================================================== --}}
         {{-- 6. ADD FEE ITEM --}}
         {{-- ================================================================== --}}
+        @if(!$isFinalized)
         @php $zSectionNum++ @endphp
         @php
             $subGroupsJs = $occupancyGroups->flatMap(fn($g) => $g->subGroups->map(fn($sg) => [
@@ -672,6 +688,7 @@
                 </div>
             </form>
         </div>
+        @endif
 
         {{-- Action Buttons --}}
         <div class="flex flex-wrap items-center gap-3" x-data="{ showFinalizeModal: false, finalizePassword: '', passwordError: '' }">
@@ -739,9 +756,6 @@
                 </form>
             @endif
 
-            <a href="{{ route('zoning.index') }}" class="inline-flex items-center gap-2 px-4 py-2 text-sm text-gray-500 hover:text-gray-700">
-                <i class="fas fa-arrow-left"></i> Back
-            </a>
         </div>
 
         </div>
