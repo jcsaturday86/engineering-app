@@ -6,7 +6,9 @@ use App\Models\Setting;
 use App\Models\Signatory;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 
 class SettingsController extends Controller
@@ -25,7 +27,52 @@ class SettingsController extends Controller
             Setting::where('key', $key)->update(['value' => $value ?? '']);
         }
 
+        foreach ($request->file('settings', []) as $key => $file) {
+            if (! $file) {
+                continue;
+            }
+
+            $path = 'logos/city-seal.png';
+            $this->storeResizedLogo($file, $path);
+            Setting::where('key', $key)->update(['value' => $path]);
+        }
+
         return back()->with('success', 'Settings updated successfully.');
+    }
+
+    /**
+     * Downscale an uploaded logo/seal image (max 400px on the longest side) before
+     * storing it, since these get base64-embedded directly into DomPDF views.
+     */
+    private function storeResizedLogo(UploadedFile $file, string $path): void
+    {
+        $maxDimension = 400;
+
+        $source = match ($file->extension()) {
+            'png' => imagecreatefrompng($file->getRealPath()),
+            'jpg', 'jpeg' => imagecreatefromjpeg($file->getRealPath()),
+            default => imagecreatefromstring(file_get_contents($file->getRealPath())),
+        };
+
+        $width = imagesx($source);
+        $height = imagesy($source);
+        $scale = min(1, $maxDimension / max($width, $height));
+        $newWidth = (int) round($width * $scale);
+        $newHeight = (int) round($height * $scale);
+
+        $resized = imagecreatetruecolor($newWidth, $newHeight);
+        imagealphablending($resized, false);
+        imagesavealpha($resized, true);
+        imagecopyresampled($resized, $source, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+
+        ob_start();
+        imagepng($resized);
+        $pngData = ob_get_clean();
+
+        imagedestroy($source);
+        imagedestroy($resized);
+
+        Storage::disk('public')->put($path, $pngData);
     }
 
     public function users()

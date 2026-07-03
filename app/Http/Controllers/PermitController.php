@@ -117,10 +117,18 @@ class PermitController extends Controller
         }
 
         $signatories = Signatory::where('is_active', true)->get()->keyBy('role');
+        $settings = \App\Models\Setting::where('group', 'general')->pluck('value', 'key');
+
+        $sealImage = null;
+        if (! empty($settings['general.logo']) && \Illuminate\Support\Facades\Storage::disk('public')->exists($settings['general.logo'])) {
+            $mime = \Illuminate\Support\Facades\Storage::disk('public')->mimeType($settings['general.logo']);
+            $sealImage = 'data:' . $mime . ';base64,' . base64_encode(\Illuminate\Support\Facades\Storage::disk('public')->get($settings['general.logo']));
+        }
+
         $template = $permit->permitType->code === 'OP' ? 'pdf.occupancy-permit' : 'pdf.building-permit';
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($template, compact('permit', 'application', 'signatories'));
-        $pdf->setPaper('a4', 'landscape');
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($template, compact('permit', 'application', 'signatories', 'settings', 'sealImage'));
+        $pdf->setPaper('a4', $template === 'pdf.building-permit' ? 'portrait' : 'landscape');
 
         return $pdf->stream("permit_{$permit->permit_number}.pdf");
     }

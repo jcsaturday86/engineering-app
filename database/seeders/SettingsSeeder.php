@@ -66,9 +66,9 @@ class SettingsSeeder extends Seeder
             [
                 'group' => 'general',
                 'key' => 'general.logo',
-                'value' => 'images/logo.png',
-                'type' => 'string',
-                'description' => 'Path to LGU logo',
+                'value' => '',
+                'type' => 'file',
+                'description' => 'City/LGU official seal or logo (PNG/JPG) — printed on permit PDFs',
             ],
             [
                 'group' => 'general',

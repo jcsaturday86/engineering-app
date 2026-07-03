@@ -15,7 +15,7 @@
         <h2 class="text-xl font-bold text-gray-900">General Settings</h2>
     </div>
 
-    <form method="POST" action="{{ route('settings.update') }}" autocomplete="off">
+    <form method="POST" action="{{ route('settings.update') }}" autocomplete="off" enctype="multipart/form-data">
         @csrf
 
         <div class="space-y-6">
@@ -55,6 +55,15 @@
                                 name="settings[{{ $setting->key }}]"
                                 value="{{ old('settings.' . $setting->key, $setting->value) }}"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        @elseif($setting->type === 'file')
+                            @if($setting->value)
+                                <img src="{{ asset('storage/' . $setting->value) }}" alt="Current {{ $setting->key }}" class="h-16 mb-2 rounded border border-gray-200 object-contain bg-gray-50 p-1">
+                            @endif
+                            <input type="file"
+                                id="setting_{{ $setting->key }}"
+                                name="settings[{{ $setting->key }}]"
+                                accept="image/png,image/jpeg"
+                                class="block w-full text-sm text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
                         @else
                             <input type="text"
                                 id="setting_{{ $setting->key }}"
