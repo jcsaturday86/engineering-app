@@ -48,7 +48,12 @@
       "PowerShell(php artisan tinker)",
       "PowerShell(git add -A)",
       "PowerShell(git push)",
-      "PowerShell(git add docs)"
+      "PowerShell(git add docs)",
+      "PowerShell(Select-String -Path storage\\\\logs\\\\laravel.log -Pattern 'local\\\\.ERROR' | Select-Object -Last 2 | ForEach-Object { $_.Line.Substring\\(0, [Math]::Min\\(500, $_.Line.Length\\)\\) })",
+      "Bash(php \"C:\\\\Users\\\\JAYCAR~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--xampp-htdocs-engineering-app\\\\80b4d8b2-6a63-4704-9397-2303c3138762\\\\scratchpad\\\\render-op-check.php\")",
+      "PowerShell(Remove-Item resources\\\\views\\\\billing\\\\index.blade.php -Confirm:$false)",
+      "Bash(php \"C:\\\\Users\\\\JAYCAR~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--xampp-htdocs-engineering-app\\\\80b4d8b2-6a63-4704-9397-2303c3138762\\\\scratchpad\\\\billing-catchup.php\")",
+      "Bash(git commit *)"
     ]
   }
 }
