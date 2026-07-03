@@ -102,8 +102,8 @@ index, update, store, updateCert, updateOther, destroy
 
 | Method | Route | Purpose |
 |--------|-------|---------|
-| index | GET /assessments | BP assessment list |
-| occupancyIndex | GET /assessments/occupancy | OP list |
+| index | GET /assessments | BP assessment list (submitted/zoning_assessed/engineering_assessed/billed) |
+| occupancyIndex | GET /assessments/occupancy | OP list (same statuses) |
 | assess | GET /assessments/{id} | Tabbed fee entry (Construction/Electrical/Mechanical/…) |
 | addConstructionItem | POST /assessments/{id}/construction-item | BOPMS-style: Part+Division+Area → auto fee lookup |
 | addElectricalItem | POST /assessments/{id}/electrical-item | BOPMS-style: 7 types, auto inspection % |
@@ -115,26 +115,29 @@ index, update, store, updateCert, updateOther, destroy
 | addSurchargeItem | POST /assessments/{id}/surcharge-item | SURCHARGE tab |
 | addItem | POST /assessments/{id}/item | Generic item for other tabs |
 | removeItem | DELETE /assessments/item/{id} | Remove item (guarded when finalized) |
-| finalize | POST /assessments/{id}/finalize | BP → engineering_assessed; redirects to ?tab=SUMMARY |
+| finalize | POST /assessments/{id}/finalize | BP → engineering_assessed → billed (auto); redirects to ?tab=SUMMARY |
 | summary | GET /assessments/{id}/summary | BP summary view |
-| print | GET /assessments/{id}/print | PDF summary (barcode + building_official signatory) |
+| print | GET /assessments/{id}/print | BP PDF summary (barcode + building_official signatory) |
 | assessOp | GET /assessments/op/{op} | OP fee entry |
 | addItemOp | POST /assessments/op/{op}/item | OP generic item |
 | addOccupancyFeeItem | POST /assessments/op/{op}/occupancy-fee | BOPMS-style: 8 OCC_* types; range_based (excess_every), per_unit, percentage |
-| finalizeOp | POST /assessments/op/{op}/finalize | OP → engineering_assessed; redirects to ?tab=SUMMARY |
+| finalizeOp | POST /assessments/op/{op}/finalize | OP → engineering_assessed → billed (auto); redirects to ?tab=SUMMARY |
 | summaryOp | GET /assessments/op/{op}/summary | OP summary |
-| printOp | GET /assessments/op/{op}/print | OP PDF |
+| printOp | GET /assessments/op/{op}/print | OP PDF (separate `assessment-summary-op` template) |
 
 **Private helpers:**
 - `resolveInspectionFee(string $code, float $unit): array` — maps MECH_* code → INSP_* fee type (MECH_INSP category), does range or first-row lookup, returns {fee, excess_threshold, excess_fee, every, method}. Three methods: flat (range-band fixed), per_unit (rate × unit), tiered (cumulative for elevators).
 - `calculateTotals(Assessment $assessment): array` — returns subtotal, inspection, filing, processing, total.
-- `redirectIfFinalized(Assessment, PermitApplicationContract): ?RedirectResponse` — called by every add/remove method; when assessment status = finalized, redirects to the assess page `?tab=SUMMARY` with an error flash. `doPrint()` also generates a Code 128 barcode (picqer BarcodeGeneratorPNG, base64) and loads the `building_official` signatory for the PDF.
+- `redirectIfFinalized(Assessment, PermitApplicationContract): ?RedirectResponse` — called by every add/remove method; when assessment status = finalized, redirects to the assess page `?tab=SUMMARY` with an error flash.
+- `doPrint(PermitApplicationContract)` — dispatches by `getPermitTypeCode()`: BP renders `pdf.assessment-summary` (building + zoning sections); OP delegates to `doPrintOp()`, which renders `pdf.assessment-summary-op` with only the Occupancy Fees section (no Zoning/Building/Other Fees/Filing/Processing). Both generate a Code 128 barcode (picqer BarcodeGeneratorPNG, base64) and load the `building_official` signatory.
 
 ### BillingController
-index, generate (BP), generateOp (OP), print
+print only. Billing is auto-generated on assessment finalize via `BillingService::generateFor(PermitApplicationContract)` (guards: status must be `engineering_assessed`, no existing unpaid billing). The Billing menu/index page and manual generate routes were removed.
 
 ### CollectionController
-index, create/store (BP), createOp/storeOp (OP), receipt, voidForm, processVoid
+- `index(Request $request)` — accepts `search`: exact match on a billed BP/OP `application_number` redirects straight to that payment form (barcode-scan UX); partial match filters the Awaiting Payment list by application number or applicant name
+- `create`/`store` (BP), `createOp`/`storeOp` (OP) — `doStore()` rejects an insufficient cash payment (`amount_received < billing->total_amount` when `payment_mode = cash`) before recording
+- `receipt`, `voidForm`, `processVoid`
 
 ### PermitController
 buildingIndex, occupancyIndex, generate (BP), generateOp (OP), print, zoningCertification, locationalClearance, evaluationReport
@@ -152,7 +155,7 @@ DashboardController, OnlineApplicationController, ReportController, SettingsCont
 | OccupancyApplicationService | OP CRUD, numbering, status transitions |
 | AssessmentService | finalize() — recalculate totals, mark finalized |
 | FeeComputationService | computeFee() — 6 methods with excess/min/max |
-| BillingService | generateBilling() — create billing from assessments |
+| BillingService | generateFor() — auto-create billing on assessment finalize (BP + OP), set status to billed |
 | CollectionService | recordPayment() — create collection, update billing |
 | PermitService | generatePermit() — create permit with auto-numbering |
 | SettingService | get(), set() — system settings |
@@ -188,10 +191,12 @@ OP: `occupancy-applications/index`, `form`, `show`
 `assessments/assess.blade.php` — tabbed: Construction, Electrical, Mechanical, Plumbing, Electronics, Accessories, Accessory, Surcharges, Summary. Excluded from tabs: ZONING_LC, ZONING_CERT, ANN_INSP, VIOLATION, MECH_INSP.
 
 ### Other Views
-`zoning/`, `billing/`, `collections/`, `permits/`, `online/`, `dashboard/`, `settings/`, `reports/`, `auth/`
+`zoning/`, `collections/`, `permits/`, `online/`, `dashboard/`, `settings/`, `reports/`, `auth/`. (`billing/` views removed — billing is print-only now, served via `pdf/billing-statement`.)
+
+`collections/create.blade.php` — POS-style single-screen payment form: Application No./Applicant + OR Number/Paid By rows, a 3-column Amount Due/Amount Received/Change strip (Alpine-live), a Cash/Check/Online segmented control, and a sticky bottom action bar so the collector doesn't scroll mid-transaction.
 
 ### PDF Templates (`resources/views/pdf/`)
-application-form, building-permit, occupancy-permit, assessment-summary, billing-statement, official-receipt, zoning-certification, locational-clearance, evaluation-report, report
+application-form, building-permit, occupancy-permit, assessment-summary (BP), assessment-summary-op (OP), billing-statement, official-receipt, zoning-certification, locational-clearance, evaluation-report, report
 
 ---
 

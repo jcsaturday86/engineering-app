@@ -75,6 +75,31 @@
   - `percentage`: `unit × schedule.percentage` (e.g. J-II 50% of principal rate)
 - All 8 divisions verified against seeded schedules (9 samples, subtotal ₱9,250)
 
+### Billing Menu Removal & Auto-Generation — COMPLETED
+
+- Billing menu/index page and manual generate routes removed; `BillingController` is print-only (`billing.print` kept)
+- `BillingService::generateFor(PermitApplicationContract)` — new method, contains the same generation logic the old controller used; called from `AssessmentController::doFinalize()` right after an assessment is finalized, so BP/OP applications go straight from `engineering_assessed` to `billed` with no manual step
+- Fixed a latent bug surfaced by this change: `collections/index.blade.php` used `$app->permitType->code` (crashes for OP, which has no `permitType` relation) — replaced with `getPermitTypeCode()`; the Collect Payment link now routes to `collections.create.op` for OP rows
+- One-time catch-up ran for applications already stuck at `engineering_assessed` before this change, generating their billing so they could proceed to payment
+
+### OP Assessment Print — Separate Template — COMPLETED
+
+- New `pdf/assessment-summary-op.blade.php`, titled "OCCUPANCY PERMIT ASSESSMENT" — contains only an Occupancy Fees section (Zoning/Building/Electrical/Mechanical/Other Fees/Filing/Processing all removed, since none apply to OP)
+- `AssessmentController::doPrint()` now dispatches to `doPrintOp()` for OP applications
+- Fixed a bug hit during testing: `$itemsByCategory->except()` threw `Collection::getKey does not exist` on a grouped Eloquent collection — fixed with `->toBase()` first
+
+### Assessment Index / Print Button — Billed Status Fix — COMPLETED
+
+- Auto-billing on finalize meant applications skipped straight to `billed`, but the assessment index queries only included up to `engineering_assessed` — finalized applications (and their Print buttons) disappeared from the list
+- `AssessmentController::index()` / `occupancyIndex()` now include `billed`; Print button shows for `engineering_assessed` or `billed` in both `assessments/index.blade.php` and `assessments/occupancy-index.blade.php`
+
+### Collections UX — Barcode Search & Cash Change — COMPLETED
+
+- `/collections` search box (autofocused): scanning the barcode from a printed assessment (which encodes the application number) on an exact match redirects straight to that application's payment form; partial text filters the Awaiting Payment list by app number or applicant name
+- Payment form shows live **Change** (or **Short**, in red, with warning) as the collector types Amount Received while Payment Mode = Cash; `CollectionController::doStore()` rejects an insufficient cash payment server-side
+- Removed the itemized Billing Summary card from the payment page; Application No./Applicant now shown inline at the top of Payment Details
+- Redesigned the payment form as a compact POS-style layout (3-column amount strip, segmented Cash/Check/Online control, sticky action bar) so the collector doesn't need to scroll while processing a payment
+
 ---
 
 ## Upcoming Tasks

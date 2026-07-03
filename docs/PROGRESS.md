@@ -97,7 +97,8 @@
 | Assessment finalization lock | DONE | BP + zoning: add/remove/autocompute blocked after finalize (UI + server guards) |
 | Finalize stays on Summary tab | DONE | Redirects to ?tab=SUMMARY |
 | BP assessment PDF | DONE | Fire Code Fees removed; Code 128 barcode above BP number; Approved By from building_official signatory |
-| Print button on BP assessment index | DONE | Shown when status = engineering_assessed |
+| OP assessment PDF | DONE | Separate `assessment-summary-op` template titled "OCCUPANCY PERMIT ASSESSMENT"; only Occupancy Fees section (no Zoning/BP/Other Fees) |
+| Print button on BP + OP assessment index | DONE | Shown when status = engineering_assessed or billed |
 
 ---
 
@@ -109,6 +110,9 @@
 | Official receipt generation | DONE | PDF, unique OR number |
 | Void transaction | DONE | Password verify, void tracking |
 | Collection history | DONE | |
+| Barcode scan / search on Collections | DONE | Exact app-number match → payment form; partial match filters list |
+| Cash change display | DONE | Live Alpine calc; server rejects insufficient cash amount |
+| No-scroll payment form redesign | DONE | POS-style 3-col amount strip, segmented payment mode, sticky action bar |
 
 ---
 
@@ -116,8 +120,8 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Billing generation | DONE | BL-YYYY-MM-NNNNN |
-| Billing statement PDF | DONE | |
+| Billing auto-generation | DONE | Auto on assessment finalize (BillingService::generateFor); BL-YYYY-MM-NNNNN; Billing menu/page removed |
+| Billing statement PDF | DONE | billing.print route kept |
 | Billing status tracking | DONE | unpaid, partial, paid, void |
 
 ---

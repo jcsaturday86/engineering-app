@@ -46,7 +46,7 @@
 | 2b | submitted | Engineering Staff | ApplicationController::submit | Skip LC → Engineering |
 | 3 | zoning_assessed | Planning Staff | ZoningController::finalize | Complete zoning + fees |
 | 4 | engineering_assessed | Engineering Officer | AssessmentController::finalize | Finalize fee assessment |
-| 5 | billed | Finance | BillingController::generate | Generate billing |
+| 5 | billed | (automatic) | BillingService::generateFor | Billing auto-generated on finalize |
 | 6 | paid | Treasury Staff | CollectionController::store | Record payment (OR) |
 | 7 | permit_generated | Engineering Officer | PermitController::generate | Generate permit PDF |
 | 8 | released | Engineering Officer | Manual | Release to applicant |
@@ -180,10 +180,29 @@ Assessment total = sum(assessment_items.amount)
 
 Finalize requires password confirmation (`Hash::check()`), then redirects to the Summary tab (`?tab=SUMMARY`).
 
+Finalize also **auto-generates the billing**: `AssessmentController::doFinalize()` calls `BillingService::generateFor()`, which creates the `billings` + `billing_items` records from all finalized assessments and moves the application straight to `billed`. There is no manual billing step or Billing menu — treasury proceeds directly to Collections.
+
 Once an assessment status = `finalized`:
 - **BP/OP assessment** — all add-item forms and Remove buttons are hidden; every add/remove endpoint calls `redirectIfFinalized()` which bounces to the Summary tab with an error
 - **Zoning assessment** — autocompute, add, remove (single + bulk), and Save Details are hidden; `ZoningController::abortIfZoningFinalized()` returns 403 on any mutating request
 - A single amber banner "This assessment has been finalized. No further changes can be made." is displayed
+
+The assessment index tables (`/assessments` and `/assessments/occupancy`) list applications with status `submitted`, `zoning_assessed`, `engineering_assessed`, **and `billed`** (the `billed` status was added once finalize started auto-billing — otherwise finalized applications would disappear from the list). The Print button shows for status `engineering_assessed` **or** `billed`.
+
+---
+
+## Collections / Payment
+
+### Barcode Scan & Search
+`/collections` has a search box (auto-focused) for the collector to scan the barcode on a printed assessment or type an application number / applicant name:
+- **Exact match** on a billed application's `application_number` → redirects straight to that application's payment form (`collections.create` / `collections.create.op`)
+- **Partial match** → filters the "Awaiting Payment" list by application number or applicant first/last name
+- No match → amber "No application awaiting payment matches …" notice
+
+### Cash Change
+On the payment form, when Payment Mode = Cash, a live Alpine-computed box shows the **Change** (green) as the collector types Amount Received, or **Short** (red, with a warning) if the amount is insufficient. `CollectionController::doStore()` rejects an insufficient cash payment server-side ("Amount received is less than the amount due"). The `collections.change_amount` column (`max(0, amount_received - amount_due)`) is unchanged — only the live display and the guard are new.
+
+The payment form (`collections/create.blade.php`) is a compact, single-screen POS-style layout: Application No./Applicant, OR Number/Paid By, and a three-column Amount Due / Amount Received / Change strip, followed by a segmented Cash/Check/Online control and a sticky action bar — designed so the collector doesn't need to scroll while processing a payment.
 
 ---
 
@@ -223,7 +242,8 @@ Once an assessment status = `finalized`:
 | application-form | ApplicationController::printForm |
 | building-permit | PermitController::print (BP) |
 | occupancy-permit | PermitController::print (OP) |
-| assessment-summary | AssessmentController::print — Code 128 barcode above BP number; Approved By = building_official signatory; no Fire Code Fees section |
+| assessment-summary | AssessmentController::print (BP only) — Code 128 barcode above BP number; Approved By = building_official signatory; no Fire Code Fees section |
+| assessment-summary-op | AssessmentController::printOp (OP only) — titled "OCCUPANCY PERMIT ASSESSMENT"; only an Occupancy Fees section (no Zoning/Building/Electrical/Mechanical/Other Fees/Filing/Processing) |
 | billing-statement | BillingController::print |
 | official-receipt | CollectionController::receipt |
 | zoning-certification | PermitController::zoningCertification |

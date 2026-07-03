@@ -243,6 +243,8 @@ Polymorphic, `requirement_name`, `file_path`, `original_filename`, `status` (pen
 ### `billings`
 Polymorphic, `billing_number` (BL-YYYY-MM-NNNNN), `total_amount`, `status` (unpaid/partial/paid/void), `generated_by`.
 
+> Rows are created automatically by `BillingService::generateFor()` when an assessment is finalized — there is no manual billing-generation UI.
+
 ### `billing_items`
 `billing_id`, `category`, `description`, `amount`, `sort_order`.
 

@@ -80,7 +80,13 @@ The BP assessment page uses tabbed navigation with fee category tabs plus a Summ
 Finalize requires password confirmation and redirects to the Summary tab. Once finalized, all mutating actions are blocked at both UI level (forms/buttons hidden, amber banner shown) and server level (`AssessmentController::redirectIfFinalized()` for BP/OP items; `ZoningController::abortIfZoningFinalized()` returns 403 for zoning).
 
 ### Assessment PDF (Summary of Computation)
-`doPrint()` renders `pdf/assessment-summary` with a real Code 128 barcode (picqer/php-barcode-generator, base64 PNG for DomPDF) above the BP number, and "Approved By" sourced from the `signatories` table (`role = building_official`). Fire Code Fees are excluded (BFP is out of scope).
+`doPrint()` dispatches by permit type. BP renders `pdf/assessment-summary` (Zoning + Building sections). OP renders a separate `pdf/assessment-summary-op` titled "OCCUPANCY PERMIT ASSESSMENT" with only an Occupancy Fees section — no Zoning, Building, Electrical, Mechanical, Other Fees, Filing, or Processing, since none of those apply to an occupancy assessment. Both templates render a real Code 128 barcode (picqer/php-barcode-generator, base64 PNG for DomPDF) above the application number, and "Approved By" sourced from the `signatories` table (`role = building_official`). Fire Code Fees are excluded from the BP template (BFP is out of scope).
+
+### Billing Is Auto-Generated, Not a Manual Step
+There is no Billing menu or manual "Generate Billing" action. `AssessmentController::doFinalize()` calls `BillingService::generateFor(PermitApplicationContract)` immediately after an assessment is finalized, which creates the `billings` + `billing_items` records and moves the application straight from `engineering_assessed` to `billed`. `BillingController` only serves the billing statement PDF (`billing.print`). Because finalized applications now sit at `billed` instead of stopping at `engineering_assessed`, the assessment index queries and Print-button visibility checks include both statuses.
+
+### Collections: Barcode Scan & POS-Style Payment Form
+`/collections` has an autofocused search box: scanning the barcode from a printed assessment (which encodes the application number) exact-matches a billed application and redirects straight to its payment form; partial text filters the Awaiting Payment list. The payment form itself is a compact, single-screen layout — a 3-column Amount Due/Amount Received/Change strip (live Alpine calculation, switches to a red "Short" warning if underpaid, and the server rejects an insufficient cash payment) plus a segmented Cash/Check/Online control and a sticky bottom action bar — designed so a collector never has to scroll mid-transaction.
 
 ### Self-Healing Service Provider
 `SelfHealingServiceProvider` auto-creates database, runs migrations, and seeds roles/settings/admin if missing on every application boot.
