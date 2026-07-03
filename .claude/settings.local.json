@@ -46,7 +46,9 @@
       "Bash(xargs grep -l \"dompdf\\\\|DomPDF\")",
       "PowerShell(php artisan tinker --execute=\"$a = App\\\\Models\\\\Assessment::where\\('applicationable_type','op'\\)->where\\('applicationable_id',11\\)->where\\('assessment_type','occupancy'\\)->first\\(\\); $n = App\\\\Models\\\\AssessmentItem::where\\('assessment_id', $a->id\\)->delete\\(\\); echo 'Deleted ' . $n . ' items';\")",
       "PowerShell(php artisan tinker)",
-      "PowerShell(git add -A)"
+      "PowerShell(git add -A)",
+      "PowerShell(git push)",
+      "PowerShell(git add docs)"
     ]
   }
 }
