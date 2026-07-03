@@ -63,7 +63,7 @@ class AssessmentController extends Controller
     public function index()
     {
         $applications = Application::with('permitType')
-            ->whereIn('status', ['submitted', 'zoning_assessed', 'engineering_assessed'])
+            ->whereIn('status', ['submitted', 'zoning_assessed', 'engineering_assessed', 'billed'])
             ->latest()
             ->paginate(20);
 
@@ -73,7 +73,7 @@ class AssessmentController extends Controller
     public function occupancyIndex()
     {
         $applications = OccupancyApplication::with('applicationType')
-            ->whereIn('status', ['submitted', 'zoning_assessed', 'engineering_assessed'])
+            ->whereIn('status', ['submitted', 'zoning_assessed', 'engineering_assessed', 'billed'])
             ->latest()
             ->paginate(20);
 
@@ -1358,6 +1358,8 @@ class AssessmentController extends Controller
 
         activity()->causedBy(Auth::user())->performedOn($application)->log('Assessment finalized');
 
+        app(\App\Services\BillingService::class)->generateFor($application->refresh());
+
         if ($application->client_user_id) {
             $application->clientUser->notify(new AssessmentCompleteNotification($application));
         }
@@ -1378,6 +1380,11 @@ class AssessmentController extends Controller
     private function doPrint(PermitApplicationContract $application)
     {
         $settings = Setting::where('group', 'general')->pluck('value', 'key');
+        $isOp = $application->getPermitTypeCode() === 'OP';
+
+        if ($isOp) {
+            return $this->doPrintOp($application, $settings);
+        }
 
         $buildingAssessment = $application->assessments()
             ->where('assessment_type', 'building')
@@ -1420,6 +1427,46 @@ class AssessmentController extends Controller
             'application', 'settings', 'buildingAssessment',
             'zoningAssessment', 'itemsByCategory', 'zoningByCategory',
             'barangayName', 'preparedBy', 'buildingOfficial', 'barcodeImage'
+        ));
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->stream("assessment_{$application->application_number}.pdf");
+    }
+
+    private function doPrintOp(PermitApplicationContract $application, $settings)
+    {
+        $occupancyAssessment = $application->assessments()
+            ->where('assessment_type', 'occupancy')
+            ->with(['assessmentItems' => fn($q) => $q->where('is_active', true)->with('feeCategory')])
+            ->first();
+
+        $itemsByCategory = $occupancyAssessment
+            ? $occupancyAssessment->assessmentItems->groupBy(fn($i) => $i->feeCategory?->code ?? 'OTHER')
+            : collect();
+
+        $barangayName = '';
+        if ($application->building_barangay_id) {
+            $barangay = \App\Models\Barangay::find($application->building_barangay_id);
+            $barangayName = $barangay?->name ?? '';
+        }
+
+        $preparedBy = $occupancyAssessment?->assessed_by
+            ? \App\Models\User::find($occupancyAssessment->assessed_by)
+            : null;
+
+        $buildingOfficial = Signatory::where('role', 'building_official')
+            ->where('is_active', true)
+            ->first();
+
+        $generator    = new BarcodeGeneratorPNG();
+        $barcodeImage = base64_encode(
+            $generator->getBarcode($application->application_number, $generator::TYPE_CODE_128, 2, 80)
+        );
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary-op', compact(
+            'application', 'settings', 'occupancyAssessment',
+            'itemsByCategory', 'barangayName', 'preparedBy',
+            'buildingOfficial', 'barcodeImage'
         ));
         $pdf->setPaper('a4', 'portrait');
 

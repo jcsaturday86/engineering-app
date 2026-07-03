@@ -17,15 +17,37 @@ use Illuminate\Support\Facades\Hash;
 
 class CollectionController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $search = trim((string) $request->get('search', ''));
+
+        // Barcode scan / exact application number: go straight to the payment form
+        if ($search !== '') {
+            $bpExact = Application::where('application_number', $search)->where('status', 'billed')->first();
+            if ($bpExact) {
+                return redirect()->route('collections.create', $bpExact);
+            }
+            $opExact = OccupancyApplication::where('application_number', $search)->where('status', 'billed')->first();
+            if ($opExact) {
+                return redirect()->route('collections.create.op', $opExact);
+            }
+        }
+
         $bpForPayment = Application::with('permitType', 'billings')
             ->where('status', 'billed')
+            ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
+                ->where('application_number', 'like', "%{$search}%")
+                ->orWhere('applicant_last_name', 'like', "%{$search}%")
+                ->orWhere('applicant_first_name', 'like', "%{$search}%")))
             ->latest()
             ->get();
 
         $opForPayment = OccupancyApplication::with('applicationType', 'billings')
             ->where('status', 'billed')
+            ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
+                ->where('application_number', 'like', "%{$search}%")
+                ->orWhere('applicant_last_name', 'like', "%{$search}%")
+                ->orWhere('applicant_first_name', 'like', "%{$search}%")))
             ->latest()
             ->get();
 
@@ -36,7 +58,7 @@ class CollectionController extends Controller
             ->latest()
             ->paginate(20);
 
-        return view('collections.index', compact('collections', 'forPayment'));
+        return view('collections.index', compact('collections', 'forPayment', 'search'));
     }
 
     // BP payment
@@ -96,6 +118,10 @@ class CollectionController extends Controller
             ->where('status', 'unpaid')
             ->latest()
             ->firstOrFail();
+
+        if ($validated['payment_mode'] === 'cash' && $validated['amount_received'] < (float) $billing->total_amount) {
+            return back()->withInput()->with('error', 'Amount received is less than the amount due.');
+        }
 
         $morphType = $application->getPermitTypeCode() === 'OP' ? 'op' : 'bp';
 

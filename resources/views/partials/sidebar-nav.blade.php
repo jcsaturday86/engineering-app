@@ -129,14 +129,6 @@
 </div>
 @endcanany
 
-{{-- Billing --}}
-@canany(['view-billing', 'generate-billing'])
-<a href="{{ route('billing.index') }}" class="sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition {{ str_starts_with($currentRoute, 'billing') ? 'active' : 'text-gray-700' }}">
-    <i class="fas fa-file-invoice-dollar w-5 text-center"></i>
-    <span x-show="sidebarOpen || mobileMenuOpen">Billing</span>
-</a>
-@endcanany
-
 {{-- Collections --}}
 @canany(['view-collections', 'create-collections'])
 <div x-data="{ open: {{ str_starts_with($currentRoute, 'collections') ? 'true' : 'false' }} }">

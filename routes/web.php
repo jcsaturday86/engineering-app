@@ -135,11 +135,8 @@ Route::middleware('auth')->group(function () {
         Route::delete('/item/{assessmentItem}', [AssessmentController::class, 'removeItem'])->name('removeItem')->middleware('can:edit-assessments');
     });
 
-    // Billing
+    // Billing (auto-generated on assessment finalize; statement PDF only)
     Route::prefix('billing')->name('billing.')->middleware('can:view-billing')->group(function () {
-        Route::get('/', [BillingController::class, 'index'])->name('index');
-        Route::post('/{application}/generate', [BillingController::class, 'generate'])->name('generate')->middleware('can:generate-billing');
-        Route::post('/op/{occupancyApplication}/generate', [BillingController::class, 'generateOp'])->name('generate.op')->middleware('can:generate-billing');
         Route::get('/{billing}/print', [BillingController::class, 'print'])->name('print');
     });
 

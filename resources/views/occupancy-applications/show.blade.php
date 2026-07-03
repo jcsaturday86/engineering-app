@@ -381,11 +381,6 @@
                     <i class="fas fa-clipboard-check"></i> Assess
                 </a>
             @endif
-            @if($application->status === 'engineering_assessed')
-                <a href="{{ route('billing.generate.op', $application) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition">
-                    <i class="fas fa-file-invoice-dollar"></i> Generate Billing
-                </a>
-            @endif
             @if($application->status === 'billed')
                 <a href="{{ route('collections.create.op', $application) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition">
                     <i class="fas fa-money-bill-wave"></i> Record Payment

@@ -20,6 +20,36 @@
         </div>
     </div>
 
+    {{-- Barcode Scan / Search --}}
+    <div class="bg-white rounded-xl border border-gray-200 p-4">
+        <form method="GET" action="{{ route('collections.index') }}" autocomplete="off">
+            <label class="block text-xs font-medium text-gray-500 mb-1">
+                <i class="fas fa-barcode mr-1"></i> Scan Assessment Barcode / Search Application
+            </label>
+            <div class="flex gap-2">
+                <input type="text" name="search" value="{{ $search ?? '' }}" autofocus
+                    placeholder="Scan barcode or type application no. / applicant name (e.g. BP-2026-06-00014)"
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <button type="submit" class="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
+                    <i class="fas fa-search"></i> Search
+                </button>
+                @if(!empty($search))
+                <a href="{{ route('collections.index') }}" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition">
+                    Clear
+                </a>
+                @endif
+            </div>
+            <p class="text-xs text-gray-400 mt-1">Scanning the barcode on a printed assessment opens the payment form directly.</p>
+        </form>
+    </div>
+
+    @if(!empty($search) && $forPayment->isEmpty())
+    <div class="flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+        <i class="fas fa-circle-exclamation"></i>
+        <span>No application awaiting payment matches "<strong>{{ $search }}</strong>".</span>
+    </div>
+    @endif
+
     {{-- For Payment --}}
     @if($forPayment->count())
     <div class="bg-white rounded-xl border border-orange-200 overflow-hidden">
@@ -45,8 +75,8 @@
                     <tr class="hover:bg-orange-50/30">
                         <td class="px-4 py-3 font-mono text-sm text-blue-600">{{ $app->application_number }}</td>
                         <td class="px-4 py-3">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $app->permitType->code === 'BP' ? 'bg-blue-100 text-blue-700' : 'bg-indigo-100 text-indigo-700' }}">
-                                {{ $app->permitType->code }}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $app->getPermitTypeCode() === 'BP' ? 'bg-blue-100 text-blue-700' : 'bg-indigo-100 text-indigo-700' }}">
+                                {{ $app->getPermitTypeCode() }}
                             </span>
                         </td>
                         <td class="px-4 py-3 text-gray-900">{{ $app->applicant_last_name }}, {{ $app->applicant_first_name }}</td>
@@ -54,7 +84,7 @@
                         <td class="px-4 py-3 text-gray-500">{{ $app->created_at->format('M d, Y') }}</td>
                         <td class="px-4 py-3 text-right">
                             @can('create-collections')
-                            <a href="{{ route('collections.create', $app) }}" class="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition">
+                            <a href="{{ $app->getPermitTypeCode() === 'OP' ? route('collections.create.op', $app) : route('collections.create', $app) }}" class="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition">
                                 <i class="fas fa-cash-register"></i> Collect Payment
                             </a>
                             @endcan
