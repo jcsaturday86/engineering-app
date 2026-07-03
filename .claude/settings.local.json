@@ -53,7 +53,9 @@
       "Bash(php \"C:\\\\Users\\\\JAYCAR~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--xampp-htdocs-engineering-app\\\\80b4d8b2-6a63-4704-9397-2303c3138762\\\\scratchpad\\\\render-op-check.php\")",
       "PowerShell(Remove-Item resources\\\\views\\\\billing\\\\index.blade.php -Confirm:$false)",
       "Bash(php \"C:\\\\Users\\\\JAYCAR~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--xampp-htdocs-engineering-app\\\\80b4d8b2-6a63-4704-9397-2303c3138762\\\\scratchpad\\\\billing-catchup.php\")",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(php -r \"var_dump\\(extension_loaded\\('gd'\\)\\);\")",
+      "Bash(rm -f \"C:\\\\xampp\\\\htdocs\\\\scratchpad_permit_test.pdf\" \"C:\\\\xampp\\\\htdocs\\\\scratchpad_permit_test2.pdf\"; echo cleaned)"
     ]
   }
 }
