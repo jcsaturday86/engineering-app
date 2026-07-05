@@ -4,48 +4,53 @@
     <meta charset="utf-8">
     <title>Building Permit {{ $permit->permit_number }}</title>
     <style>
-        @page { size: A4 portrait; margin: 10mm; }
+        @page { size: A4 landscape; margin: 1in; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; font-size: 10px; color: #222; line-height: 1.35; }
+        body { font-family: Arial, sans-serif; font-size: 13px; color: #222; line-height: 1.35; }
 
-        .frame { border: 3px double #1a3d6d; padding: 10mm 12mm; }
+        .frame { border: 3px double #1a3d6d; padding: 8mm 12mm; }
 
-        .form-no { font-size: 9px; font-weight: bold; margin-bottom: 4px; }
+        .form-no { font-size: 11px; font-weight: bold; margin-bottom: 4px; }
 
-        .header { text-align: center; margin-bottom: 6px; }
-        .header img.seal { height: 60px; margin-bottom: 4px; }
-        .header p { margin: 1px 0; font-size: 10.5px; }
-        .header .office { font-weight: bold; font-size: 11px; margin-top: 2px; }
+        .header { margin-bottom: 6px; }
+        .header-table { display: table; width: 100%; }
+        .header-cell { display: table-cell; vertical-align: middle; }
+        .seal-cell { width: 130px; text-align: left; }
+        .seal-cell img.seal { height: 95px; }
+        .spacer-cell { width: 130px; }
+        .text-cell { text-align: center; }
+        .header p { margin: 1px 0; font-size: 13px; }
+        .header .office { font-weight: bold; font-size: 14px; margin-top: 2px; }
 
-        .title { text-align: center; font-weight: bold; font-size: 22px; letter-spacing: 2px; margin: 10px 0 4px; }
-        .checkbox-row { text-align: center; font-size: 10px; margin-bottom: 10px; }
-        .checkbox-row span { margin: 0 8px; }
+        .title { text-align: center; font-weight: bold; font-size: 28px; letter-spacing: 2px; margin: 10px 0 4px; }
+        .checkbox-row { text-align: center; font-size: 13px; margin-bottom: 10px; }
+        .checkbox-row span { margin: 0 10px; }
 
         .two-col { display: table; width: 100%; margin-bottom: 8px; }
         .two-col .col { display: table-cell; width: 50%; vertical-align: top; }
-        .no-row { font-size: 10px; margin-bottom: 2px; }
+        .no-row { font-size: 12.5px; margin-bottom: 3px; }
         .no-row .label { display: inline-block; }
-        .no-row .value { display: inline-block; border-bottom: 1px solid #333; min-width: 130px; padding: 0 4px; font-weight: bold; }
+        .no-row .value { display: inline-block; border-bottom: 1px solid #333; min-width: 170px; padding: 0 4px; font-weight: bold; }
 
-        .intro { font-size: 9.5px; margin: 8px 0 12px; text-align: justify; }
+        .intro { font-size: 12px; margin: 8px 0 12px; text-align: justify; }
         .intro strong { font-weight: bold; }
 
-        .field-row { display: table; width: 100%; margin-bottom: 5px; }
-        .field-row .label { display: table-cell; width: 210px; font-size: 9.5px; vertical-align: top; padding-top: 1px; }
-        .field-row .colon { display: table-cell; width: 12px; vertical-align: top; }
-        .field-row .value { display: table-cell; border-bottom: 1px solid #333; font-weight: bold; font-size: 10px; padding-bottom: 1px; }
+        .field-row { display: table; width: 100%; margin-bottom: 6px; }
+        .field-row .label { display: table-cell; width: 260px; font-size: 12px; vertical-align: top; padding-top: 1px; }
+        .field-row .colon { display: table-cell; width: 14px; vertical-align: top; }
+        .field-row .value { display: table-cell; border-bottom: 1px solid #333; font-weight: bold; font-size: 12.5px; padding-bottom: 1px; }
 
-        .sub-row { display: table; width: 100%; margin: 2px 0 5px 210px; width: calc(100% - 210px); }
-        .sub-row .item { display: table-cell; padding-right: 10px; font-size: 9.5px; }
+        .sub-row { display: table; width: calc(100% - 260px); margin: 2px 0 6px 260px; }
+        .sub-row .item { display: table-cell; padding-right: 14px; font-size: 12px; }
         .sub-row .item .value { border-bottom: 1px solid #333; font-weight: bold; padding: 0 4px; }
 
-        .sig-block { margin-top: 26px; text-align: center; }
-        .sig-label { font-size: 9.5px; font-weight: bold; margin-bottom: 34px; }
-        .sig-name { border-top: 1px solid #333; display: inline-block; min-width: 260px; padding-top: 2px; font-weight: bold; font-size: 10.5px; text-decoration: underline; }
-        .sig-title { font-weight: bold; font-size: 9.5px; margin-top: 1px; }
-        .sig-caption { font-size: 8px; color: #555; margin-top: 1px; }
+        .sig-block { margin-top: 20px; text-align: center; }
+        .sig-label { font-size: 12px; font-weight: bold; margin-bottom: 26px; }
+        .sig-name { border-top: 1px solid #333; display: inline-block; min-width: 300px; padding-top: 2px; font-weight: bold; font-size: 13px; text-decoration: underline; }
+        .sig-title { font-weight: bold; font-size: 12px; margin-top: 1px; }
+        .sig-caption { font-size: 10px; color: #555; margin-top: 1px; }
 
-        .footer-note { margin-top: 14px; font-size: 8px; font-weight: bold; text-align: center; }
+        .footer-note { margin-top: 12px; font-size: 10px; font-weight: bold; text-align: center; }
     </style>
 </head>
 <body>
@@ -54,13 +59,20 @@
     <div class="form-no">NBC FORM NO. B - 018</div>
 
     <div class="header">
-        @if(!empty($sealImage))
-            <img class="seal" src="{{ $sealImage }}">
-        @endif
-        <p>Republic of the Philippines</p>
-        <p>{{ $settings['general.city'] ?? 'City' }}</p>
-        <p>Province of {{ $settings['general.province'] ?? 'Province' }}</p>
-        <p class="office">OFFICE OF THE BUILDING OFFICIAL</p>
+        <div class="header-table">
+            <div class="header-cell seal-cell">
+                @if(!empty($sealImage))
+                    <img class="seal" src="{{ $sealImage }}">
+                @endif
+            </div>
+            <div class="header-cell text-cell">
+                <p>Republic of the Philippines</p>
+                <p>{{ $settings['general.city'] ?? 'City' }}</p>
+                <p>Province of {{ $settings['general.province'] ?? 'Province' }}</p>
+                <p class="office">OFFICE OF THE BUILDING OFFICIAL</p>
+            </div>
+            <div class="header-cell spacer-cell"></div>
+        </div>
     </div>
 
     <div class="title">BUILDING PERMIT</div>

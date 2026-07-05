@@ -128,7 +128,7 @@ class PermitController extends Controller
         $template = $permit->permitType->code === 'OP' ? 'pdf.occupancy-permit' : 'pdf.building-permit';
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($template, compact('permit', 'application', 'signatories', 'settings', 'sealImage'));
-        $pdf->setPaper('a4', $template === 'pdf.building-permit' ? 'portrait' : 'landscape');
+        $pdf->setPaper('a4', 'landscape');
 
         return $pdf->stream("permit_{$permit->permit_number}.pdf");
     }
