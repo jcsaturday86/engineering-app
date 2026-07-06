@@ -44,6 +44,13 @@ class SettingsSeeder extends Seeder
             ],
             [
                 'group' => 'general',
+                'key' => 'general.zip_code',
+                'value' => '',
+                'type' => 'string',
+                'description' => 'ZIP code shown on printed Building Permit',
+            ],
+            [
+                'group' => 'general',
                 'key' => 'general.address',
                 'value' => 'City Hall, Sample City',
                 'type' => 'string',

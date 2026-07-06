@@ -80,6 +80,9 @@ class Application extends Model implements PermitApplicationContract
         // Timeline
         'proposed_construction_date',
         'expected_completion_date',
+        // FSEC
+        'fsec_no',
+        'fsec_issued_date',
         'remarks',
         // Engineer/Architect
         'engineer_name',
@@ -149,6 +152,7 @@ class Application extends Model implements PermitApplicationContract
             'equipment_cost_4' => 'decimal:2',
             'proposed_construction_date' => 'date',
             'expected_completion_date' => 'date',
+            'fsec_issued_date' => 'date',
             'engineer_prc_validity' => 'date',
             'engineer_ptr_date_issued' => 'date',
             'engineer_date_signed' => 'date',

@@ -330,6 +330,9 @@ class ApplicationController extends Controller
             // Timeline
             'proposed_construction_date' => 'required|date',
             'expected_completion_date' => 'required|date',
+            // FSEC
+            'fsec_no' => 'nullable|string|max:100',
+            'fsec_issued_date' => 'nullable|date',
             'remarks' => 'nullable|string|max:1000',
             // Engineer/Architect
             'engineer_name' => 'required|string|max:255',

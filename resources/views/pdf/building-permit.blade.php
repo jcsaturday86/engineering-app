@@ -114,7 +114,7 @@
         $ownerName = trim(($application->applicant_last_name ?? '') . ', ' . ($application->applicant_first_name ?? '') . ' ' . ($application->applicant_middle_name ?? '') . ' ' . ($application->applicant_suffix ?? ''));
         $ownerName = preg_replace('/\s+/', ' ', $ownerName);
         $occupancyText = $application->applicationOccupancyGroups->map(fn ($og) => $og->occupancySubGroup?->name ?? $og->occupancyGroup?->name)->filter()->unique()->implode(', ');
-        $zip = $application->buildingBarangay?->city?->zip_code;
+        $zip = $settings['general.zip_code'] ?? null;
     @endphp
 
     <div class="field-row"><span class="label">Owner/Permittee</span><span class="colon">:</span><span class="value">{{ $ownerName }}</span></div>
