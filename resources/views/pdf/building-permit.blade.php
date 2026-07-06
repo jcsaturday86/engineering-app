@@ -4,53 +4,58 @@
     <meta charset="utf-8">
     <title>Building Permit {{ $permit->permit_number }}</title>
     <style>
-        @page { size: A4 landscape; margin: 1in; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; font-size: 13px; color: #222; line-height: 1.35; }
+        {{-- A4 landscape = 11.69in x 8.27in; 0.5in margin all around leaves a 10.69in x 7.27in frame.
+             NOTE: the reset must not target * or html — in dompdf those wipe the @page margin. --}}
+        @page { margin: 0.5in; }
+        body, div, p, span, img { margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; font-size: 12px; color: #222; line-height: 1.25; }
 
-        .frame { border: 3px double #1a3d6d; padding: 8mm 12mm; }
+        {{-- content-box height tuned so the frame's outer edge lands exactly 0.5in from
+             all four page edges without pushing content onto a spurious second page --}}
+        .frame { border: 3px double #1a3d6d; padding: 4mm 10mm; height: 6.89in; }
 
-        .form-no { font-size: 11px; font-weight: bold; margin-bottom: 4px; }
+        .form-no { font-size: 10.5px; font-weight: bold; margin-bottom: 2px; }
 
-        .header { margin-bottom: 6px; }
+        .header { margin-bottom: 4px; }
         .header-table { display: table; width: 100%; }
         .header-cell { display: table-cell; vertical-align: middle; }
-        .seal-cell { width: 130px; text-align: left; }
-        .seal-cell img.seal { height: 95px; }
-        .spacer-cell { width: 130px; }
+        .seal-cell { width: 120px; text-align: left; }
+        .seal-cell img.seal { height: 82px; }
+        .spacer-cell { width: 120px; }
         .text-cell { text-align: center; }
-        .header p { margin: 1px 0; font-size: 13px; }
-        .header .office { font-weight: bold; font-size: 14px; margin-top: 2px; }
+        .header p { margin: 1px 0; font-size: 12px; }
+        .header .office { font-weight: bold; font-size: 13px; margin-top: 2px; }
 
-        .title { text-align: center; font-weight: bold; font-size: 28px; letter-spacing: 2px; margin: 10px 0 4px; }
-        .checkbox-row { text-align: center; font-size: 13px; margin-bottom: 10px; }
+        .title { text-align: center; font-weight: bold; font-size: 25px; letter-spacing: 2px; margin: 5px 0 2px; }
+        .checkbox-row { text-align: center; font-size: 12px; margin-bottom: 7px; }
         .checkbox-row span { margin: 0 10px; }
 
-        .two-col { display: table; width: 100%; margin-bottom: 8px; }
+        .two-col { display: table; width: 100%; margin-bottom: 5px; }
         .two-col .col { display: table-cell; width: 50%; vertical-align: top; }
-        .no-row { font-size: 12.5px; margin-bottom: 3px; }
+        .no-row { font-size: 11.5px; margin-bottom: 2px; }
         .no-row .label { display: inline-block; }
         .no-row .value { display: inline-block; border-bottom: 1px solid #333; min-width: 170px; padding: 0 4px; font-weight: bold; }
 
-        .intro { font-size: 12px; margin: 8px 0 12px; text-align: justify; }
+        .intro { font-size: 11px; margin: 5px 0 8px; text-align: justify; }
         .intro strong { font-weight: bold; }
 
-        .field-row { display: table; width: 100%; margin-bottom: 6px; }
-        .field-row .label { display: table-cell; width: 260px; font-size: 12px; vertical-align: top; padding-top: 1px; }
+        .field-row { display: table; width: 100%; margin-bottom: 4px; }
+        .field-row .label { display: table-cell; width: 250px; font-size: 11.5px; vertical-align: top; padding-top: 1px; }
         .field-row .colon { display: table-cell; width: 14px; vertical-align: top; }
-        .field-row .value { display: table-cell; border-bottom: 1px solid #333; font-weight: bold; font-size: 12.5px; padding-bottom: 1px; }
+        .field-row .value { display: table-cell; border-bottom: 1px solid #333; font-weight: bold; font-size: 12px; padding-bottom: 1px; }
 
-        .sub-row { display: table; width: calc(100% - 260px); margin: 2px 0 6px 260px; }
-        .sub-row .item { display: table-cell; padding-right: 14px; font-size: 12px; }
+        .sub-row { display: table; width: 100%; margin: 2px 0 4px; }
+        .sub-row .indent { display: table-cell; width: 264px; }
+        .sub-row .item { display: table-cell; padding-right: 14px; font-size: 11.5px; }
         .sub-row .item .value { border-bottom: 1px solid #333; font-weight: bold; padding: 0 4px; }
 
-        .sig-block { margin-top: 20px; text-align: center; }
-        .sig-label { font-size: 12px; font-weight: bold; margin-bottom: 26px; }
-        .sig-name { border-top: 1px solid #333; display: inline-block; min-width: 300px; padding-top: 2px; font-weight: bold; font-size: 13px; text-decoration: underline; }
-        .sig-title { font-weight: bold; font-size: 12px; margin-top: 1px; }
-        .sig-caption { font-size: 10px; color: #555; margin-top: 1px; }
+        .sig-block { margin-top: 12px; text-align: center; }
+        .sig-label { font-size: 11.5px; font-weight: bold; margin-bottom: 20px; }
+        .sig-name { border-top: 1px solid #333; display: inline-block; min-width: 300px; padding-top: 2px; font-weight: bold; font-size: 12.5px; text-decoration: underline; }
+        .sig-title { font-weight: bold; font-size: 11.5px; margin-top: 1px; }
+        .sig-caption { font-size: 9.5px; color: #555; margin-top: 1px; }
 
-        .footer-note { margin-top: 12px; font-size: 10px; font-weight: bold; text-align: center; }
+        .footer-note { margin-top: 8px; font-size: 9.5px; font-weight: bold; text-align: center; }
     </style>
 </head>
 <body>
@@ -119,6 +124,7 @@
         <span class="value">Lot: {{ $application->lot_no ?: 'na' }} &nbsp; Blk: {{ $application->block_no ?: 'na' }} &nbsp; TD No: {{ $application->tax_dec_no ?: 'na' }} &nbsp; Street: {{ $application->building_street ?: 'na' }}</span>
     </div>
     <div class="sub-row">
+        <div class="indent"></div>
         <div class="item">Brgy: <span class="value">{{ $application->buildingBarangay?->name ?? 'na' }}</span></div>
         <div class="item">City/Municipality: <span class="value">{{ $settings['general.city'] ?? '' }}</span></div>
         <div class="item">ZIP Code: <span class="value">{{ $zip ?? '' }}</span></div>
@@ -126,6 +132,7 @@
 
     <div class="field-row"><span class="label">Use of Character of Occupancy</span><span class="colon">:</span><span class="value">{{ $occupancyText ?: '' }}</span></div>
     <div class="sub-row">
+        <div class="indent"></div>
         <div class="item">and Classified as <span class="value">{{ $application->occupancy_classified ?? '' }}</span></div>
     </div>
 
