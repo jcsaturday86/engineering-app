@@ -16,12 +16,13 @@
 
         .form-no { font-size: 10.5px; font-weight: bold; margin-bottom: 2px; }
 
-        .header { margin-bottom: 4px; text-align: center; }
-        .header-table { display: table; margin: 0 auto; }
+        .header { margin-bottom: 4px; }
+        .header-table { display: table; width: 100%; }
         .header-cell { display: table-cell; vertical-align: middle; }
-        .seal-cell { width: 105px; text-align: right; padding-right: 10px; }
+        .seal-cell { width: 90px; text-align: right; padding-right: 6px; }
         .seal-cell img.seal { height: 100px; }
-        .text-cell { text-align: left; }
+        .spacer-cell { width: 90px; }
+        .text-cell { text-align: center; }
         .header p { margin: 1px 0; font-size: 12px; }
         .header .office { font-weight: bold; font-size: 13px; margin-top: 2px; }
 
@@ -75,6 +76,7 @@
                 <p>Province of {{ $settings['general.province'] ?? 'Province' }}</p>
                 <p class="office">OFFICE OF THE BUILDING OFFICIAL</p>
             </div>
+            <div class="header-cell spacer-cell"></div>
         </div>
     </div>
 
