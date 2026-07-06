@@ -37,7 +37,8 @@ class BillingService
                 ->where('status', 'finalized')
                 ->get();
 
-            $counter = Billing::whereYear('created_at', now()->year)
+            $counter = Billing::withTrashed()
+                    ->whereYear('created_at', now()->year)
                     ->whereMonth('created_at', now()->month)
                     ->count() + 1;
 

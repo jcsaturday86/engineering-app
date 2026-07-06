@@ -55,7 +55,13 @@
       "Bash(php \"C:\\\\Users\\\\JAYCAR~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--xampp-htdocs-engineering-app\\\\80b4d8b2-6a63-4704-9397-2303c3138762\\\\scratchpad\\\\billing-catchup.php\")",
       "Bash(git commit *)",
       "Bash(php -r \"var_dump\\(extension_loaded\\('gd'\\)\\);\")",
-      "Bash(rm -f \"C:\\\\xampp\\\\htdocs\\\\scratchpad_permit_test.pdf\" \"C:\\\\xampp\\\\htdocs\\\\scratchpad_permit_test2.pdf\"; echo cleaned)"
+      "Bash(rm -f \"C:\\\\xampp\\\\htdocs\\\\scratchpad_permit_test.pdf\" \"C:\\\\xampp\\\\htdocs\\\\scratchpad_permit_test2.pdf\"; echo cleaned)",
+      "Bash(rm -f \"C:\\\\xampp\\\\htdocs\\\\scratchpad_header_test2.pdf\")",
+      "Bash(timeout 15 curl -sI https://repo.packagist.org)",
+      "Bash(echo \"exit: $?\")",
+      "mcp__visualize__read_me",
+      "mcp__visualize__show_widget",
+      "Bash(xargs -I{} basename {})"
     ]
   }
 }

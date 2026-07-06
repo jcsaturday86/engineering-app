@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\Assessment;
 use App\Models\AssessmentItem;
 use App\Models\CertificationZoningFee;
+use App\Models\FeeCategory;
 use App\Models\LandUseAndZoningFee;
 use App\Models\LandUseAndZoningOtherFee;
 use App\Models\OccupancyGroup;
@@ -13,6 +14,7 @@ use App\Models\OccupancySubGroup;
 use App\Models\ZoningAssessment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class ZoningController extends Controller
@@ -31,6 +33,11 @@ class ZoningController extends Controller
         if ($this->zoningAssessmentIsFinalized($application)) {
             abort(403, 'Zoning assessment is finalized and cannot be modified.');
         }
+    }
+
+    private function feeCategoryId(string $code): ?int
+    {
+        return FeeCategory::where('code', $code)->value('id');
     }
 
     public function index()
@@ -164,6 +171,7 @@ class ZoningController extends Controller
 
                 AssessmentItem::create([
                     'assessment_id' => $assessment->id,
+                    'fee_category_id' => $this->feeCategoryId('ZONING_LC'),
                     'fee_code' => 'ZONING_LC_FEE',
                     'description' => $desc,
                     'quantity' => $totalCost,
@@ -194,6 +202,7 @@ class ZoningController extends Controller
             if (!$certExists) {
                 AssessmentItem::create([
                     'assessment_id' => $assessment->id,
+                    'fee_category_id' => $this->feeCategoryId('ZONING_CERT'),
                     'fee_code' => 'ZONING_CERT_FEE',
                     'description' => 'Zoning Certification Fee',
                     'quantity' => 1,
@@ -280,6 +289,7 @@ class ZoningController extends Controller
 
         AssessmentItem::create([
             'assessment_id' => $assessment->id,
+            'fee_category_id' => $this->feeCategoryId('ZONING_LC'),
             'fee_code' => 'ZONING_LC_FEE',
             'description' => $desc,
             'quantity' => $totalCost,
@@ -307,6 +317,7 @@ class ZoningController extends Controller
 
         AssessmentItem::create([
             'assessment_id' => $assessment->id,
+            'fee_category_id' => $this->feeCategoryId('ZONING_LC'),
             'fee_code' => 'ZONING_LC_MANUAL',
             'description' => $request->input('manual_description'),
             'quantity' => 1,
@@ -338,6 +349,7 @@ class ZoningController extends Controller
 
         AssessmentItem::create([
             'assessment_id' => $assessment->id,
+            'fee_category_id' => $this->feeCategoryId('ZONING_CERT'),
             'fee_code' => 'ZONING_CERT_FEE',
             'description' => $desc,
             'quantity' => 1,
@@ -360,6 +372,7 @@ class ZoningController extends Controller
 
         AssessmentItem::create([
             'assessment_id' => $assessment->id,
+            'fee_category_id' => $this->feeCategoryId('ZONING_LC'),
             'fee_code' => 'ZONING_OTHER_' . $otherFee->code,
             'description' => $otherFee->name,
             'quantity' => 1,
@@ -449,8 +462,75 @@ class ZoningController extends Controller
         return redirect()->route('zoning.index')->with('success', 'Zoning assessment finalized.');
     }
 
-    public function skip(Application $application)
+    public function revertZoning(Request $request, Application $application)
     {
+        $request->validate(['password' => 'required|string']);
+
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
+        $assessment = Assessment::where('applicationable_type', 'bp')
+            ->where('applicationable_id', $application->id)
+            ->where('assessment_type', 'zoning')
+            ->first();
+
+        if ($application->status !== 'zoning_assessed' || ! $assessment || $assessment->status !== 'finalized') {
+            return back()->with('error', 'Zoning assessment is not finalized or already reverted.');
+        }
+
+        DB::transaction(function () use ($application, $assessment) {
+            $assessment->update(['status' => 'draft', 'finalized_at' => null]);
+            $application->update(['status' => 'for_zoning_assessment']);
+        });
+
+        activity()->causedBy(Auth::user())->performedOn($application)->log('Zoning assessment finalization reverted');
+
+        return redirect()->route('zoning.index')->with('success', 'Zoning assessment finalization reverted.');
+    }
+
+    // Send an application (still awaiting zoning assessment, not yet finalized) back to Engineering
+    // so its application form details can be edited, since only Engineering holds edit-applications.
+    // Deletes all Zoning Assessment fee entries so Planning starts fresh if it returns.
+    public function sendBackForEditing(Request $request, Application $application)
+    {
+        $request->validate(['password' => 'required|string']);
+
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
+        if ($application->status !== 'for_zoning_assessment') {
+            return back()->with('error', 'Only applications awaiting zoning assessment can be sent back for editing.');
+        }
+
+        DB::transaction(function () use ($application) {
+            $zoningAssessment = Assessment::where('applicationable_type', 'bp')
+                ->where('applicationable_id', $application->id)
+                ->where('assessment_type', 'zoning')
+                ->first();
+
+            if ($zoningAssessment) {
+                $zoningAssessment->assessmentItems()->delete();
+                $zoningAssessment->delete();
+            }
+
+            $application->update(['status' => 'draft', 'submitted_at' => null]);
+        });
+
+        activity()->causedBy(Auth::user())->performedOn($application)->log('Application sent back to Engineering for editing');
+
+        return redirect()->route('zoning.index')->with('success', 'Application sent back to Engineering for editing.');
+    }
+
+    public function skip(Request $request, Application $application)
+    {
+        $request->validate(['password' => 'required|string']);
+
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
         if ($application->status === 'for_zoning_assessment') {
             $application->update(['status' => 'zoning_assessed']);
             activity()->causedBy(Auth::user())->performedOn($application)->log('Zoning assessment skipped');

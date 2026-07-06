@@ -98,6 +98,25 @@ There is no Billing menu or manual "Generate Billing" action. `AssessmentControl
 ### QR Code Permit Verification
 Every generated `Permit` gets a `verification_token` (UUID, unique) set in `PermitController::doGenerate()`. `PermitController::print()` builds a verification URL — `{domain}/verify/permit/{token}`, where `{domain}` comes from the `general.domain` setting (falls back to `config('app.url')` if blank) — and renders it as a QR code (`endroid/qr-code`) embedded on both PDF templates. `GET /verify/permit/{token}` is a public, throttled route (`VerifyController::show`, no auth) that renders `resources/views/verify/permit.blade.php`: a standalone page showing permit type, number, status, applicant, and project for a valid token, or a graceful "could not be verified" message for an invalid one.
 
+### Revert / Send-Back Actions (Backward Workflow Transitions)
+Every forward-only workflow step now has a matching backward action, each gated by its own permission and a password-confirmation modal (`Hash::check()` against the acting user's password), following the same UX pattern as finalize:
+- **Submission revert** — `ApplicationController::revertSubmission()` / `OccupancyApplicationController::revertSubmission()` (`revert-submission` permission) send a submitted application back to `draft` from its Show page.
+- **Zoning revert** — `ZoningController::revertZoning()` (`revert-zoning`) un-finalizes a zoning assessment. `ZoningController::sendBackForEditing()` (reuses `revert-submission`) sends an application back from Engineering to Planning for zoning re-work.
+- **Engineering assessment revert** — `AssessmentController::revertEngineering()` / `revertEngineeringOp()` (`revert-assessments`) un-finalize a BP/OP engineering assessment. `AssessmentController::returnToZoning()` (`return-to-zoning`) sends a BP application from Engineering back to Planning, deleting its engineering assessment items. `AssessmentController::revertToDraftOp()` (reuses `revert-submission`, OP only) reverts an in-progress OP assessment (status `zoning_assessed`, not yet finalized) all the way back to `draft`, deleting all occupancy fee entries — a dedicated action separate from the plain status-revert, since it also purges fee data.
+- **Permit generation revert** — `PermitController::revertGenerate()` / `revertGenerateOp()` (`revert-permits`) soft-delete a generated `Permit` and roll the application status back to `paid`.
+
+All revert actions soft-delete the records they remove (never hard-delete) and write an `activity()` log entry, consistent with the rest of the app's audit trail. Buttons for these actions in `assessments/assess.blade.php` live in the page **header** (not inside a tab-gated Summary pane) so they're visible immediately regardless of which fee-entry tab is active by default.
+
+### Application List UX: Turn Around Time, Year Filter, Status Labels
+`/applications` and `/occupancy-applications` add:
+- **Year filter** (`?year=`, defaults to the current year) — `whereYear('created_at', $year)`, dropdown offers current + previous year only.
+- **Turn Around Time column** — per row, `submitted_at` (falling back to `created_at`) → the latest `Permit`'s `created_at` (via the eager-loaded `permits()` relation), shown as whole days (`–` if no permit generated yet). Computed in the view, not persisted — no new columns. Note: Carbon 3's `diffInDays()` defaults to non-absolute and can return a negative float, so the calculation forces `diffInDays($end, true)` and floors to an int.
+- **OP-specific status labels** — since Occupancy Permits have no zoning/planning stage, `zoning_assessed` is relabeled "For Occupancy Assessment" everywhere it's displayed for OP (both `occupancy-applications/index.blade.php` and `assessments/occupancy-index.blade.php`), instead of the generic BP-oriented "Zoning assessed".
+- OP index shows **Project Title** (not applicant address) as its own column alongside Status.
+
+### On-Demand Barangay Lookup (GeoController)
+The ~42K-row barangay dataset used to be shipped in full to the BP/OP application form and filtered client-side by city. `GeoController::barangaysForCity(City $city)` (`GET /geo/barangays/{city}`) now returns only the active barangays for the selected city, fetched via Alpine on `@change` of the City select (and on `init()` if a city is already selected, e.g. editing an existing application). This avoids embedding the full barangay list in every form page load.
+
 ### Dashboard: Year-Navigable Charts
 The dashboard's two Chart.js charts (Monthly Revenue, Monthly Transactions — the latter a grouped BP-vs-OP bar chart sourced from `Collection.applicationable_type`) accept an optional `?year=` query param (`DashboardController::index()`), clamped so it can never exceed the real current year. Prev/Next arrows above the charts let a user page back through prior years' monthly breakdowns. The KPI stat cards above the charts (Total Applications, Pending, For Payment, Released, Revenue, Today's Transactions) are intentionally **not** affected by `?year=` — they always reflect the live/current period, per explicit design choice.
 

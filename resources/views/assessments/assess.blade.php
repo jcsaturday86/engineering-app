@@ -15,6 +15,7 @@
     $isOp = $isOp ?? false;
     $addItemRoute = $isOp ? route('assessments.addItem.op', $application) : route('assessments.addItem', $application);
     $finalizeRoute = $isOp ? route('assessments.finalize.op', $application) : route('assessments.finalize', $application);
+    $revertRoute = $isOp ? route('assessments.revertFinalize.op', $application) : route('assessments.revertFinalize', $application);
     $backRoute = $isOp ? route('assessments.occupancy') : route('assessments.index');
     $tabCategories = $tabCategories ?? $feeCategories;
     $activeTab = $activeTab ?? ($tabCategories->first()?->code ?? 'CONST');
@@ -25,9 +26,116 @@
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h2 class="text-xl font-bold text-gray-900">Assess Application</h2>
-        <a href="{{ $backRoute }}" class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition">
-            <i class="fas fa-arrow-left"></i> Back to List
-        </a>
+        <div class="flex flex-wrap items-center gap-2">
+            {{-- Return to Zoning Button + Password Modal (BP only, ongoing/not-yet-finalized assessment) --}}
+            {{-- Placed in the header so it's visible immediately regardless of which tab is active --}}
+            @can('return-to-zoning')
+            @if(!$isOp && $application->status === 'zoning_assessed' && !$application->assessments()->where('assessment_type', '!=', 'zoning')->where('status', 'finalized')->exists())
+            <div x-data="{ open: false, pw: '' }" class="inline-block">
+                <button @click="open = true; pw = ''"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-amber-300 text-amber-700 text-sm font-medium rounded-lg hover:bg-amber-50 transition">
+                    <i class="fas fa-arrow-left"></i> Return to Zoning
+                </button>
+
+                <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center"
+                    @keydown.escape.window="open = false">
+                    <div class="absolute inset-0 bg-black/40" @click="open = false"></div>
+                    <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 z-10">
+                        <div class="flex items-start gap-3 mb-4">
+                            <span class="flex-shrink-0 w-10 h-10 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <div>
+                                <h3 class="text-base font-semibold text-gray-900">Confirm Return to Zoning</h3>
+                                <p class="text-sm text-gray-500 mt-0.5">
+                                    This will send the application back to Planning Office for Zoning Assessment, un-finalize the zoning record, and permanently delete all engineering assessment entries entered so far. Enter your password to proceed.
+                                </p>
+                            </div>
+                        </div>
+
+                        <form action="{{ route('assessments.returnToZoning', $application) }}" method="POST" autocomplete="off">
+                            @csrf
+                            <div class="mb-4">
+                                <label class="block text-xs font-medium text-gray-600 mb-1">
+                                    Your Password <span class="text-red-500">*</span>
+                                </label>
+                                <input type="password" name="password" x-model="pw" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                    placeholder="Enter your password">
+                            </div>
+                            <div class="flex justify-end gap-2">
+                                <button type="button" @click="open = false"
+                                    class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                                    Cancel
+                                </button>
+                                <button type="submit" :disabled="!pw"
+                                    class="inline-flex items-center gap-1 px-4 py-2 text-sm font-semibold text-white bg-amber-600 rounded-lg hover:bg-amber-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i class="fas fa-arrow-left"></i> Return to Zoning
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            @endif
+            @endcan
+
+            {{-- Revert to Draft Button + Password Modal (OP only, ongoing/not-yet-finalized assessment) --}}
+            @can('revert-submission')
+            @if($isOp && $application->status === 'zoning_assessed')
+            <div x-data="{ open: false, pw: '' }" class="inline-block">
+                <button @click="open = true; pw = ''"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition">
+                    <i class="fas fa-undo"></i> Revert to Draft
+                </button>
+
+                <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center"
+                    @keydown.escape.window="open = false">
+                    <div class="absolute inset-0 bg-black/40" @click="open = false"></div>
+                    <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 z-10">
+                        <div class="flex items-start gap-3 mb-4">
+                            <span class="flex-shrink-0 w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <div>
+                                <h3 class="text-base font-semibold text-gray-900">Confirm Revert to Draft</h3>
+                                <p class="text-sm text-gray-500 mt-0.5">
+                                    This will send the application back to Draft and permanently delete all occupancy fee entries entered so far. Enter your password to proceed.
+                                </p>
+                            </div>
+                        </div>
+
+                        <form action="{{ route('assessments.revertToDraft.op', $application) }}" method="POST" autocomplete="off">
+                            @csrf
+                            <div class="mb-4">
+                                <label class="block text-xs font-medium text-gray-600 mb-1">
+                                    Your Password <span class="text-red-500">*</span>
+                                </label>
+                                <input type="password" name="password" x-model="pw" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                    placeholder="Enter your password">
+                            </div>
+                            <div class="flex justify-end gap-2">
+                                <button type="button" @click="open = false"
+                                    class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                                    Cancel
+                                </button>
+                                <button type="submit" :disabled="!pw"
+                                    class="inline-flex items-center gap-1 px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i class="fas fa-undo"></i> Revert to Draft
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            @endif
+            @endcan
+
+            <a href="{{ $backRoute }}" class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition">
+                <i class="fas fa-arrow-left"></i> Back to List
+            </a>
+        </div>
     </div>
 
     {{-- Application Summary Card --}}
@@ -1121,12 +1229,63 @@
 
             {{-- Print Button (finalized only) --}}
             @if($assessment && $assessment->status === 'finalized')
-            <div class="flex justify-end">
+            <div class="flex justify-end gap-2">
                 <a href="{{ $isOp ? route('assessments.print.op', $application) : route('assessments.print', $application) }}"
                    target="_blank"
                    class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition shadow-sm">
                     <i class="fas fa-print"></i> Print Summary of Computation
                 </a>
+
+                @can('revert-assessments')
+                @if(in_array($application->status, ['engineering_assessed', 'billed']))
+                <div x-data="{ open: false, pw: '' }">
+                    <button @click="open = true; pw = ''"
+                        class="inline-flex items-center gap-2 px-6 py-3 bg-white border border-red-300 text-red-600 text-sm font-semibold rounded-lg hover:bg-red-50 transition shadow-sm">
+                        <i class="fas fa-undo"></i> Revert Finalization
+                    </button>
+
+                    <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center"
+                        @keydown.escape.window="open = false">
+                        <div class="absolute inset-0 bg-black/40" @click="open = false"></div>
+                        <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 z-10">
+                            <div class="flex items-start gap-3 mb-4">
+                                <span class="flex-shrink-0 w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                                <div>
+                                    <h3 class="text-base font-semibold text-gray-900">Confirm Revert</h3>
+                                    <p class="text-sm text-gray-500 mt-0.5">
+                                        This will unlock the assessment for editing and delete the auto-generated billing (if unpaid). Enter your password to proceed.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <form action="{{ $revertRoute }}" method="POST" autocomplete="off">
+                                @csrf
+                                <div class="mb-4">
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">
+                                        Your Password <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="password" name="password" x-model="pw" required
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                        placeholder="Enter your password">
+                                </div>
+                                <div class="flex justify-end gap-2">
+                                    <button type="button" @click="open = false"
+                                        class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" :disabled="!pw"
+                                        class="inline-flex items-center gap-1 px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <i class="fas fa-undo"></i> Revert
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                @endif
+                @endcan
             </div>
             @endif
 

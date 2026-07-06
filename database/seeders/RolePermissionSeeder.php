@@ -28,12 +28,15 @@ class RolePermissionSeeder extends Seeder
             'approve-applications',
             'reject-applications',
             'cancel-applications',
+            'revert-submission',
 
             // Assessments
             'view-assessments',
             'create-assessments',
             'edit-assessments',
             'finalize-assessments',
+            'revert-assessments',
+            'return-to-zoning',
 
             // Zoning
             'view-zoning',
@@ -41,6 +44,7 @@ class RolePermissionSeeder extends Seeder
             'edit-zoning',
             'finalize-zoning',
             'skip-zoning',
+            'revert-zoning',
 
             // Billing
             'view-billing',
@@ -58,6 +62,7 @@ class RolePermissionSeeder extends Seeder
             'generate-permits',
             'print-permits',
             'release-permits',
+            'revert-permits',
 
             // Reports
             'view-reports',
@@ -95,13 +100,14 @@ class RolePermissionSeeder extends Seeder
                 // Applications (all)
                 'view-applications', 'create-applications', 'edit-applications',
                 'delete-applications', 'submit-applications', 'approve-applications',
-                'reject-applications', 'cancel-applications',
+                'reject-applications', 'cancel-applications', 'revert-submission',
                 // Assessments (all)
                 'view-assessments', 'create-assessments', 'edit-assessments', 'finalize-assessments',
+                'revert-assessments', 'return-to-zoning',
                 // Billing (all)
                 'view-billing', 'generate-billing', 'reprint-billing',
                 // Permits (all)
-                'view-permits', 'generate-permits', 'print-permits', 'release-permits',
+                'view-permits', 'generate-permits', 'print-permits', 'release-permits', 'revert-permits',
                 // Reports
                 'view-reports',
             ],
@@ -118,9 +124,10 @@ class RolePermissionSeeder extends Seeder
             ],
 
             'planning-officer' => [
-                'view-applications',
+                'view-applications', 'revert-submission',
                 // Zoning (all)
                 'view-zoning', 'create-zoning', 'edit-zoning', 'finalize-zoning', 'skip-zoning',
+                'revert-zoning',
                 // Reports
                 'view-reports',
             ],

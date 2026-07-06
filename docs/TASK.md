@@ -134,6 +134,25 @@
 - Found stale seed data where an application's `status` column stayed `billed` despite already having an active `Collection` (paid) and a generated permit
 - Added `whereDoesntHave('collections', fn($q) => $q->where('status', 'active'))` to the Awaiting Payment list query and the barcode/exact-match redirect lookup, as a defensive guard against `status` drift
 
+### Revert / Send-Back Actions for Every Workflow Step — COMPLETED
+
+- New permissions: `revert-submission`, `revert-assessments`, `return-to-zoning`, `revert-zoning`, `revert-permits`
+- `ApplicationController::revertSubmission()` / `OccupancyApplicationController::revertSubmission()` — submitted → draft
+- `ZoningController::revertZoning()` — un-finalize a zoning assessment; `ZoningController::sendBackForEditing()` — send an application from Engineering back to Planning
+- `AssessmentController::revertEngineering()` / `revertEngineeringOp()` — un-finalize a BP/OP engineering assessment
+- `AssessmentController::returnToZoning()` — BP only; deletes engineering assessment items, sends application back to Planning
+- `AssessmentController::revertToDraftOp()` — OP only; new dedicated action (not a modification of the plain revertSubmission) for an in-progress (`zoning_assessed`, not yet finalized) OP assessment: deletes all occupancy fee entries and the occupancy Assessment, reverts status to `draft`
+- `PermitController::revertGenerate()` / `revertGenerateOp()` — soft-delete the generated Permit, roll status back to `paid`; fixed a related permit-counter bug found during implementation
+- Every revert action requires password confirmation (`Hash::check()`) via an Alpine modal, matching the existing finalize UX, and writes an `activity()` log entry
+- Bug found and fixed post-implementation: the "Return to Zoning" (BP) and "Revert to Draft" (OP) buttons were placed inside the Summary tab's `x-show`-gated content in `assessments/assess.blade.php`, but the assess screen defaults to the first fee-entry tab on load — not Summary — making both buttons invisible by default regardless of item count. Fixed by moving both into the page header, which is always rendered.
+
+### Zoning Fee Print Fix & Application List UX — COMPLETED
+
+- Fixed zoning fees missing from the printed BP Summary of Computation: `ZoningController`'s `AssessmentItem::create()` calls never set `fee_category_id`, so the print template's grouping by `ZONING_LC`/`ZONING_CERT` category code came up empty; added `fee_category_id` to all 6 create-call sites and backfilled existing stale rows
+- `/occupancy-applications` index: added Applicant Address (later swapped for Project Title) and Status columns; relabeled `zoning_assessed` to "For Occupancy Assessment" for OP (no zoning department exists for OP) on both `occupancy-applications/index.blade.php` and `assessments/occupancy-index.blade.php`
+- Added a **Year filter** (`?year=`, defaults to current year, current + previous year options) to `/applications` and `/occupancy-applications`
+- Added a **Turn Around Time** column to both indexes: whole days from `submitted_at` (or `created_at`) to the latest generated Permit's `created_at`, `–` if not yet generated; caught and fixed a Carbon 3 `diffInDays()` regression (defaults to non-absolute, returns a negative float) during verification
+
 ---
 
 ## Upcoming Tasks

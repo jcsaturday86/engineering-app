@@ -19,6 +19,8 @@
 | Browser autofill disabled | DONE | autocomplete="off" on all forms |
 | Form validation UX | DONE | Error banner, section highlighting, scroll-to-error |
 | Test data seeder | DONE | ApplicationSeeder: 5 BP + 5 OP |
+| Revert / send-back actions | DONE | Password-confirmed backward transitions at every workflow step: submission, zoning, engineering assessment, OP-to-draft, permit generation |
+| On-demand barangay lookup | DONE | `GeoController::barangaysForCity()` — AJAX fetch replacing full ~42K-row client-side dataset |
 
 ---
 
@@ -35,6 +37,8 @@
 | Status workflow | DONE | 8-state machine |
 | Submission notification | DONE | Notifies engineering users |
 | FSEC No. / Date Issued fields | DONE | Reference-only fields on the application form, shown on the printed Building Permit |
+| Revert submission / return to zoning | DONE | `revertSubmission()`, `sendBackForEditing()`, `returnToZoning()` — password-confirmed |
+| Year filter + Turn Around Time column | DONE | `/applications` index: `?year=` filter (default current year), submitted→permit-generated day count |
 
 ---
 
@@ -48,6 +52,9 @@
 | Character of Occupancy | DONE | Shared occupancy group selection |
 | Status workflow (skips zoning) | DONE | submitted → engineering_assessed |
 | Polymorphic downstream | DONE | assessments, billings, collections, permits, documents |
+| Revert submission / revert-to-draft | DONE | `revertSubmission()`; `AssessmentController::revertToDraftOp()` also purges occupancy fee entries |
+| OP-appropriate status labels | DONE | `zoning_assessed` shown as "For Occupancy Assessment" (no zoning stage in OP) |
+| Year filter + Turn Around Time column | DONE | `/occupancy-applications` index; Project Title column (replaced Applicant Address) |
 
 ---
 
@@ -69,6 +76,7 @@
 | Finalized lock | DONE | Add/remove/autocompute blocked after finalize; single amber banner |
 | Zoning certification PDF | DONE | Template exists |
 | Locational clearance PDF | DONE | Template exists |
+| Revert zoning finalize / send back to editing | DONE | `revertZoning()`, `sendBackForEditing()` — password-confirmed |
 
 ---
 
@@ -101,6 +109,8 @@
 | BP assessment PDF | DONE | Fire Code Fees removed; Code 128 barcode above BP number; Approved By from building_official signatory |
 | OP assessment PDF | DONE | Separate `assessment-summary-op` template titled "OCCUPANCY PERMIT ASSESSMENT"; only Occupancy Fees section (no Zoning/BP/Other Fees) |
 | Print button on BP + OP assessment index | DONE | Shown when status = engineering_assessed or billed |
+| Revert engineering finalize (BP + OP) | DONE | `revertEngineering()` / `revertEngineeringOp()` — password-confirmed un-finalize |
+| Zoning fees missing from printed Summary of Computation | DONE (fixed) | Root cause: `fee_category_id` never set on zoning `AssessmentItem::create()` calls; fixed + backfilled |
 
 ---
 
@@ -138,6 +148,7 @@
 | Permit numbering | DONE | CODE-YYYY-MM-NNNNN |
 | QR code verification | DONE | `verification_token` (UUID) per permit; public `/verify/permit/{token}` page (no auth); `general.domain` setting controls the QR's domain |
 | Generate Permit routing fix (OP) | DONE | Occupancy Permits list was posting to the BP-only generate route (404); now branches by `$type` |
+| Revoke generated permit | DONE | `revertGenerate()` / `revertGenerateOp()` — soft-delete Permit, roll status back to `paid`; password-confirmed |
 | Evaluation report PDF | DONE | |
 
 ---

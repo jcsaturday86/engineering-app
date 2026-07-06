@@ -54,9 +54,20 @@
                                     'released' => 'bg-emerald-100 text-emerald-700',
                                     'cancelled' => 'bg-red-100 text-red-700',
                                 ];
+                                $labels = [
+                                    'draft' => 'Draft',
+                                    'submitted' => 'Submitted',
+                                    'zoning_assessed' => 'For Occupancy Assessment',
+                                    'engineering_assessed' => 'Engineering Assessed',
+                                    'billed' => 'Billed',
+                                    'paid' => 'Paid',
+                                    'permit_generated' => 'Permit Generated',
+                                    'released' => 'Released',
+                                    'cancelled' => 'Cancelled',
+                                ];
                             @endphp
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $colors[$app->status] ?? 'bg-gray-100 text-gray-600' }}">
-                                {{ ucfirst(str_replace('_', ' ', $app->status)) }}
+                                {{ $labels[$app->status] ?? ucfirst(str_replace('_', ' ', $app->status)) }}
                             </span>
                         </td>
                         <td class="px-4 py-3 text-gray-500">{{ $app->created_at->format('M d, Y') }}</td>

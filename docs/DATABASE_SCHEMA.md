@@ -263,7 +263,7 @@ Polymorphic, `billing_id`, `or_number`, `or_date`, `paid_by`, `amount_due/receiv
 ## Permit & Document Tables
 
 ### `permits`
-Polymorphic, `permit_type_id`, `permit_year/month/counter`, `permit_number` (CODE-YYYY-MM-NNNNN), `verification_token` (string, unique, UUID — set on generation, used to build the public QR-code verification link `/verify/permit/{token}`), `issued_date`, `processed_by`, `approved_by`, `status` (generated/signed/released).
+Polymorphic, `permit_type_id`, `permit_year/month/counter`, `permit_number` (CODE-YYYY-MM-NNNNN), `verification_token` (string, unique, UUID — set on generation, used to build the public QR-code verification link `/verify/permit/{token}`), `issued_date`, `processed_by`, `approved_by`, `status` (generated/signed/released). SoftDeletes — a revoked/reverted permit is soft-deleted rather than removed, so `permits()` (via `HasPermitApplicationBehavior`) reliably returns only the current active permit per application even after a revert-and-regenerate cycle. The Turn Around Time column on the BP/OP application indexes reads this table's `created_at` (the actual generation timestamp — `issued_date` has no time component) against the application's `submitted_at`/`created_at`; no new columns were added for this.
 
 ### `documents`
 Polymorphic, `document_type` (e.g., pdf.building-permit), `title`, `file_path`, `counter`, `document_date`, `generated_by`.

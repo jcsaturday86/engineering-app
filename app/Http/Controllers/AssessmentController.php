@@ -1313,6 +1313,52 @@ class AssessmentController extends Controller
             ->with('success', 'Assessment finalized successfully.');
     }
 
+    // BP only — send an application back to Zoning while engineering assessment is still ongoing (not yet finalized).
+    // Deletes all non-zoning assessment entries (Assessment + AssessmentItem rows) so Engineering starts fresh if it returns.
+    public function returnToZoning(Request $request, Application $application)
+    {
+        $request->validate(['password' => 'required|string']);
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return redirect()
+                ->to(route('assessments.assess', $application) . '?tab=SUMMARY')
+                ->with('error', 'Incorrect password. Please try again.');
+        }
+
+        if ($application->status !== 'zoning_assessed') {
+            return redirect()
+                ->to(route('assessments.assess', $application) . '?tab=SUMMARY')
+                ->with('error', 'Only applications currently in Engineering Assessment can be returned to Zoning.');
+        }
+
+        if ($application->assessments()->where('assessment_type', '!=', 'zoning')->where('status', 'finalized')->exists()) {
+            return redirect()
+                ->to(route('assessments.assess', $application) . '?tab=SUMMARY')
+                ->with('error', 'Cannot return to Zoning: engineering assessment has already been finalized. Revert the finalization first.');
+        }
+
+        DB::transaction(function () use ($application) {
+            $zoningAssessment = Assessment::where('applicationable_type', 'bp')
+                ->where('applicationable_id', $application->id)
+                ->where('assessment_type', 'zoning')
+                ->first();
+
+            if ($zoningAssessment) {
+                $zoningAssessment->update(['status' => 'draft', 'finalized_at' => null]);
+            }
+
+            $application->assessments()->where('assessment_type', '!=', 'zoning')->get()->each(function ($assessment) {
+                $assessment->assessmentItems()->delete();
+                $assessment->delete();
+            });
+
+            $application->update(['status' => 'for_zoning_assessment']);
+        });
+
+        activity()->causedBy(Auth::user())->performedOn($application)->log('Application returned to Zoning Assessment from Engineering');
+
+        return redirect()->route('assessments.index')->with('success', 'Application returned to Zoning Assessment.');
+    }
+
     // OP finalize
     public function finalizeOp(Request $request, OccupancyApplication $occupancyApplication)
     {
@@ -1363,6 +1409,122 @@ class AssessmentController extends Controller
         if ($application->client_user_id) {
             $application->clientUser->notify(new AssessmentCompleteNotification($application));
         }
+    }
+
+    // BP revert engineering finalize
+    public function revertEngineering(Request $request, Application $application)
+    {
+        $request->validate(['password' => 'required|string']);
+        if (! Hash::check($request->password, Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
+        $error = $this->guardRevertEngineering($application);
+        if ($error) {
+            return back()->with('error', $error);
+        }
+
+        $this->doRevertEngineering($application);
+
+        return redirect()
+            ->to(route('assessments.assess', $application) . '?tab=SUMMARY')
+            ->with('success', 'Engineering assessment finalization reverted.');
+    }
+
+    // OP revert engineering finalize
+    public function revertEngineeringOp(Request $request, OccupancyApplication $occupancyApplication)
+    {
+        $request->validate(['password' => 'required|string']);
+        if (! Hash::check($request->password, Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
+        $error = $this->guardRevertEngineering($occupancyApplication);
+        if ($error) {
+            return back()->with('error', $error);
+        }
+
+        $this->doRevertEngineering($occupancyApplication);
+
+        return redirect()
+            ->to(route('assessments.assess.op', $occupancyApplication) . '?tab=SUMMARY')
+            ->with('success', 'Engineering assessment finalization reverted.');
+    }
+
+    // OP only — revert an in-progress (not yet finalized) occupancy assessment all the way back to draft,
+    // deleting all occupancy fee entries entered so far.
+    public function revertToDraftOp(Request $request, OccupancyApplication $occupancyApplication)
+    {
+        $request->validate(['password' => 'required|string']);
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
+        if ($occupancyApplication->status !== 'zoning_assessed') {
+            return back()->with('error', 'Only applications awaiting occupancy assessment can be reverted to draft.');
+        }
+
+        DB::transaction(function () use ($occupancyApplication) {
+            $assessment = Assessment::where('applicationable_type', 'op')
+                ->where('applicationable_id', $occupancyApplication->id)
+                ->where('assessment_type', 'occupancy')
+                ->first();
+
+            if ($assessment) {
+                $assessment->assessmentItems()->delete();
+                $assessment->delete();
+            }
+
+            $occupancyApplication->update(['status' => 'draft', 'submitted_at' => null]);
+        });
+
+        activity()->causedBy(Auth::user())->performedOn($occupancyApplication)->log('Occupancy assessment reverted to draft — all fee entries deleted');
+
+        return redirect()->route('assessments.occupancy')->with('success', 'Application reverted to draft. All occupancy fee entries were deleted.');
+    }
+
+    private function guardRevertEngineering(PermitApplicationContract $application): ?string
+    {
+        if (! in_array($application->status, ['engineering_assessed', 'billed'])) {
+            return 'Engineering assessment is not finalized or already reverted.';
+        }
+
+        if ($application->status === 'billed') {
+            $unpaidBilling = $application->billings()->where('status', 'unpaid')->first();
+
+            if (! $unpaidBilling) {
+                return 'Cannot revert: this application has already been paid.';
+            }
+
+            if ($application->collections()->where('status', 'active')->exists()) {
+                return 'Cannot revert: this application has already been paid.';
+            }
+        }
+
+        return null;
+    }
+
+    private function doRevertEngineering(PermitApplicationContract $application): void
+    {
+        DB::transaction(function () use ($application) {
+            $billing = $application->billings()->where('status', 'unpaid')->first();
+            if ($billing) {
+                $billing->billingItems()->delete();
+                $billing->delete();
+            }
+
+            $application->assessments()->where('status', 'finalized')->get()->each(function ($assessment) {
+                $assessment->update(['status' => 'draft', 'finalized_at' => null, 'assessed_by' => null]);
+            });
+
+            $application->update([
+                'status' => 'zoning_assessed',
+                'assessed_by' => null,
+                'assessed_at' => null,
+            ]);
+        });
+
+        activity()->causedBy(Auth::user())->performedOn($application)->log('Engineering assessment finalization reverted');
     }
 
     // BP print

@@ -259,7 +259,7 @@
                 <div>
                     <label for="applicant_city_id" class="block text-xs font-medium text-gray-600 mb-1">City/Municipality <span class="text-red-500">*</span></label>
                     <select name="applicant_city_id" required id="applicant_city_id" x-model="selectedCity"
-                        @change="selectedBarangay = '';"
+                        @change="selectedBarangay = ''; loadBarangays(selectedCity)"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                         <option value="">-- Select City --</option>
                         <template x-for="city in filteredCities" :key="city.id">
@@ -275,7 +275,7 @@
                     <select name="applicant_barangay_id" id="applicant_barangay_id" x-model="selectedBarangay" required
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                         <option value="">-- Select Barangay --</option>
-                        <template x-for="brgy in filteredBarangays" :key="brgy.id">
+                        <template x-for="brgy in barangayOptions" :key="brgy.id">
                             <option :value="brgy.id" x-text="brgy.name" :selected="brgy.id == selectedBarangay"></option>
                         </template>
                     </select>
@@ -573,15 +573,19 @@
             selectedCity: '{{ old('applicant_city_id', $application->applicant_city_id ?? '') }}',
             selectedBarangay: '{{ old('applicant_barangay_id', $application->applicant_barangay_id ?? '') }}',
             cities: @json($cities),
-            barangays: @json($barangays),
+            barangayOptions: [],
 
             get filteredCities() {
                 if (!this.selectedProvince) return [];
                 return this.cities.filter(c => String(c.province_id) === String(this.selectedProvince));
             },
-            get filteredBarangays() {
-                if (!this.selectedCity) return [];
-                return this.barangays.filter(b => String(b.city_id) === String(this.selectedCity));
+            async loadBarangays(cityId) {
+                if (!cityId) { this.barangayOptions = []; return; }
+                const res = await fetch(`/geo/barangays/${cityId}`);
+                this.barangayOptions = await res.json();
+            },
+            init() {
+                if (this.selectedCity) this.loadBarangays(this.selectedCity);
             },
         }
     }

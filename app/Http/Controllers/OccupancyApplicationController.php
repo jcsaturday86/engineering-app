@@ -17,13 +17,14 @@ use App\Notifications\ApplicationSubmittedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 
 class OccupancyApplicationController extends Controller
 {
     public function index(Request $request)
     {
-        $query = OccupancyApplication::with('applicationType')
+        $query = OccupancyApplication::with('applicationType', 'permits')
             ->where('status', '!=', 'cancelled');
 
         if ($request->filled('search')) {
@@ -39,9 +40,12 @@ class OccupancyApplicationController extends Controller
             $query->where('status', $request->status);
         }
 
+        $year = $request->filled('year') ? (int) $request->year : now()->year;
+        $query->whereYear('created_at', $year);
+
         $applications = $query->latest()->paginate(20)->withQueryString();
 
-        return view('occupancy-applications.index', compact('applications'));
+        return view('occupancy-applications.index', compact('applications', 'year'));
     }
 
     public function create()
@@ -146,8 +150,14 @@ class OccupancyApplicationController extends Controller
         }
     }
 
-    public function submit(OccupancyApplication $occupancyApplication)
+    public function submit(Request $request, OccupancyApplication $occupancyApplication)
     {
+        $request->validate(['password' => 'required|string']);
+
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
         if ($occupancyApplication->status !== 'draft') {
             return back()->with('error', 'Only draft applications can be submitted.');
         }
@@ -165,6 +175,31 @@ class OccupancyApplicationController extends Controller
         Notification::send($engineeringUsers, new ApplicationSubmittedNotification($occupancyApplication));
 
         return back()->with('success', 'Application submitted. Routed directly to Engineering Assessment.');
+    }
+
+    public function revertSubmission(Request $request, OccupancyApplication $occupancyApplication)
+    {
+        $request->validate(['password' => 'required|string']);
+
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
+        if ($occupancyApplication->status !== 'zoning_assessed') {
+            return back()->with('error', 'Only submitted applications can have their submission reverted.');
+        }
+
+        if ($occupancyApplication->assessments()->where('status', 'finalized')->exists()) {
+            return back()->with('error', 'Cannot revert: engineering assessment has already started.');
+        }
+
+        DB::transaction(function () use ($occupancyApplication) {
+            $occupancyApplication->update(['status' => 'draft', 'submitted_at' => null]);
+        });
+
+        activity()->causedBy(Auth::user())->performedOn($occupancyApplication)->log('Occupancy application submission reverted to draft');
+
+        return back()->with('success', 'Application submission reverted to draft.');
     }
 
     public function cancel(Request $request, OccupancyApplication $occupancyApplication)
@@ -211,7 +246,6 @@ class OccupancyApplicationController extends Controller
             'formOfOwnerships' => FormOfOwnership::where('is_active', true)->get(),
             'provinces' => Province::where('is_active', true)->orderBy('name')->get(),
             'cities' => City::where('is_active', true)->orderBy('name')->get(),
-            'barangays' => Barangay::where('is_active', true)->orderBy('name')->get(),
             'sfcBarangays' => Barangay::where('city_id', $sfcCityId)->where('is_active', true)->orderBy('name')->get(),
             'occupancyGroups' => OccupancyGroup::with('subGroups')->where('is_active', true)->orderBy('sort_order')->get(),
             'landClassifications' => LandClassification::where('is_active', true)->get(),

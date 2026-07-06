@@ -691,7 +691,7 @@
         @endif
 
         {{-- Action Buttons --}}
-        <div class="flex flex-wrap items-center gap-3" x-data="{ showFinalizeModal: false, finalizePassword: '', passwordError: '' }">
+        <div class="flex flex-wrap items-center gap-3" x-data="{ showFinalizeModal: false, finalizePassword: '', passwordError: '', showRevertModal: false, revertPassword: '', showSendBackModal: false, sendBackPassword: '', showSkipModal: false, skipPassword: '' }">
             @if($assessment && $assessment->status !== 'finalized' && $assessmentItems->count())
                 <button @click="showFinalizeModal = true; finalizePassword = ''; passwordError = ''"
                     class="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition shadow-sm">
@@ -747,13 +747,173 @@
                 </div>
             @endif
 
+            @can('revert-zoning')
+            @if($assessment && $assessment->status === 'finalized' && $application->status === 'zoning_assessed')
+                <button @click="showRevertModal = true; revertPassword = ''"
+                    class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition shadow-sm">
+                    <i class="fas fa-undo"></i> Revert Finalization
+                </button>
+
+                {{-- Revert Password Confirmation Modal --}}
+                <div x-show="showRevertModal" x-cloak
+                    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+                    @keydown.escape.window="showRevertModal = false">
+                    <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6" @click.outside="showRevertModal = false">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="inline-flex items-center justify-center w-10 h-10 bg-red-100 rounded-full">
+                                <i class="fas fa-lock text-red-600"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900">Confirm Revert</h3>
+                                <p class="text-sm text-gray-500">This will unlock the zoning assessment for editing.</p>
+                            </div>
+                        </div>
+
+                        <p class="text-sm text-gray-600 mb-4">
+                            Enter your password to confirm reverting the finalized zoning assessment for
+                            <strong>{{ $application->application_number }}</strong>.
+                        </p>
+
+                        @if($errors->has('password'))
+                            <div class="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                                {{ $errors->first('password') }}
+                            </div>
+                        @endif
+
+                        <form action="{{ route('zoning.revertFinalize', $application) }}" method="POST" autocomplete="off">
+                            @csrf
+                            <div class="mb-4">
+                                <label for="revert_password" class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
+                                <input type="password" name="password" id="revert_password" x-model="revertPassword" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                    placeholder="Enter your account password">
+                            </div>
+                            <div class="flex items-center justify-end gap-3">
+                                <button type="button" @click="showRevertModal = false"
+                                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                                    Cancel
+                                </button>
+                                <button type="submit" :disabled="!revertPassword"
+                                    class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i class="fas fa-undo"></i> Confirm & Revert
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            @endif
+            @endcan
+
+            @can('revert-submission')
+            @if($application->status === 'for_zoning_assessment')
+                <button @click="showSendBackModal = true; sendBackPassword = ''"
+                    class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-amber-300 text-amber-700 text-sm font-medium rounded-lg hover:bg-amber-50 transition shadow-sm">
+                    <i class="fas fa-arrow-left"></i> Send Back to Engineering
+                </button>
+
+                {{-- Send Back Password Confirmation Modal --}}
+                <div x-show="showSendBackModal" x-cloak
+                    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+                    @keydown.escape.window="showSendBackModal = false">
+                    <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6" @click.outside="showSendBackModal = false">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="inline-flex items-center justify-center w-10 h-10 bg-amber-100 rounded-full">
+                                <i class="fas fa-lock text-amber-600"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900">Confirm Send Back</h3>
+                                <p class="text-sm text-gray-500">This will return the application to Engineering for editing the application form and permanently delete all Zoning Assessment fee entries.</p>
+                            </div>
+                        </div>
+
+                        <p class="text-sm text-gray-600 mb-4">
+                            Enter your password to confirm sending
+                            <strong>{{ $application->application_number }}</strong> back to Engineering (status will revert to Draft).
+                        </p>
+
+                        @if($errors->has('password'))
+                            <div class="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                                {{ $errors->first('password') }}
+                            </div>
+                        @endif
+
+                        <form action="{{ route('zoning.sendBack', $application) }}" method="POST" autocomplete="off">
+                            @csrf
+                            <div class="mb-4">
+                                <label for="sendback_password" class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
+                                <input type="password" name="password" id="sendback_password" x-model="sendBackPassword" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                    placeholder="Enter your account password">
+                            </div>
+                            <div class="flex items-center justify-end gap-3">
+                                <button type="button" @click="showSendBackModal = false"
+                                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                                    Cancel
+                                </button>
+                                <button type="submit" :disabled="!sendBackPassword"
+                                    class="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i class="fas fa-arrow-left"></i> Confirm & Send Back
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            @endif
+            @endcan
+
             @if(!$zoningAssessment->exists && !$assessment)
-                <form action="{{ route('zoning.skip', $application) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to skip zoning assessment for this application?')" autocomplete="off">
-                    @csrf
-                    <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 transition shadow-sm">
-                        <i class="fas fa-forward"></i> Skip Zoning
-                    </button>
-                </form>
+                <button type="button" @click="showSkipModal = true; skipPassword = ''"
+                    class="inline-flex items-center gap-2 px-5 py-2.5 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 transition shadow-sm">
+                    <i class="fas fa-forward"></i> Skip Zoning
+                </button>
+
+                {{-- Skip Zoning Password Confirmation Modal --}}
+                <div x-show="showSkipModal" x-cloak
+                    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+                    @keydown.escape.window="showSkipModal = false">
+                    <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6" @click.outside="showSkipModal = false">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="inline-flex items-center justify-center w-10 h-10 bg-orange-100 rounded-full">
+                                <i class="fas fa-lock text-orange-600"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900">Confirm Skip Zoning</h3>
+                                <p class="text-sm text-gray-500">This will skip zoning assessment and route the application directly to Engineering.</p>
+                            </div>
+                        </div>
+
+                        <p class="text-sm text-gray-600 mb-4">
+                            Enter your password to confirm skipping zoning assessment for
+                            <strong>{{ $application->application_number }}</strong>.
+                        </p>
+
+                        @if($errors->has('password'))
+                            <div class="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                                {{ $errors->first('password') }}
+                            </div>
+                        @endif
+
+                        <form action="{{ route('zoning.skip', $application) }}" method="POST" autocomplete="off">
+                            @csrf
+                            <div class="mb-4">
+                                <label for="skip_password" class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
+                                <input type="password" name="password" id="skip_password" x-model="skipPassword" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                                    placeholder="Enter your account password">
+                            </div>
+                            <div class="flex items-center justify-end gap-3">
+                                <button type="button" @click="showSkipModal = false"
+                                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                                    Cancel
+                                </button>
+                                <button type="submit" :disabled="!skipPassword"
+                                    class="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i class="fas fa-forward"></i> Confirm & Skip
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             @endif
 
         </div>

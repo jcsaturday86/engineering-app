@@ -45,17 +45,57 @@
                     </div>
                 </div>
             </div>
-            <div class="flex flex-wrap items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2" x-data="{ showRevertSubmitModal: false, revertSubmitPassword: '', showSubmitModal: false, submitPassword: '' }">
                 @if($application->status === 'draft')
                     <a href="{{ route('occupancy-applications.edit', $application) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
                         <i class="fas fa-edit"></i> Edit
                     </a>
-                    <form method="POST" action="{{ route('occupancy-applications.submit', $application) }}" class="inline" autocomplete="off">
-                        @csrf
-                        <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition">
-                            <i class="fas fa-paper-plane"></i> Submit
-                        </button>
-                    </form>
+                    <button type="button" @click="showSubmitModal = true; submitPassword = ''"
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition">
+                        <i class="fas fa-paper-plane"></i> Submit
+                    </button>
+
+                    <div x-show="showSubmitModal" x-cloak
+                        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+                        @keydown.escape.window="showSubmitModal = false">
+                        <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6" @click.outside="showSubmitModal = false">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="inline-flex items-center justify-center w-10 h-10 bg-indigo-100 rounded-full">
+                                    <i class="fas fa-lock text-indigo-600"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900">Confirm Submission</h3>
+                                    <p class="text-sm text-gray-500">Enter your password to submit this application.</p>
+                                </div>
+                            </div>
+
+                            @if($errors->has('password'))
+                                <div class="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                                    {{ $errors->first('password') }}
+                                </div>
+                            @endif
+
+                            <form method="POST" action="{{ route('occupancy-applications.submit', $application) }}" autocomplete="off">
+                                @csrf
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
+                                    <input type="password" name="password" x-model="submitPassword" required
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                        placeholder="Enter your account password">
+                                </div>
+                                <div class="flex items-center justify-end gap-3">
+                                    <button type="button" @click="showSubmitModal = false"
+                                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" :disabled="!submitPassword"
+                                        class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <i class="fas fa-paper-plane"></i> Confirm & Submit
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 @endif
                 @if(!in_array($application->status, ['cancelled', 'paid', 'released']))
                     <form method="POST" action="{{ route('occupancy-applications.cancel', $application) }}" class="inline" onsubmit="return confirm('Are you sure you want to cancel this application? This action cannot be undone.')" autocomplete="off">
@@ -65,6 +105,56 @@
                         </button>
                     </form>
                 @endif
+                @can('revert-submission')
+                @if($application->status === 'zoning_assessed' && !$application->assessments()->where('status', 'finalized')->exists())
+                    <button type="button" @click="showRevertSubmitModal = true; revertSubmitPassword = ''"
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-amber-300 text-amber-700 text-sm font-medium rounded-lg hover:bg-amber-50 transition">
+                        <i class="fas fa-undo"></i> Revert Submission
+                    </button>
+
+                    <div x-show="showRevertSubmitModal" x-cloak
+                        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+                        @keydown.escape.window="showRevertSubmitModal = false">
+                        <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6" @click.outside="showRevertSubmitModal = false">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="inline-flex items-center justify-center w-10 h-10 bg-amber-100 rounded-full">
+                                    <i class="fas fa-lock text-amber-600"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900">Confirm Revert</h3>
+                                    <p class="text-sm text-gray-500">This will send the application back to draft.</p>
+                                </div>
+                            </div>
+
+                            @if($errors->has('password'))
+                                <div class="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                                    {{ $errors->first('password') }}
+                                </div>
+                            @endif
+
+                            <form action="{{ route('occupancy-applications.revertSubmission', $application) }}" method="POST" autocomplete="off">
+                                @csrf
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
+                                    <input type="password" name="password" x-model="revertSubmitPassword" required
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                        placeholder="Enter your account password">
+                                </div>
+                                <div class="flex items-center justify-end gap-3">
+                                    <button type="button" @click="showRevertSubmitModal = false"
+                                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" :disabled="!revertSubmitPassword"
+                                        class="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <i class="fas fa-undo"></i> Confirm & Revert
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                @endif
+                @endcan
                 <a href="{{ route('occupancy-applications.print', $application) }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
                     <i class="fas fa-print"></i> Print
                 </a>

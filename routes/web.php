@@ -10,6 +10,7 @@ use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\GeoController;
 use App\Http\Controllers\OccupancyApplicationController;
 use App\Http\Controllers\PermitController;
 use App\Http\Controllers\ProfileController;
@@ -64,6 +65,9 @@ Route::middleware('auth')->group(function () {
         return back();
     })->name('notifications.markRead');
 
+    // Geo lookups (AJAX, on-demand barangays for the address cascading dropdowns)
+    Route::get('/geo/barangays/{city}', [GeoController::class, 'barangaysForCity'])->name('geo.barangays');
+
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -81,6 +85,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/{application}', [ApplicationController::class, 'update'])->name('update')->middleware('can:edit-applications');
         Route::post('/{application}/submit', [ApplicationController::class, 'submit'])->name('submit')->middleware('can:submit-applications');
         Route::post('/{application}/cancel', [ApplicationController::class, 'cancel'])->name('cancel')->middleware('can:cancel-applications');
+        Route::post('/{application}/revert-submission', [ApplicationController::class, 'revertSubmission'])->name('revertSubmission')->middleware('can:revert-submission');
         Route::get('/{application}/print', [ApplicationController::class, 'printForm'])->name('print')->middleware('can:view-applications');
     });
 
@@ -94,6 +99,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/{occupancyApplication}', [OccupancyApplicationController::class, 'update'])->name('update')->middleware('can:edit-applications');
         Route::post('/{occupancyApplication}/submit', [OccupancyApplicationController::class, 'submit'])->name('submit')->middleware('can:submit-applications');
         Route::post('/{occupancyApplication}/cancel', [OccupancyApplicationController::class, 'cancel'])->name('cancel')->middleware('can:cancel-applications');
+        Route::post('/{occupancyApplication}/revert-submission', [OccupancyApplicationController::class, 'revertSubmission'])->name('revertSubmission')->middleware('can:revert-submission');
         Route::get('/{occupancyApplication}/print', [OccupancyApplicationController::class, 'printForm'])->name('print')->middleware('can:view-applications');
     });
 
@@ -107,6 +113,8 @@ Route::middleware('auth')->group(function () {
         Route::delete('/item/{assessmentItem}', [ZoningController::class, 'removeItem'])->name('removeItem')->middleware('can:create-zoning');
         Route::delete('/{application}/remove-items', [ZoningController::class, 'removeItems'])->name('removeItems')->middleware('can:create-zoning');
         Route::post('/{application}/finalize', [ZoningController::class, 'finalize'])->name('finalize')->middleware('can:finalize-zoning');
+        Route::post('/{application}/revert-finalize', [ZoningController::class, 'revertZoning'])->name('revertFinalize')->middleware('can:revert-zoning');
+        Route::post('/{application}/send-back', [ZoningController::class, 'sendBackForEditing'])->name('sendBack')->middleware('can:revert-submission');
         Route::post('/{application}/skip', [ZoningController::class, 'skip'])->name('skip')->middleware('can:skip-zoning');
     });
 
@@ -127,12 +135,16 @@ Route::middleware('auth')->group(function () {
         Route::post('/{application}/surcharge-item', [AssessmentController::class, 'addSurchargeItem'])->name('surchargeItem')->middleware('can:create-assessments');
         Route::get('/{application}/summary', [AssessmentController::class, 'summary'])->name('summary');
         Route::post('/{application}/finalize', [AssessmentController::class, 'finalize'])->name('finalize')->middleware('can:finalize-assessments');
+        Route::post('/{application}/revert-finalize', [AssessmentController::class, 'revertEngineering'])->name('revertFinalize')->middleware('can:revert-assessments');
+        Route::post('/{application}/return-to-zoning', [AssessmentController::class, 'returnToZoning'])->name('returnToZoning')->middleware('can:return-to-zoning');
         Route::get('/{application}/print', [AssessmentController::class, 'print'])->name('print');
         // OP assessment
         Route::get('/op/{occupancyApplication}', [AssessmentController::class, 'assessOp'])->name('assess.op')->middleware('can:create-assessments');
         Route::post('/op/{occupancyApplication}/item', [AssessmentController::class, 'addItemOp'])->name('addItem.op')->middleware('can:create-assessments');
         Route::get('/op/{occupancyApplication}/summary', [AssessmentController::class, 'summaryOp'])->name('summary.op');
         Route::post('/op/{occupancyApplication}/finalize', [AssessmentController::class, 'finalizeOp'])->name('finalize.op')->middleware('can:finalize-assessments');
+        Route::post('/op/{occupancyApplication}/revert-finalize', [AssessmentController::class, 'revertEngineeringOp'])->name('revertFinalize.op')->middleware('can:revert-assessments');
+        Route::post('/op/{occupancyApplication}/revert-to-draft', [AssessmentController::class, 'revertToDraftOp'])->name('revertToDraft.op')->middleware('can:revert-submission');
         Route::get('/op/{occupancyApplication}/print', [AssessmentController::class, 'printOp'])->name('print.op');
         Route::post('/op/{occupancyApplication}/occupancy-fee', [AssessmentController::class, 'addOccupancyFeeItem'])->name('occupancyFeeItem')->middleware('can:create-assessments');
         // Shared
@@ -165,8 +177,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/occupancy', [PermitController::class, 'occupancyIndex'])->name('occupancy');
         // BP permit
         Route::post('/{application}/generate', [PermitController::class, 'generate'])->name('generate')->middleware('can:generate-permits');
+        Route::post('/{application}/revert-generate', [PermitController::class, 'revertGenerate'])->name('revertGenerate')->middleware('can:revert-permits');
         // OP permit
         Route::post('/op/{occupancyApplication}/generate', [PermitController::class, 'generateOp'])->name('generate.op')->middleware('can:generate-permits');
+        Route::post('/op/{occupancyApplication}/revert-generate', [PermitController::class, 'revertGenerateOp'])->name('revertGenerate.op')->middleware('can:revert-permits');
         // Shared
         Route::get('/{permit}/print', [PermitController::class, 'print'])->name('print')->middleware('can:print-permits');
         Route::get('/{application}/zoning-cert', [PermitController::class, 'zoningCertification'])->name('zoningCert');

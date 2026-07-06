@@ -18,13 +18,14 @@ use App\Notifications\ApplicationSubmittedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 
 class ApplicationController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Application::with('permitType', 'applicationType')
+        $query = Application::with('permitType', 'applicationType', 'permits')
             ->where('status', '!=', 'cancelled');
 
         if ($request->filled('search')) {
@@ -41,9 +42,12 @@ class ApplicationController extends Controller
             $query->where('status', $request->status);
         }
 
+        $year = $request->filled('year') ? (int) $request->year : now()->year;
+        $query->whereYear('created_at', $year);
+
         $applications = $query->latest()->paginate(20)->withQueryString();
 
-        return view('applications.index', compact('applications'));
+        return view('applications.index', compact('applications', 'year'));
     }
 
     public function create()
@@ -186,8 +190,14 @@ class ApplicationController extends Controller
         }
     }
 
-    public function submit(Application $application)
+    public function submit(Request $request, Application $application)
     {
+        $request->validate(['password' => 'required|string']);
+
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
         if ($application->status !== 'draft') {
             return back()->with('error', 'Only draft applications can be submitted.');
         }
@@ -216,6 +226,27 @@ class ApplicationController extends Controller
             : 'Application submitted. Routed to Planning Office for Zoning Assessment.';
 
         return back()->with('success', $msg);
+    }
+
+    public function revertSubmission(Request $request, Application $application)
+    {
+        $request->validate(['password' => 'required|string']);
+
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
+        if (! in_array($application->status, ['submitted', 'for_zoning_assessment'])) {
+            return back()->with('error', 'Only submitted applications can have their submission reverted.');
+        }
+
+        DB::transaction(function () use ($application) {
+            $application->update(['status' => 'draft', 'submitted_at' => null]);
+        });
+
+        activity()->causedBy(Auth::user())->performedOn($application)->log('Application submission reverted to draft');
+
+        return back()->with('success', 'Application submission reverted to draft.');
     }
 
     public function cancel(Request $request, Application $application)
@@ -264,7 +295,6 @@ class ApplicationController extends Controller
             'formOfOwnerships' => FormOfOwnership::where('is_active', true)->get(),
             'provinces' => Province::where('is_active', true)->orderBy('name')->get(),
             'cities' => City::where('is_active', true)->orderBy('name')->get(),
-            'barangays' => Barangay::where('is_active', true)->orderBy('name')->get(),
             'sfcBarangays' => Barangay::where('city_id', $sfcCityId)->where('is_active', true)->orderBy('name')->get(),
             'occupancyGroups' => OccupancyGroup::with('subGroups')->where('is_active', true)->orderBy('sort_order')->get(),
             'landClassifications' => LandClassification::where('is_active', true)->get(),

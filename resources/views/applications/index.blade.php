@@ -37,10 +37,18 @@
                     @endforeach
                 </select>
             </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Year</label>
+                <select name="year" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                    @foreach([now()->year, now()->year - 1] as $y)
+                        <option value="{{ $y }}" {{ $year == $y ? 'selected' : '' }}>{{ $y }}</option>
+                    @endforeach
+                </select>
+            </div>
             <button type="submit" class="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition">
                 <i class="fas fa-search mr-1"></i> Filter
             </button>
-            @if(request()->hasAny(['search', 'status']))
+            @if(request()->hasAny(['search', 'status']) || $year != now()->year)
                 <a href="{{ route('applications.index') }}" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Clear</a>
             @endif
         </form>
@@ -57,6 +65,7 @@
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Project</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Status</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Date</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-500">Turn Around Time</th>
                         <th class="text-right px-4 py-3 font-medium text-gray-500">Actions</th>
                     </tr>
                 </thead>
@@ -90,6 +99,14 @@
                             </span>
                         </td>
                         <td class="px-4 py-3 text-gray-500">{{ $app->created_at->format('M d, Y') }}</td>
+                        <td class="px-4 py-3 text-gray-600">
+                            @php
+                                $permit = $app->permits->sortByDesc('created_at')->first();
+                                $tatStart = $app->submitted_at ?? $app->created_at;
+                                $tatDays = $permit ? (int) floor($tatStart->diffInDays($permit->created_at, true)) : null;
+                            @endphp
+                            {{ $tatDays !== null ? $tatDays . ' day' . ($tatDays == 1 ? '' : 's') : '–' }}
+                        </td>
                         <td class="px-4 py-3 text-right">
                             <a href="{{ route('applications.show', $app) }}" class="text-gray-400 hover:text-blue-600" title="View">
                                 <i class="fas fa-eye"></i>
@@ -98,7 +115,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="px-4 py-12 text-center text-gray-400">
+                        <td colspan="7" class="px-4 py-12 text-center text-gray-400">
                             <i class="fas fa-folder-open text-3xl mb-3"></i>
                             <p>No applications found</p>
                         </td>

@@ -191,6 +191,33 @@ The assessment index tables (`/assessments` and `/assessments/occupancy`) list a
 
 ---
 
+## Application List Views (`/applications`, `/occupancy-applications`)
+
+- **Year filter** — `?year=`, defaults to current year; dropdown offers current + previous year. `ApplicationController::index()` / `OccupancyApplicationController::index()` apply `whereYear('created_at', $year)`.
+- **Turn Around Time column** — per application, days from `submitted_at` (falls back to `created_at`) to the latest generated `Permit`'s `created_at`; shows `–` if no permit has been generated yet. Computed in the Blade view from the eager-loaded `permits()` relation, not stored.
+- **OP status labels** — OP has no zoning/planning stage, so `zoning_assessed` displays as "For Occupancy Assessment" (instead of the generic "Zoning assessed") on both the OP applications index and the OP assessment index.
+- **OP columns** — App No., Type, Applicant, Project Title, Status, Date, Turn Around Time, Actions.
+
+---
+
+## Revert / Send-Back Actions
+
+Every forward step below has a corresponding backward action, each requiring password confirmation (`Hash::check()`) and writing an `activity()` log entry. All deletions are soft-deletes.
+
+| Backward Action | Method | Permission | Effect |
+|-----------------|--------|-------------|--------|
+| Revert submission → draft | `ApplicationController::revertSubmission()` / `OccupancyApplicationController::revertSubmission()` | `revert-submission` | Application's Show page; status back to `draft` |
+| Send back to Engineering (from Planning) | `ZoningController::sendBackForEditing()` | `revert-submission` | BP zoning screen; sends application from Planning back to Engineering for edits |
+| Revert zoning finalize | `ZoningController::revertZoning()` | `revert-zoning` | Un-finalizes a zoning assessment |
+| Return to Zoning (from Engineering) | `AssessmentController::returnToZoning()` | `return-to-zoning` | BP assessment screen; deletes the BP engineering assessment items, sends application back to Planning |
+| Revert engineering finalize | `AssessmentController::revertEngineering()` / `revertEngineeringOp()` | `revert-assessments` | Un-finalizes a BP/OP engineering assessment |
+| Revert OP assessment to draft | `AssessmentController::revertToDraftOp()` | `revert-submission` | OP-only; only while `status = zoning_assessed` (not yet finalized); deletes all occupancy fee entries and the occupancy Assessment, sets status back to `draft` |
+| Revoke generated permit | `PermitController::revertGenerate()` / `revertGenerateOp()` | `revert-permits` | Soft-deletes the `Permit`, rolls application status back to `paid` |
+
+All "Return to Zoning" / "Revert to Draft" buttons live in the page **header** of `assessments/assess.blade.php`, not inside the Summary tab's content — a tab-gated location would leave them invisible on default page load (the assess screen lands on the first fee-entry tab, not Summary).
+
+---
+
 ## Collections / Payment
 
 ### Barcode Scan & Search
@@ -223,6 +250,10 @@ The payment form (`collections/create.blade.php`) is a compact, single-screen PO
 | Generate permit | `generate-permits` | engineering-officer |
 | Print permit | `print-permits` | engineering-staff |
 | Release permit | `release-permits` | engineering-officer |
+| Revert submission / send back | `revert-submission` | engineering-officer, planning-officer |
+| Revert zoning finalize | `revert-zoning` | planning-officer |
+| Revert engineering finalize / return to zoning | `revert-assessments`, `return-to-zoning` | engineering-officer |
+| Revoke generated permit | `revert-permits` | engineering-officer |
 
 ---
 

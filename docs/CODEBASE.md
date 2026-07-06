@@ -13,7 +13,7 @@ engineering-app/
 │   ├── DTOs/              (4 data transfer objects)
 │   ├── Enums/             (5 enums)
 │   ├── Exports/           (3 Excel export classes)
-│   ├── Http/Controllers/  (14 + Auth controllers)
+│   ├── Http/Controllers/  (15 + Auth controllers)
 │   ├── Models/            (32 Eloquent models)
 │   ├── Notifications/     (4 notification classes)
 │   ├── Providers/         (AppServiceProvider, SelfHealingServiceProvider)
@@ -85,13 +85,20 @@ User (HasRoles, LogsActivity, SoftDeletes), Province, City, Barangay.
 ## Controllers
 
 ### ApplicationController (BP only)
-index, create, store, show, edit, update, submit, cancel, printForm
+index, create, store, show, edit, update, submit, cancel, revertSubmission, printForm
+
+`index()` accepts `search`, `status`, `year` (defaults to current year) query params and eager-loads `permits` for the Turn Around Time column.
 
 ### OccupancyApplicationController (OP only)
-index, create, store, show, edit, update, submit, cancel, printForm
+index, create, store, show, edit, update, submit, cancel, revertSubmission, printForm
+
+Same `search`/`status`/`year` filtering and `permits` eager-load as `ApplicationController::index()`.
+
+### GeoController
+`barangaysForCity(City $city)` — `GET /geo/barangays/{city}`, returns active barangays for a city as JSON (`id`, `name`). Used by the BP/OP application form's cascading address dropdowns instead of shipping the full ~42K-row barangay dataset to the page.
 
 ### ZoningController
-index, assess, store, autoCompute, addItem, removeItems (bulk), removeItem, finalize, skip
+index, assess, store, autoCompute, addItem, removeItems (bulk), removeItem, finalize, revertZoning, sendBackForEditing, skip
 
 **Private helpers:** `zoningAssessmentIsFinalized()` / `abortIfZoningFinalized()` — store, autoCompute, addItem, and remove methods abort 403 once the zoning assessment is finalized.
 
@@ -116,12 +123,16 @@ index, update, store, updateCert, updateOther, destroy
 | addItem | POST /assessments/{id}/item | Generic item for other tabs |
 | removeItem | DELETE /assessments/item/{id} | Remove item (guarded when finalized) |
 | finalize | POST /assessments/{id}/finalize | BP → engineering_assessed → billed (auto); redirects to ?tab=SUMMARY |
+| revertEngineering | POST /assessments/{id}/revert-finalize | Un-finalize a BP engineering assessment |
+| returnToZoning | POST /assessments/{id}/return-to-zoning | Delete BP engineering assessment items, send application back to Planning |
 | summary | GET /assessments/{id}/summary | BP summary view |
 | print | GET /assessments/{id}/print | BP PDF summary (barcode + building_official signatory) |
 | assessOp | GET /assessments/op/{op} | OP fee entry |
 | addItemOp | POST /assessments/op/{op}/item | OP generic item |
 | addOccupancyFeeItem | POST /assessments/op/{op}/occupancy-fee | BOPMS-style: 8 OCC_* types; range_based (excess_every), per_unit, percentage |
 | finalizeOp | POST /assessments/op/{op}/finalize | OP → engineering_assessed → billed (auto); redirects to ?tab=SUMMARY |
+| revertEngineeringOp | POST /assessments/op/{op}/revert-finalize | Un-finalize an OP engineering assessment |
+| revertToDraftOp | POST /assessments/op/{op}/revert-to-draft | OP only; while `status = zoning_assessed`, deletes all occupancy fee entries + the Assessment, reverts application to `draft` |
 | summaryOp | GET /assessments/op/{op}/summary | OP summary |
 | printOp | GET /assessments/op/{op}/print | OP PDF (separate `assessment-summary-op` template) |
 
@@ -140,7 +151,9 @@ print only. Billing is auto-generated on assessment finalize via `BillingService
 - `receipt`, `voidForm`, `processVoid`
 
 ### PermitController
-buildingIndex, occupancyIndex, generate (BP), generateOp (OP), print, zoningCertification, locationalClearance, evaluationReport
+buildingIndex, occupancyIndex, generate (BP), revertGenerate (BP), generateOp (OP), revertGenerateOp (OP), print, zoningCertification, locationalClearance, evaluationReport
+
+`revertGenerate`/`revertGenerateOp` soft-delete the generated `Permit` and roll the application status back to `paid` (`revert-permits` permission).
 
 `generate`/`generateOp` (via `doGenerate()`) set a `verification_token` (UUID) on the new `Permit` row. `print()` additionally builds a QR code (`endroid/qr-code`) encoding the public verification URL (`{general.domain setting|app.url}/verify/permit/{token}`) and passes it (plus `sealImage`, `dpwhLogo`) to the `pdf.building-permit` / `pdf.occupancy-permit` templates.
 

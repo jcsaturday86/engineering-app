@@ -77,9 +77,62 @@
                                     </button>
                                 </form>
                             @else
-                                <a href="{{ route('permits.print', $app->permits->first()) }}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition">
-                                    <i class="fas fa-print"></i> Print Permit
-                                </a>
+                                <div class="inline-flex items-center gap-1.5" x-data="{ showRevokeModal: false, revokePassword: '' }">
+                                    <a href="{{ route('permits.print', $app->permits->first()) }}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition">
+                                        <i class="fas fa-print"></i> Print Permit
+                                    </a>
+
+                                    @can('revert-permits')
+                                    @if($app->status === 'permit_generated')
+                                        <button type="button" @click="showRevokeModal = true; revokePassword = ''"
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-300 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50 transition">
+                                            <i class="fas fa-undo"></i> Revoke Permit
+                                        </button>
+
+                                        <div x-show="showRevokeModal" x-cloak
+                                            class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+                                            @keydown.escape.window="showRevokeModal = false">
+                                            <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6 text-left" @click.outside="showRevokeModal = false">
+                                                <div class="flex items-center gap-3 mb-4">
+                                                    <div class="inline-flex items-center justify-center w-10 h-10 bg-red-100 rounded-full">
+                                                        <i class="fas fa-lock text-red-600"></i>
+                                                    </div>
+                                                    <div>
+                                                        <h3 class="text-lg font-semibold text-gray-900">Confirm Revoke</h3>
+                                                        <p class="text-sm text-gray-500">This will delete the generated permit and revert to Paid.</p>
+                                                    </div>
+                                                </div>
+
+                                                @if($errors->has('password'))
+                                                    <div class="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                                                        {{ $errors->first('password') }}
+                                                    </div>
+                                                @endif
+
+                                                <form action="{{ $type === 'building' ? route('permits.revertGenerate', $app) : route('permits.revertGenerate.op', $app) }}" method="POST" autocomplete="off">
+                                                    @csrf
+                                                    <div class="mb-4">
+                                                        <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
+                                                        <input type="password" name="password" x-model="revokePassword" required
+                                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                                            placeholder="Enter your account password">
+                                                    </div>
+                                                    <div class="flex items-center justify-end gap-3">
+                                                        <button type="button" @click="showRevokeModal = false"
+                                                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                                                            Cancel
+                                                        </button>
+                                                        <button type="submit" :disabled="!revokePassword"
+                                                            class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                                            <i class="fas fa-undo"></i> Confirm & Revoke
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    @endif
+                                    @endcan
+                                </div>
                             @endif
                         </td>
                     </tr>

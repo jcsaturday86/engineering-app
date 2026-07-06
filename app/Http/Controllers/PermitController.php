@@ -9,8 +9,10 @@ use App\Models\Permit;
 use App\Models\PermitType;
 use App\Models\Signatory;
 use App\Notifications\ApplicationApprovedNotification;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class PermitController extends Controller
 {
@@ -58,7 +60,8 @@ class PermitController extends Controller
         $morphType = $permitCode === 'OP' ? 'op' : 'bp';
 
         DB::transaction(function () use ($application, $permitType, $permitCode, $morphType) {
-            $counter = Permit::where('permit_type_id', $permitType->id)
+            $counter = Permit::withTrashed()
+                    ->where('permit_type_id', $permitType->id)
                     ->where('permit_year', now()->year)
                     ->count() + 1;
 
@@ -95,6 +98,46 @@ class PermitController extends Controller
         }
 
         return back()->with('success', 'Permit generated successfully.');
+    }
+
+    // BP revert permit generation
+    public function revertGenerate(Request $request, Application $application)
+    {
+        return $this->doRevertGenerate($request, $application);
+    }
+
+    // OP revert permit generation
+    public function revertGenerateOp(Request $request, OccupancyApplication $occupancyApplication)
+    {
+        return $this->doRevertGenerate($request, $occupancyApplication);
+    }
+
+    private function doRevertGenerate(Request $request, PermitApplicationContract $application)
+    {
+        $request->validate(['password' => 'required|string']);
+
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
+        if ($application->status !== 'permit_generated') {
+            return back()->with('error', 'Only applications with a generated permit can have it revoked.');
+        }
+
+        DB::transaction(function () use ($application) {
+            $application->permits()->get()->each(function ($permit) {
+                $permit->delete();
+            });
+
+            $application->update([
+                'status' => 'paid',
+                'issued_date' => null,
+            ]);
+        });
+
+        activity()->causedBy(Auth::user())->performedOn($application)->log('Permit generation reverted');
+
+        return back()->with('success', 'Permit generation reverted.');
     }
 
     public function print(Permit $permit)
