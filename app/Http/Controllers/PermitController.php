@@ -73,6 +73,7 @@ class PermitController extends Controller
                 'permit_month' => now()->month,
                 'permit_counter' => $counter,
                 'permit_number' => $permitNumber,
+                'verification_token' => (string) \Illuminate\Support\Str::uuid(),
                 'issued_date' => now()->toDateString(),
                 'processed_by' => Auth::id(),
                 'status' => 'generated',
@@ -125,9 +126,24 @@ class PermitController extends Controller
             $sealImage = 'data:' . $mime . ';base64,' . base64_encode(\Illuminate\Support\Facades\Storage::disk('public')->get($settings['general.logo']));
         }
 
+        $dpwhLogo = null;
+        $dpwhLogoPath = public_path('images/dpwh-logo.png');
+        if (file_exists($dpwhLogoPath)) {
+            $dpwhLogo = 'data:image/png;base64,' . base64_encode(file_get_contents($dpwhLogoPath));
+        }
+
+        $verifyPath = route('verify.permit', $permit->verification_token, absolute: false);
+        $domain = ! empty($settings['general.domain']) ? rtrim($settings['general.domain'], '/') : rtrim(config('app.url'), '/');
+        $qrCode = new \Endroid\QrCode\QrCode(
+            data: $domain . $verifyPath,
+            size: 300,
+            margin: 4,
+        );
+        $qrImage = (new \Endroid\QrCode\Writer\PngWriter())->write($qrCode)->getDataUri();
+
         $template = $permit->permitType->code === 'OP' ? 'pdf.occupancy-permit' : 'pdf.building-permit';
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($template, compact('permit', 'application', 'signatories', 'settings', 'sealImage'));
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($template, compact('permit', 'application', 'signatories', 'settings', 'sealImage', 'dpwhLogo', 'qrImage'));
         $pdf->setPaper('a4', 'landscape');
 
         return $pdf->stream("permit_{$permit->permit_number}.pdf");

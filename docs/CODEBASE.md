@@ -48,7 +48,7 @@ engineering-app/
 | Collection | collections | morphTo: applicationable. hasMany: collectionDetails. hasOne: voidTransaction. SoftDeletes, LogsActivity |
 | CollectionDetail | collection_details | belongsTo: collection |
 | VoidTransaction | void_transactions | belongsTo: collection |
-| Permit | permits | morphTo: applicationable. SoftDeletes, LogsActivity |
+| Permit | permits | morphTo: applicationable. SoftDeletes, LogsActivity. `verification_token` (UUID) set on generation, used for the public QR-code verification link |
 | Document | documents | morphTo: applicationable |
 
 ### Reference/Lookup Models
@@ -142,6 +142,11 @@ print only. Billing is auto-generated on assessment finalize via `BillingService
 ### PermitController
 buildingIndex, occupancyIndex, generate (BP), generateOp (OP), print, zoningCertification, locationalClearance, evaluationReport
 
+`generate`/`generateOp` (via `doGenerate()`) set a `verification_token` (UUID) on the new `Permit` row. `print()` additionally builds a QR code (`endroid/qr-code`) encoding the public verification URL (`{general.domain setting|app.url}/verify/permit/{token}`) and passes it (plus `sealImage`, `dpwhLogo`) to the `pdf.building-permit` / `pdf.occupancy-permit` templates.
+
+### VerifyController (public, no auth)
+`show(string $token)` — `GET /verify/permit/{token}`, throttled. Looks up `Permit::where('verification_token', $token)`; renders `verify/permit.blade.php` with the permit/applicant details if found, or a "could not be verified" state if not.
+
 ### Other Controllers
 DashboardController, OnlineApplicationController, ReportController, SettingsController, FeeScheduleController, ProfileController
 
@@ -196,7 +201,10 @@ OP: `occupancy-applications/index`, `form`, `show`
 `collections/create.blade.php` — POS-style single-screen payment form: Application No./Applicant + OR Number/Paid By rows, a 3-column Amount Due/Amount Received/Change strip (Alpine-live), a Cash/Check/Online segmented control, and a sticky bottom action bar so the collector doesn't scroll mid-transaction.
 
 ### PDF Templates (`resources/views/pdf/`)
-application-form, building-permit, occupancy-permit, assessment-summary (BP), assessment-summary-op (OP), billing-statement, official-receipt, zoning-certification, locational-clearance, evaluation-report, report
+application-form, building-permit (NBC Form B-018 style, city seal + QR code), occupancy-permit (DPWH Certificate of Occupancy style, DPWH logo + city seal + QR code), assessment-summary (BP), assessment-summary-op (OP), billing-statement, official-receipt, zoning-certification, locational-clearance, evaluation-report, report
+
+### Public Views (no auth)
+`verify/permit.blade.php` — standalone permit verification page rendered by `VerifyController::show()`, styled independently of `layouts/app.blade.php` (no sidebar/auth chrome), similar in spirit to `layouts/guest.blade.php`.
 
 ---
 
@@ -216,7 +224,7 @@ application-form, building-permit, occupancy-permit, assessment-summary (BP), as
 | OccupancyGroupSeeder | 10 groups A–J, 40+ sub-groups |
 | FeeScheduleSeeder | Complete fee structure: CONST, ELEC, MECH, MECH_INSP (29 INSP_* types/55 schedules from BOPMS ann_inspection_f* tables), PLUMB, ELEC_INSP, OCC, SURCHARGE, ZONING fee tables |
 | GeoDataSeeder | ~42K barangays (Philippine PSA data, 2.5MB) |
-| SettingsSeeder | System settings (electrical_inspection_percentage, filing/processing defaults) |
+| SettingsSeeder | System settings (electrical_inspection_percentage, filing/processing defaults, general.logo, general.zip_code, general.domain) |
 | AdminUserSeeder | Default admin user |
 | ApplicationSeeder | 5 BP + 5 OP test records |
 | AssessmentTestSeeder | Assessment test data |
@@ -230,3 +238,4 @@ application-form, building-permit, occupancy-permit, assessment-summary (BP), as
 | barryvdh/laravel-dompdf | PDF generation |
 | maatwebsite/excel | Excel exports |
 | picqer/php-barcode-generator | Code 128 barcode on assessment PDF |
+| endroid/qr-code | QR verification code on Building/Occupancy Permit PDFs |

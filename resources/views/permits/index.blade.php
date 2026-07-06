@@ -70,7 +70,7 @@
                         <td class="px-4 py-3 text-gray-500">{{ $app->created_at->format('M d, Y') }}</td>
                         <td class="px-4 py-3 text-right">
                             @if($app->permits->isEmpty())
-                                <form action="{{ route('permits.generate', $app) }}" method="POST" class="inline" autocomplete="off">
+                                <form action="{{ $type === 'building' ? route('permits.generate', $app) : route('permits.generate.op', $app) }}" method="POST" class="inline" autocomplete="off">
                                     @csrf
                                     <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition">
                                         <i class="fas fa-file-alt"></i> Generate Permit

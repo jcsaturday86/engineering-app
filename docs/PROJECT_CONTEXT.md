@@ -18,6 +18,7 @@ This system replaces the legacy BOPMS (Building and Occupancy Permit Management 
 | Charts | Chart.js |
 | PDF | DomPDF (barryvdh/laravel-dompdf) |
 | Barcode | picqer/php-barcode-generator (Code 128) |
+| QR Code | endroid/qr-code (permit verification) |
 | Excel | Maatwebsite Excel |
 | RBAC | Spatie Laravel-Permission |
 | Audit | Spatie Laravel-Activitylog |
@@ -86,7 +87,19 @@ Finalize requires password confirmation and redirects to the Summary tab. Once f
 There is no Billing menu or manual "Generate Billing" action. `AssessmentController::doFinalize()` calls `BillingService::generateFor(PermitApplicationContract)` immediately after an assessment is finalized, which creates the `billings` + `billing_items` records and moves the application straight from `engineering_assessed` to `billed`. `BillingController` only serves the billing statement PDF (`billing.print`). Because finalized applications now sit at `billed` instead of stopping at `engineering_assessed`, the assessment index queries and Print-button visibility checks include both statuses.
 
 ### Collections: Barcode Scan & POS-Style Payment Form
-`/collections` has an autofocused search box: scanning the barcode from a printed assessment (which encodes the application number) exact-matches a billed application and redirects straight to its payment form; partial text filters the Awaiting Payment list. The payment form itself is a compact, single-screen layout — a 3-column Amount Due/Amount Received/Change strip (live Alpine calculation, switches to a red "Short" warning if underpaid, and the server rejects an insufficient cash payment) plus a segmented Cash/Check/Online control and a sticky bottom action bar — designed so a collector never has to scroll mid-transaction.
+`/collections` has an autofocused search box: scanning the barcode from a printed assessment (which encodes the application number) exact-matches a billed application and redirects straight to its payment form; partial text filters the Awaiting Payment list. The payment form itself is a compact, single-screen layout — a 3-column Amount Due/Amount Received/Change strip (live Alpine calculation, switches to a red "Short" warning if underpaid, and the server rejects an insufficient cash payment) plus a segmented Cash/Check/Online control and a sticky bottom action bar — designed so a collector never has to scroll mid-transaction. The Awaiting Payment query (and the barcode/exact-match redirect) also excludes any application that already has an **active** `Collection` record, as a defensive guard against a `status` column that didn't transition cleanly to `paid`.
+
+### Permit PDF Redesign (NBC/DPWH Form Style)
+`pdf/building-permit.blade.php` and `pdf/occupancy-permit.blade.php` were rebuilt to match the real government forms they represent — NBC Form No. B-018 (Building Permit) and the DPWH Certificate of Occupancy — instead of a generic table layout. Both share the same DomPDF technique: A4 landscape, `@page { margin: 0.5in }` with the CSS reset scoped to `body, div, p, span, img` (never `*`/`html`, which silently wipes DomPDF's `@page` margin), and a thick double-line border (`.frame { border: 6px double }`) tuned so the frame sits exactly 0.5in from all four page edges without spilling to a spurious second page.
+- **Building Permit**: city seal (left, from the `general.logo` setting) beside a centered header ("Republic of the Philippines / {city} / {province} / OFFICE OF THE BUILDING OFFICIAL"), NEW/RENEWAL/AMENDATORY checkboxes, FSEC No./Date Issued fields, ZIP Code from the `general.zip_code` setting.
+- **Occupancy Permit**: DPWH gear logo (left, static asset `public/images/dpwh-logo.png`) + city seal (right) flanking the centered header, FULL/PARTIAL checkboxes driven by the application's `applicationType` (Full/Partial), FSIC No. field, "Group" from the occupancy group's `code`.
+- Both templates embed a QR code (see below) near the signature block, with blank space above the printed signatory name for a physical signature.
+
+### QR Code Permit Verification
+Every generated `Permit` gets a `verification_token` (UUID, unique) set in `PermitController::doGenerate()`. `PermitController::print()` builds a verification URL — `{domain}/verify/permit/{token}`, where `{domain}` comes from the `general.domain` setting (falls back to `config('app.url')` if blank) — and renders it as a QR code (`endroid/qr-code`) embedded on both PDF templates. `GET /verify/permit/{token}` is a public, throttled route (`VerifyController::show`, no auth) that renders `resources/views/verify/permit.blade.php`: a standalone page showing permit type, number, status, applicant, and project for a valid token, or a graceful "could not be verified" message for an invalid one.
+
+### Dashboard: Year-Navigable Charts
+The dashboard's two Chart.js charts (Monthly Revenue, Monthly Transactions — the latter a grouped BP-vs-OP bar chart sourced from `Collection.applicationable_type`) accept an optional `?year=` query param (`DashboardController::index()`), clamped so it can never exceed the real current year. Prev/Next arrows above the charts let a user page back through prior years' monthly breakdowns. The KPI stat cards above the charts (Total Applications, Pending, For Payment, Released, Revenue, Today's Transactions) are intentionally **not** affected by `?year=` — they always reflect the live/current period, per explicit design choice.
 
 ### Self-Healing Service Provider
 `SelfHealingServiceProvider` auto-creates database, runs migrations, and seeds roles/settings/admin if missing on every application boot.
@@ -147,6 +160,6 @@ php artisan serve --port=8100
 - **Soft deletes** — All transaction tables use soft deletes for audit trail
 - **Activity logging** — All major model changes tracked
 - **State machine** — Strict workflow validation via enum-based transitions
-- **No BFP module** — Fire safety (FSEC/FSIC) is intentionally excluded
+- **No BFP module** — there is no fire-safety assessment/inspection workflow. FSEC No./Date Issued (BP, OP) and FSIC No. (OP) are simple reference text/date fields shown on printed permits, entered manually — not a validated BFP integration
 - **Separate portals** — Staff login (`/staff/login`) and client login (`/login`) are separate
 - **CDN dependencies** — Tailwind CSS and Alpine.js loaded via CDN (no build step)

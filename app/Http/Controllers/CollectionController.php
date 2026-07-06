@@ -23,11 +23,17 @@ class CollectionController extends Controller
 
         // Barcode scan / exact application number: go straight to the payment form
         if ($search !== '') {
-            $bpExact = Application::where('application_number', $search)->where('status', 'billed')->first();
+            $bpExact = Application::where('application_number', $search)
+                ->where('status', 'billed')
+                ->whereDoesntHave('collections', fn ($q) => $q->where('status', 'active'))
+                ->first();
             if ($bpExact) {
                 return redirect()->route('collections.create', $bpExact);
             }
-            $opExact = OccupancyApplication::where('application_number', $search)->where('status', 'billed')->first();
+            $opExact = OccupancyApplication::where('application_number', $search)
+                ->where('status', 'billed')
+                ->whereDoesntHave('collections', fn ($q) => $q->where('status', 'active'))
+                ->first();
             if ($opExact) {
                 return redirect()->route('collections.create.op', $opExact);
             }
@@ -35,6 +41,7 @@ class CollectionController extends Controller
 
         $bpForPayment = Application::with('permitType', 'billings')
             ->where('status', 'billed')
+            ->whereDoesntHave('collections', fn ($q) => $q->where('status', 'active'))
             ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
                 ->where('application_number', 'like', "%{$search}%")
                 ->orWhere('applicant_last_name', 'like', "%{$search}%")
@@ -44,6 +51,7 @@ class CollectionController extends Controller
 
         $opForPayment = OccupancyApplication::with('applicationType', 'billings')
             ->where('status', 'billed')
+            ->whereDoesntHave('collections', fn ($q) => $q->where('status', 'active'))
             ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
                 ->where('application_number', 'like', "%{$search}%")
                 ->orWhere('applicant_last_name', 'like', "%{$search}%")

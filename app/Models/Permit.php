@@ -22,6 +22,7 @@ class Permit extends Model
         'permit_month',
         'permit_counter',
         'permit_number',
+        'verification_token',
         'issued_date',
         'processed_by',
         'approved_by',

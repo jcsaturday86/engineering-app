@@ -100,6 +100,40 @@
 - Removed the itemized Billing Summary card from the payment page; Application No./Applicant now shown inline at the top of Payment Details
 - Redesigned the payment form as a compact POS-style layout (3-column amount strip, segmented Cash/Check/Online control, sticky action bar) so the collector doesn't need to scroll while processing a payment
 
+### Building Permit PDF Redesign (NBC Form B-018) — COMPLETED
+
+- Rebuilt `pdf/building-permit.blade.php` to match the real NBC Form No. B-018 layout: city seal + centered header, NEW/RENEWAL/AMENDATORY checkboxes, labeled field rows, single Building Official signature block
+- A4 landscape, 0.5in margin on all four sides, thick double-line border (`.frame { border: 6px double }`) — tuned via content-stream inspection (stroke-coordinate + page-count checks) to avoid a spurious blank second page
+- New Settings → General "Logo" upload (`general.logo`, type `file`) — city/LGU seal, GD-resized to max 400px before storage, embedded as base64 in the PDF
+- New FSEC No. / FSEC Date Issued fields on the BP application form (`applications.fsec_no`, `fsec_issued_date` — re-added via a fresh guarded migration after discovering migration drift had left the columns missing from the live table despite an earlier migration showing as "Ran")
+- New `general.zip_code` setting, used on the printed permit instead of an unreliable barangay→city lookup
+- Iterative refinements: seal position/size, header text centering vs. logo position, border thickness, font sizes, footer note condensed to one line, signature line removed, replaced with a Date line
+
+### Occupancy Permit PDF — Certificate of Occupancy Redesign — COMPLETED
+
+- Fully rewrote `pdf/occupancy-permit.blade.php` (previously a generic boxed-table layout) to match the DPWH Certificate of Occupancy form: DPWH gear logo (left, new static asset `public/images/dpwh-logo.png`, background-cleaned via GD) + city seal (right), FULL/PARTIAL checkboxes, FSIC No./fees/OR info, field rows, boxed posted-notice + signature block
+- New `occupancy_applications.fsic_no` and `applies_for` columns (two more guarded migrations, needed after discovering the same migration-drift issue affected this table)
+- Fixed a routing bug found while testing: the Occupancy Permits list's "Generate Permit" button always posted to the BP-only `permits.generate` route (404 for OP) — `permits/index.blade.php` now branches by `$type`
+- FULL/PARTIAL checkbox switched to read from `applicationType->name` (Full/Partial are modeled as OP application types) instead of the unused `applies_for` column, per follow-up request
+- FSIC No. later removed from the *create* form only (per follow-up) — the column and print-template reference remain
+- Font sizes bumped across both BP and OP templates; signature block spacing adjusted to leave room for a physical signature
+
+### QR Code Permit Verification — COMPLETED
+
+- Installed `endroid/qr-code`; new `permits.verification_token` (UUID, unique, backfilled for existing rows) set by `PermitController::doGenerate()`
+- New public route `GET /verify/permit/{token}` (throttled, no auth) → `VerifyController::show()` → `verify/permit.blade.php`, showing permit type/number/status/applicant/project for a valid token, or a graceful "could not be verified" message otherwise
+- `PermitController::print()` builds the verification URL from a new `general.domain` setting (falls back to `config('app.url')`) and renders it as a QR code embedded on both permit PDFs, sized up per follow-up request; the "Scan to verify" caption was later removed per follow-up, leaving just the code
+
+### Dashboard — Monthly Transactions Chart & Year Navigator — COMPLETED
+
+- New "Monthly Transactions" chart (grouped bar, BP vs OP) alongside the existing Monthly Revenue chart, sourced from `Collection.applicationable_type`
+- Both charts accept `?year=` (prev/next arrows), clamped so it can't exceed the current year; the KPI stat cards above them intentionally stay tied to the live/current period regardless of the selected chart year
+
+### Collections — Exclude Already-Paid Applications from Awaiting Payment — COMPLETED
+
+- Found stale seed data where an application's `status` column stayed `billed` despite already having an active `Collection` (paid) and a generated permit
+- Added `whereDoesntHave('collections', fn($q) => $q->where('status', 'active'))` to the Awaiting Payment list query and the barcode/exact-match redirect lookup, as a defensive guard against `status` drift
+
 ---
 
 ## Upcoming Tasks

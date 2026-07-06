@@ -271,6 +271,8 @@ class OccupancyApplicationController extends Controller
             'bp_issued_date' => 'nullable|date',
             'fsec_no' => 'nullable|string|max:50',
             'fsec_issued_date' => 'nullable|date',
+            'fsic_no' => 'nullable|string|max:50',
+            'applies_for' => 'nullable|in:full,partial',
             'completion_date' => 'required|date',
             // Misc
             'remarks' => 'nullable|string|max:1000',

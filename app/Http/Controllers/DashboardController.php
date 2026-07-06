@@ -5,14 +5,20 @@ namespace App\Http\Controllers;
 use App\Models\Application;
 use App\Models\Collection;
 use App\Models\OccupancyApplication;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $currentYear = now()->year;
         $currentMonth = now()->month;
+
+        $chartYear = (int) $request->query('year', $currentYear);
+        if ($chartYear > $currentYear) {
+            $chartYear = $currentYear;
+        }
 
         $bpTotal = Application::whereYear('created_at', $currentYear)->count();
         $opTotal = OccupancyApplication::whereYear('created_at', $currentYear)->count();
@@ -48,7 +54,7 @@ class DashboardController extends Controller
         ];
 
         $monthlyRevenue = Collection::where('status', 'active')
-            ->whereYear('created_at', $currentYear)
+            ->whereYear('created_at', $chartYear)
             ->select(
                 DB::raw('MONTH(created_at) as month'),
                 DB::raw('SUM(amount_due) as total')
@@ -60,6 +66,29 @@ class DashboardController extends Controller
         $revenueData = [];
         for ($i = 1; $i <= 12; $i++) {
             $revenueData[] = $monthlyRevenue[$i] ?? 0;
+        }
+
+        $monthlyBpTransactions = Collection::where('status', 'active')
+            ->where('applicationable_type', 'bp')
+            ->whereYear('created_at', $chartYear)
+            ->select(DB::raw('MONTH(created_at) as month'), DB::raw('COUNT(*) as total'))
+            ->groupBy(DB::raw('MONTH(created_at)'))
+            ->pluck('total', 'month')
+            ->toArray();
+
+        $monthlyOpTransactions = Collection::where('status', 'active')
+            ->where('applicationable_type', 'op')
+            ->whereYear('created_at', $chartYear)
+            ->select(DB::raw('MONTH(created_at) as month'), DB::raw('COUNT(*) as total'))
+            ->groupBy(DB::raw('MONTH(created_at)'))
+            ->pluck('total', 'month')
+            ->toArray();
+
+        $bpTransactionData = [];
+        $opTransactionData = [];
+        for ($i = 1; $i <= 12; $i++) {
+            $bpTransactionData[] = $monthlyBpTransactions[$i] ?? 0;
+            $opTransactionData[] = $monthlyOpTransactions[$i] ?? 0;
         }
 
         $bpRecent = Application::with('permitType')->latest()->take(10)->get()
@@ -86,6 +115,6 @@ class DashboardController extends Controller
 
         $recentApplications = $bpRecent->concat($opRecent)->sortByDesc('created_at')->take(10);
 
-        return view('dashboard.index', compact('stats', 'revenueData', 'recentApplications'));
+        return view('dashboard.index', compact('stats', 'revenueData', 'bpTransactionData', 'opTransactionData', 'recentApplications', 'chartYear', 'currentYear'));
     }
 }

@@ -51,6 +51,13 @@ class SettingsSeeder extends Seeder
             ],
             [
                 'group' => 'general',
+                'key' => 'general.domain',
+                'value' => '',
+                'type' => 'string',
+                'description' => 'Public domain used to build the QR code verification link on printed permits (e.g. https://permits.sanfernando.gov.ph). Leave blank to use the app URL.',
+            ],
+            [
+                'group' => 'general',
                 'key' => 'general.address',
                 'value' => 'City Hall, Sample City',
                 'type' => 'string',

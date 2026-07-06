@@ -117,17 +117,37 @@
                 @enderror
             </div>
 
-            {{-- BP: Project Title --}}
+            {{-- BP: Project Title, FSEC No, FSEC Date Issued --}}
             @if($isBP)
-            <div>
-                <label for="project_title" class="block text-xs font-medium text-gray-600 mb-1">Project Title <span class="text-red-500">*</span></label>
-                <input type="text" name="project_title" id="project_title"
-                    value="{{ old('project_title', $application->project_title ?? '') }}"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    required>
-                @error('project_title')
-                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                @enderror
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                    <label for="project_title" class="block text-xs font-medium text-gray-600 mb-1">Project Title <span class="text-red-500">*</span></label>
+                    <input type="text" name="project_title" id="project_title"
+                        value="{{ old('project_title', $application->project_title ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required>
+                    @error('project_title')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="fsec_no" class="block text-xs font-medium text-gray-600 mb-1">FSEC No.</label>
+                    <input type="text" name="fsec_no" id="fsec_no"
+                        value="{{ old('fsec_no', $application->fsec_no ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('fsec_no')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label for="fsec_issued_date" class="block text-xs font-medium text-gray-600 mb-1">FSEC Date Issued</label>
+                    <input type="date" name="fsec_issued_date" id="fsec_issued_date"
+                        value="{{ old('fsec_issued_date', optional($application->fsec_issued_date ?? null)->format('Y-m-d') ?? ($application->fsec_issued_date ?? '')) }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    @error('fsec_issued_date')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
             </div>
             @endif
 
@@ -778,30 +798,6 @@
                         value="{{ old('expected_completion_date', optional($application->expected_completion_date ?? null)->format('Y-m-d') ?? ($application->expected_completion_date ?? '')) }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('expected_completion_date')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
-            @endif
-
-            {{-- FSEC --}}
-            @if($isBP)
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                    <label for="fsec_no" class="block text-xs font-medium text-gray-600 mb-1">FSEC No.</label>
-                    <input type="text" name="fsec_no" id="fsec_no"
-                        value="{{ old('fsec_no', $application->fsec_no ?? '') }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('fsec_no')
-                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <label for="fsec_issued_date" class="block text-xs font-medium text-gray-600 mb-1">FSEC Date Issued</label>
-                    <input type="date" name="fsec_issued_date" id="fsec_issued_date"
-                        value="{{ old('fsec_issued_date', optional($application->fsec_issued_date ?? null)->format('Y-m-d') ?? ($application->fsec_issued_date ?? '')) }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    @error('fsec_issued_date')
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                     @enderror
                 </div>

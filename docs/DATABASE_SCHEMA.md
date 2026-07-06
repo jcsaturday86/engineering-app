@@ -34,7 +34,7 @@
 | type | string | string, decimal, boolean, json |
 | description | string | Human description |
 
-**Key settings:** `assessment.electrical_inspection_percentage` (default 10), `assessment.default_filing_fee`, `assessment.default_processing_fee`.
+**Key settings:** `assessment.electrical_inspection_percentage` (default 10), `assessment.default_filing_fee`, `assessment.default_processing_fee`, `general.logo` (type `file` — city/LGU seal, uploaded via Settings → General, GD-resized to max 400px before storage, printed on both permit PDFs), `general.zip_code` (Building Permit PDF), `general.domain` (public domain used to build the QR verification link on printed permits; blank falls back to `config('app.url')`).
 
 ### Spatie / Laravel System Tables
 - `permissions`, `roles`, `model_has_permissions`, `model_has_roles`, `role_has_permissions`
@@ -173,6 +173,7 @@ Standard hierarchical geo tables with `psgc_code`, `name`, `is_active`. ~42K bar
 | **Building Specs** | no_of_storeys, no_of_units, occupancy_classified, total_floor_area, lot_area |
 | **Costs** | building_cost, electrical_cost, mechanical_cost, electronics_cost, plumbing_cost, other_equipment_cost, equipment_cost_1–4, total_estimated_cost |
 | **Timeline** | proposed_construction_date, expected_completion_date |
+| **Fire Safety (reference only)** | fsec_no, fsec_issued_date — shown on the printed Building Permit; no BFP workflow attached |
 | **Engineer** | engineer_name, prc_no, prc_validity, ptr_no, ptr_date_issued, ptr_issued_at, tin, address, date_signed |
 | **PEE** | pee_name, prc_no, prc_validity, date_signed, ptr_no, ptr_date_issued, ptr_issued_at, address, tin |
 | **SEW** | sew_profession, name, prc_no, prc_validity, date_signed, ptr_no, ptr_date_issued, ptr_issued_at, address, tin |
@@ -185,7 +186,7 @@ Standard hierarchical geo tables with `psgc_code`, `name`, `is_active`. ~42K bar
 
 ### `occupancy_applications` (Occupancy Permit only)
 
-Same structure as `applications` minus BP-specific columns (no cost fields, no engineer/PEE/SEW, no electrical, no scope_of_work, no complexity). Adds OP-specific: `bp_number`, `bp_issued_date`, `fsec_no`, `fsec_issued_date`, `completion_date`, `project_title`.
+Same structure as `applications` minus BP-specific columns (no cost fields, no engineer/PEE/SEW, no electrical, no scope_of_work, no complexity). Adds OP-specific: `bp_number`, `bp_issued_date`, `fsec_no`, `fsec_issued_date`, `fsic_no` (reference only — no BFP workflow), `applies_for` (full/partial select on the OP form — currently informational only; the printed Certificate of Occupancy's FULL/PARTIAL checkbox is actually driven by `applicationType->name`, since Full/Partial is also modeled as the OP `application_types` options), `completion_date`, `project_title`.
 
 ### `application_occupancy_groups`
 Polymorphic (`applicationable_type` / `applicationable_id`), `occupancy_group_id`, `occupancy_sub_group_id`, `others_text`.
@@ -262,7 +263,7 @@ Polymorphic, `billing_id`, `or_number`, `or_date`, `paid_by`, `amount_due/receiv
 ## Permit & Document Tables
 
 ### `permits`
-Polymorphic, `permit_type_id`, `permit_year/month/counter`, `permit_number` (CODE-YYYY-MM-NNNNN), `issued_date`, `processed_by`, `approved_by`, `status` (generated/signed/released).
+Polymorphic, `permit_type_id`, `permit_year/month/counter`, `permit_number` (CODE-YYYY-MM-NNNNN), `verification_token` (string, unique, UUID — set on generation, used to build the public QR-code verification link `/verify/permit/{token}`), `issued_date`, `processed_by`, `approved_by`, `status` (generated/signed/released).
 
 ### `documents`
 Polymorphic, `document_type` (e.g., pdf.building-permit), `title`, `file_path`, `counter`, `document_date`, `generated_by`.

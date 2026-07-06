@@ -34,6 +34,7 @@
 | Application form print | DONE | Browser print, legal layout |
 | Status workflow | DONE | 8-state machine |
 | Submission notification | DONE | Notifies engineering users |
+| FSEC No. / Date Issued fields | DONE | Reference-only fields on the application form, shown on the printed Building Permit |
 
 ---
 
@@ -42,7 +43,8 @@
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Application CRUD | DONE | Separate controller/model/table |
-| OP-specific fields | DONE | BP reference, FSEC, completion date |
+| OP-specific fields | DONE | BP reference, FSEC, FSIC No., completion date |
+| Applies For (Full/Partial) | DONE | Selected via Application Type; drives the FULL/PARTIAL checkbox on the printed certificate |
 | Character of Occupancy | DONE | Shared occupancy group selection |
 | Status workflow (skips zoning) | DONE | submitted → engineering_assessed |
 | Polymorphic downstream | DONE | assessments, billings, collections, permits, documents |
@@ -113,6 +115,7 @@
 | Barcode scan / search on Collections | DONE | Exact app-number match → payment form; partial match filters list |
 | Cash change display | DONE | Live Alpine calc; server rejects insufficient cash amount |
 | No-scroll payment form redesign | DONE | POS-style 3-col amount strip, segmented payment mode, sticky action bar |
+| Awaiting Payment already-paid exclusion | DONE | `whereDoesntHave('collections', active)` guard, in addition to `status = billed` |
 
 ---
 
@@ -130,9 +133,11 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Building permit PDF | DONE | With signatories |
-| Occupancy permit PDF | DONE | With signatories |
+| Building permit PDF | DONE | NBC Form B-018 style — A4 landscape, city seal, thick bordered frame, QR verification code |
+| Occupancy permit PDF | DONE | DPWH Certificate of Occupancy style — A4 landscape, DPWH logo + city seal, QR verification code |
 | Permit numbering | DONE | CODE-YYYY-MM-NNNNN |
+| QR code verification | DONE | `verification_token` (UUID) per permit; public `/verify/permit/{token}` page (no auth); `general.domain` setting controls the QR's domain |
+| Generate Permit routing fix (OP) | DONE | Occupancy Permits list was posting to the BP-only generate route (404); now branches by `$type` |
 | Evaluation report PDF | DONE | |
 
 ---
@@ -150,7 +155,7 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| System settings | DONE | |
+| System settings | DONE | Includes `general.logo` (file upload, GD-resized), `general.zip_code`, `general.domain` |
 | User management | DONE | |
 | Role/permission matrix | DONE | |
 | Fee schedule management | DONE | |
@@ -174,8 +179,9 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| KPI cards | DONE | Applications, pending, revenue |
-| Monthly revenue chart | DONE | Chart.js |
+| KPI cards | DONE | Applications, pending, revenue — always reflect the live/current period |
+| Monthly revenue chart | DONE | Chart.js; year-navigable via `?year=` (prev/next arrows, clamped to current year) |
+| Monthly transactions chart | DONE | Grouped bar, BP vs OP, from `Collection.applicationable_type`; shares the same year navigator |
 | Recent applications + daily count | DONE | |
 
 ---
@@ -184,7 +190,7 @@
 
 | Feature | Reason |
 |---------|--------|
-| BFP module (FSEC/FSIC) | BFP not included in this system |
+| BFP module (fire-safety assessment/inspection workflow) | Not included in this system. FSEC No./Date (BP, OP) and FSIC No. (OP) exist only as reference fields shown on printed permits — no BFP validation, workflow, or integration |
 | DB-level encryption | Not required |
 | Annual inspection (non-mechanical) | Future scope |
 | BFP partial payment | BFP excluded |

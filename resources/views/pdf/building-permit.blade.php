@@ -8,13 +8,13 @@
              NOTE: the reset must not target * or html — in dompdf those wipe the @page margin. --}}
         @page { margin: 0.5in; }
         body, div, p, span, img { margin: 0; padding: 0; }
-        body { font-family: Arial, sans-serif; font-size: 12px; color: #222; line-height: 1.25; }
+        body { font-family: Arial, sans-serif; font-size: 13.5px; color: #222; line-height: 1.25; }
 
         {{-- content-box height tuned so the frame's outer edge lands exactly 0.5in from
              all four page edges without pushing content onto a spurious second page --}}
         .frame { border: 6px double #1a3d6d; padding: 4mm 10mm; height: 6.82in; }
 
-        .form-no { font-size: 10.5px; font-weight: bold; margin-bottom: 2px; }
+        .form-no { font-size: 12px; font-weight: bold; margin-bottom: 2px; }
 
         .header { margin-bottom: 4px; }
         .header-table { display: table; width: 100%; }
@@ -23,39 +23,46 @@
         .seal-cell img.seal { height: 100px; }
         .spacer-cell { width: 90px; }
         .text-cell { text-align: center; }
-        .header p { margin: 1px 0; font-size: 12px; }
-        .header .office { font-weight: bold; font-size: 13px; margin-top: 2px; }
+        .header p { margin: 1px 0; font-size: 13.5px; }
+        .header .office { font-weight: bold; font-size: 14.5px; margin-top: 2px; }
 
-        .title { text-align: center; font-weight: bold; font-size: 25px; letter-spacing: 2px; margin: 5px 0 2px; }
-        .checkbox-row { text-align: center; font-size: 12px; margin-bottom: 7px; }
+        .title { text-align: center; font-weight: bold; font-size: 27px; letter-spacing: 2px; margin: 5px 0 2px; }
+        .checkbox-row { text-align: center; font-size: 13.5px; margin-bottom: 7px; }
         .checkbox-row span { margin: 0 10px; }
 
         .two-col { display: table; width: 100%; margin-bottom: 5px; }
         .two-col .col { display: table-cell; width: 50%; vertical-align: top; }
-        .no-row { font-size: 11.5px; margin-bottom: 2px; }
+        .no-row { font-size: 13px; margin-bottom: 2px; }
         .no-row .label { display: inline-block; }
         .no-row .value { display: inline-block; border-bottom: 1px solid #333; min-width: 170px; padding: 0 4px; font-weight: bold; }
 
-        .intro { font-size: 11px; margin: 5px 0 8px; text-align: justify; }
+        .intro { font-size: 12.5px; margin: 5px 0 8px; text-align: justify; }
         .intro strong { font-weight: bold; }
 
         .field-row { display: table; width: 100%; margin-bottom: 4px; }
-        .field-row .label { display: table-cell; width: 250px; font-size: 11.5px; vertical-align: top; padding-top: 1px; }
+        .field-row .label { display: table-cell; width: 260px; font-size: 13px; vertical-align: top; padding-top: 1px; }
         .field-row .colon { display: table-cell; width: 14px; vertical-align: top; }
-        .field-row .value { display: table-cell; border-bottom: 1px solid #333; font-weight: bold; font-size: 12px; padding-bottom: 1px; }
+        .field-row .value { display: table-cell; border-bottom: 1px solid #333; font-weight: bold; font-size: 13.5px; padding-bottom: 1px; }
 
         .sub-row { display: table; width: 100%; margin: 2px 0 4px; }
-        .sub-row .indent { display: table-cell; width: 264px; }
-        .sub-row .item { display: table-cell; padding-right: 14px; font-size: 11.5px; }
+        .sub-row .indent { display: table-cell; width: 274px; }
+        .sub-row .item { display: table-cell; padding-right: 14px; font-size: 13px; }
         .sub-row .item .value { border-bottom: 1px solid #333; font-weight: bold; padding: 0 4px; }
 
         .sig-block { margin-top: 12px; text-align: center; }
-        .sig-label { font-size: 11.5px; font-weight: bold; margin-bottom: 20px; }
-        .sig-name { border-top: 1px solid #333; display: inline-block; min-width: 300px; padding-top: 2px; font-weight: bold; font-size: 12.5px; text-decoration: underline; }
-        .sig-title { font-weight: bold; font-size: 11.5px; margin-top: 1px; }
-        .sig-caption { font-size: 9.5px; color: #555; margin-top: 1px; }
+        .sig-label { font-size: 13px; font-weight: bold; margin-bottom: 20px; }
+        .sig-name { display: inline-block; min-width: 300px; padding-top: 2px; font-weight: bold; font-size: 14px; text-decoration: underline; }
+        .sig-title { font-weight: bold; font-size: 13px; margin-top: 1px; }
+        .sig-line { font-size: 12.5px; margin-top: 14px; }
+        .sig-line .fill { border-bottom: 1px solid #333; display: inline-block; min-width: 180px; }
 
-        .footer-note { margin-top: 8px; font-size: 9.5px; font-weight: bold; text-align: center; }
+        .bottom-row { display: table; width: 100%; }
+        .bottom-cell { display: table-cell; vertical-align: bottom; }
+        .qr-cell { width: 130px; text-align: center; }
+        .sig-cell { width: auto; }
+        .qr-cell img.qr { width: 110px; height: 110px; }
+
+        .footer-note { margin-top: 8px; font-size: 10px; font-weight: bold; text-align: center; white-space: nowrap; }
     </style>
 </head>
 <body>
@@ -140,11 +147,21 @@
     <div class="field-row"><span class="label">Total Project Cost</span><span class="colon">:</span><span class="value">Php {{ number_format($application->total_estimated_cost ?? 0, 2) }}</span></div>
     <div class="field-row"><span class="label">Professional In Charge of Construction</span><span class="colon">:</span><span class="value">{{ $application->engineer_name }}</span></div>
 
-    <div class="sig-block">
-        <div class="sig-label">PERMIT ISSUED BY:</div>
-        <div class="sig-name">{{ strtoupper(trim(($signatories['building_official']->title ?? '') . ' ' . ($signatories['building_official']->name ?? ''))) }}</div>
-        <div class="sig-title">BUILDING OFFICIAL</div>
-        <div class="sig-caption">(Signature Over Printed Name)</div>
+    <div class="bottom-row">
+        <div class="bottom-cell qr-cell">
+            @if(!empty($qrImage))
+                <img class="qr" src="{{ $qrImage }}">
+            @endif
+        </div>
+        <div class="bottom-cell sig-cell">
+            <div class="sig-block">
+                <div class="sig-label">PERMIT ISSUED BY:</div>
+                <div class="sig-name">{{ strtoupper(trim(($signatories['building_official']->title ?? '') . ' ' . ($signatories['building_official']->name ?? ''))) }}</div>
+                <div class="sig-title">BUILDING OFFICIAL</div>
+                <div class="sig-line">Date: <span class="fill">&nbsp;</span></div>
+            </div>
+        </div>
+        <div class="bottom-cell qr-cell"></div>
     </div>
 
     <div class="footer-note">

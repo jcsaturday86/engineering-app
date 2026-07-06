@@ -199,6 +199,8 @@ The assessment index tables (`/assessments` and `/assessments/occupancy`) list a
 - **Partial match** → filters the "Awaiting Payment" list by application number or applicant first/last name
 - No match → amber "No application awaiting payment matches …" notice
 
+Both the exact-match redirect and the "Awaiting Payment" list query add `whereDoesntHave('collections', fn($q) => $q->where('status', 'active'))` on top of `status = 'billed'` — a defensive guard so an application never reappears in the payment queue once it already has an active (paid) collection, even if its `status` column didn't transition cleanly to `paid`.
+
 ### Cash Change
 On the payment form, when Payment Mode = Cash, a live Alpine-computed box shows the **Change** (green) as the collector types Amount Received, or **Short** (red, with a warning) if the amount is insufficient. `CollectionController::doStore()` rejects an insufficient cash payment server-side ("Amount received is less than the amount due"). The `collections.change_amount` column (`max(0, amount_received - amount_due)`) is unchanged — only the live display and the guard are new.
 
@@ -240,8 +242,8 @@ The payment form (`collections/create.blade.php`) is a compact, single-screen PO
 | Template | Trigger |
 |----------|---------|
 | application-form | ApplicationController::printForm |
-| building-permit | PermitController::print (BP) |
-| occupancy-permit | PermitController::print (OP) |
+| building-permit | PermitController::print (BP) — NBC Form B-018 style, A4 landscape, city seal, QR verification code |
+| occupancy-permit | PermitController::print (OP) — DPWH Certificate of Occupancy style, A4 landscape, DPWH logo + city seal, QR verification code |
 | assessment-summary | AssessmentController::print (BP only) — Code 128 barcode above BP number; Approved By = building_official signatory; no Fire Code Fees section |
 | assessment-summary-op | AssessmentController::printOp (OP only) — titled "OCCUPANCY PERMIT ASSESSMENT"; only an Occupancy Fees section (no Zoning/Building/Electrical/Mechanical/Other Fees/Filing/Processing) |
 | billing-statement | BillingController::print |
@@ -249,6 +251,21 @@ The payment form (`collections/create.blade.php`) is a compact, single-screen PO
 | zoning-certification | PermitController::zoningCertification |
 | locational-clearance | PermitController::locationalClearance |
 | evaluation-report | PermitController::evaluationReport |
+
+---
+
+## Permit QR Code Verification
+
+Every permit generated via `PermitController::doGenerate()` gets a `verification_token` (UUID). When printing (`PermitController::print()`):
+
+```
+verifyUrl = {general.domain setting, or config('app.url') if blank} + /verify/permit/{token}
+qrImage   = QR PNG encoding verifyUrl (endroid/qr-code), embedded as base64 data URI on both permit templates
+```
+
+`GET /verify/permit/{token}` (public, throttled `throttle:30,1`, no auth) → `VerifyController::show()` looks up the `Permit` by token:
+- **Found** → `verify/permit.blade.php` shows permit type (Building Permit / Certificate of Occupancy), permit number, date issued, status, applicant name, project title, location
+- **Not found** → same view renders a "This permit could not be verified" message (still `200 OK` — doesn't leak token validity via status code)
 
 ### Notifications
 

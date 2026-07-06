@@ -82,15 +82,42 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    {{-- Chart Year Navigator --}}
+    <div class="flex items-center justify-center gap-3">
+        <a href="{{ route('dashboard', ['year' => $chartYear - 1]) }}"
+            class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition">
+            <i class="fas fa-chevron-left text-xs"></i>
+        </a>
+        <span class="text-sm font-semibold text-gray-900 w-16 text-center">{{ $chartYear }}</span>
+        @if($chartYear < $currentYear)
+            <a href="{{ route('dashboard', ['year' => $chartYear + 1]) }}"
+                class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition">
+                <i class="fas fa-chevron-right text-xs"></i>
+            </a>
+        @else
+            <span class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-100 text-gray-300">
+                <i class="fas fa-chevron-right text-xs"></i>
+            </span>
+        @endif
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {{-- Revenue Chart --}}
-        <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5">
-            <h3 class="text-sm font-semibold text-gray-900 mb-4">Monthly Revenue — {{ now()->year }}</h3>
+        <div class="bg-white rounded-xl border border-gray-200 p-5">
+            <h3 class="text-sm font-semibold text-gray-900 mb-4">Monthly Revenue — {{ $chartYear }}</h3>
             <canvas id="revenueChart" height="200"></canvas>
         </div>
 
-        {{-- Recent Applications --}}
+        {{-- Monthly Transactions Chart --}}
         <div class="bg-white rounded-xl border border-gray-200 p-5">
+            <h3 class="text-sm font-semibold text-gray-900 mb-4">Monthly Transactions — {{ $chartYear }}</h3>
+            <canvas id="transactionsChart" height="200"></canvas>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {{-- Recent Applications --}}
+        <div class="lg:col-span-3 bg-white rounded-xl border border-gray-200 p-5">
             <h3 class="text-sm font-semibold text-gray-900 mb-4">Recent Applications</h3>
             <div class="space-y-3">
                 @forelse($recentApplications as $app)
@@ -159,6 +186,44 @@ new Chart(ctx, {
                 ticks: {
                     callback: function(value) { return '₱' + value.toLocaleString(); }
                 },
+                grid: { color: 'rgba(0,0,0,0.05)' }
+            },
+            x: { grid: { display: false } }
+        }
+    }
+});
+
+const transactionsCtx = document.getElementById('transactionsChart').getContext('2d');
+new Chart(transactionsCtx, {
+    type: 'bar',
+    data: {
+        labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+        datasets: [
+            {
+                label: 'Building Permit',
+                data: @json($bpTransactionData),
+                backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                borderRadius: 6,
+                borderSkipped: false,
+            },
+            {
+                label: 'Occupancy Permit',
+                data: @json($opTransactionData),
+                backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                borderRadius: 6,
+                borderSkipped: false,
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: true, position: 'top' },
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: { precision: 0 },
                 grid: { color: 'rgba(0,0,0,0.05)' }
             },
             x: { grid: { display: false } }

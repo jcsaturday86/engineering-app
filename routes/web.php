@@ -25,6 +25,7 @@ use App\Http\Controllers\AccFeeController;
 use App\Http\Controllers\SurchargeFeeController;
 use App\Http\Controllers\ElectronicsFeeController;
 use App\Http\Controllers\PlumbingFeeController;
+use App\Http\Controllers\VerifyController;
 use Illuminate\Support\Facades\Route;
 
 // Default page = client login
@@ -47,6 +48,9 @@ Route::middleware('guest')->group(function () {
     Route::get('/staff/login', [LoginController::class, 'showStaffLoginForm'])->name('staff.login');
     Route::post('/staff/login', [LoginController::class, 'staffLogin'])->name('staff.login.submit');
 });
+
+// Public permit verification (QR code target — no auth required)
+Route::middleware('throttle:30,1')->get('/verify/permit/{token}', [VerifyController::class, 'show'])->name('verify.permit');
 
 // Authenticated routes
 Route::middleware('auth')->group(function () {
