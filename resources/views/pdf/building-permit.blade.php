@@ -12,17 +12,16 @@
 
         {{-- content-box height tuned so the frame's outer edge lands exactly 0.5in from
              all four page edges without pushing content onto a spurious second page --}}
-        .frame { border: 3px double #1a3d6d; padding: 4mm 10mm; height: 6.89in; }
+        .frame { border: 6px double #1a3d6d; padding: 4mm 10mm; height: 6.82in; }
 
         .form-no { font-size: 10.5px; font-weight: bold; margin-bottom: 2px; }
 
-        .header { margin-bottom: 4px; }
-        .header-table { display: table; width: 100%; }
+        .header { margin-bottom: 4px; text-align: center; }
+        .header-table { display: table; margin: 0 auto; }
         .header-cell { display: table-cell; vertical-align: middle; }
-        .seal-cell { width: 120px; text-align: left; }
-        .seal-cell img.seal { height: 82px; }
-        .spacer-cell { width: 120px; }
-        .text-cell { text-align: center; }
+        .seal-cell { width: 105px; text-align: right; padding-right: 10px; }
+        .seal-cell img.seal { height: 100px; }
+        .text-cell { text-align: left; }
         .header p { margin: 1px 0; font-size: 12px; }
         .header .office { font-weight: bold; font-size: 13px; margin-top: 2px; }
 
@@ -76,7 +75,6 @@
                 <p>Province of {{ $settings['general.province'] ?? 'Province' }}</p>
                 <p class="office">OFFICE OF THE BUILDING OFFICIAL</p>
             </div>
-            <div class="header-cell spacer-cell"></div>
         </div>
     </div>
 
