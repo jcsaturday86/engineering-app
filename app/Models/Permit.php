@@ -27,6 +27,11 @@ class Permit extends Model
         'processed_by',
         'approved_by',
         'status',
+        'revoke_reason',
+        'building_official_name',
+        'building_official_title',
+        'building_official_designation',
+        'building_official_license_no',
     ];
 
     protected function casts(): array

@@ -49,11 +49,11 @@
         .sub-row .item { display: table-cell; padding-right: 14px; font-size: 13px; }
         .sub-row .item .value { border-bottom: 1px solid #333; font-weight: bold; padding: 0 4px; }
 
-        .sig-block { margin-top: 12px; text-align: center; }
-        .sig-label { font-size: 13px; font-weight: bold; margin-bottom: 20px; }
+        .sig-block { margin-top: 10px; text-align: center; }
+        .sig-label { font-size: 13px; font-weight: bold; margin-bottom: 14px; }
         .sig-name { display: inline-block; min-width: 300px; padding-top: 2px; font-weight: bold; font-size: 14px; text-decoration: underline; }
         .sig-title { font-weight: bold; font-size: 13px; margin-top: 1px; }
-        .sig-line { font-size: 12.5px; margin-top: 14px; }
+        .sig-line { font-size: 12.5px; margin-top: 8px; }
         .sig-line .fill { border-bottom: 1px solid #333; display: inline-block; min-width: 180px; }
 
         .bottom-row { display: table; width: 100%; }
@@ -62,7 +62,8 @@
         .sig-cell { width: auto; }
         .qr-cell img.qr { width: 110px; height: 110px; }
 
-        .footer-note { margin-top: 8px; font-size: 10px; font-weight: bold; text-align: center; white-space: nowrap; }
+        .footer-note { margin-top: 5px; font-size: 10px; font-weight: bold; text-align: center; white-space: nowrap; line-height: 1.1; }
+        .generated-note { margin-top: 2px; font-size: 10px; font-weight: normal; text-align: center; color: #555; line-height: 1.1; }
     </style>
 </head>
 <body>
@@ -156,7 +157,7 @@
         <div class="bottom-cell sig-cell">
             <div class="sig-block">
                 <div class="sig-label">PERMIT ISSUED BY:</div>
-                <div class="sig-name">{{ strtoupper(trim(($signatories['building_official']->title ?? '') . ' ' . ($signatories['building_official']->name ?? ''))) }}</div>
+                <div class="sig-name">{{ strtoupper(trim(($permit->building_official_title ?? '') . ' ' . ($permit->building_official_name ?? ''))) }}</div>
                 <div class="sig-title">BUILDING OFFICIAL</div>
                 <div class="sig-line">Date: <span class="fill">&nbsp;</span></div>
             </div>
@@ -166,6 +167,9 @@
 
     <div class="footer-note">
         THIS PERMIT MAY BE CANCELLED OR REVOKED PURSUANT TO SECTIONS 207, 305 AND 306 OF THE NATIONAL BUILDING CODE OF THE PHILIPPINES (PD 1096) AND ITS REVISED IRR.
+    </div>
+    <div class="generated-note">
+        This is a computer-generated permit. Printed on: {{ now()->format('m/d/Y') }} | Printed by: {{ auth()->user()?->full_name }}
     </div>
 
 </div>

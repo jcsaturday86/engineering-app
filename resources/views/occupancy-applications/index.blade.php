@@ -75,7 +75,7 @@
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Project Title</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Status</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Date</th>
-                        <th class="text-left px-4 py-3 font-medium text-gray-500">Turn Around Time</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-500">TTA</th>
                         <th class="text-right px-4 py-3 font-medium text-gray-500">Actions</th>
                     </tr>
                 </thead>

@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rules\Password;
 use Spatie\Permission\Models\Role;
 
 class SettingsController extends Controller
@@ -32,7 +33,11 @@ class SettingsController extends Controller
                 continue;
             }
 
-            $path = 'logos/city-seal.png';
+            $path = match ($key) {
+                'general.logo' => 'logos/city-seal.png',
+                'general.dpwh_logo' => 'logos/dpwh-logo.png',
+                default => 'logos/' . str_replace('.', '-', $key) . '.png',
+            };
             $this->storeResizedLogo($file, $path);
             Setting::where('key', $key)->update(['value' => $path]);
         }
@@ -98,6 +103,7 @@ class SettingsController extends Controller
             'department' => 'nullable|string|max:255',
             'position' => 'nullable|string|max:255',
             'role' => 'required|exists:roles,name',
+            'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
         ]);
 
         $user = User::create([
@@ -109,14 +115,14 @@ class SettingsController extends Controller
             'phone' => $validated['phone'],
             'department' => $validated['department'],
             'position' => $validated['position'],
-            'password' => Hash::make('password123'),
+            'password' => Hash::make($validated['password']),
             'is_active' => true,
             'must_change_password' => true,
         ]);
 
         $user->assignRole($validated['role']);
 
-        return redirect()->route('settings.users')->with('success', "User {$user->full_name} created. Default password: password123");
+        return redirect()->route('settings.users')->with('success', "User {$user->full_name} created.");
     }
 
     public function editUser(User $user)

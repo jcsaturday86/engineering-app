@@ -178,9 +178,11 @@ Route::middleware('auth')->group(function () {
         // BP permit
         Route::post('/{application}/generate', [PermitController::class, 'generate'])->name('generate')->middleware('can:generate-permits');
         Route::post('/{application}/revert-generate', [PermitController::class, 'revertGenerate'])->name('revertGenerate')->middleware('can:revert-permits');
+        Route::post('/{application}/restore-permit', [PermitController::class, 'restoreRevoke'])->name('restorePermit')->middleware('can:revert-permits');
         // OP permit
         Route::post('/op/{occupancyApplication}/generate', [PermitController::class, 'generateOp'])->name('generate.op')->middleware('can:generate-permits');
         Route::post('/op/{occupancyApplication}/revert-generate', [PermitController::class, 'revertGenerateOp'])->name('revertGenerate.op')->middleware('can:revert-permits');
+        Route::post('/op/{occupancyApplication}/restore-permit', [PermitController::class, 'restoreRevokeOp'])->name('restorePermit.op')->middleware('can:revert-permits');
         // Shared
         Route::get('/{permit}/print', [PermitController::class, 'print'])->name('print')->middleware('can:print-permits');
         Route::get('/{application}/zoning-cert', [PermitController::class, 'zoningCertification'])->name('zoningCert');
@@ -278,3 +280,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/application/op/{occupancyApplication}/download', [OnlineApplicationController::class, 'downloadPermitOp'])->name('download.op');
     });
 });
+
+// Unknown URL fallback = home if logged in, login otherwise
+Route::fallback(fn () => auth()->check()
+    ? (auth()->user()->hasRole('client') ? redirect()->route('online.dashboard') : redirect()->route('dashboard'))
+    : redirect()->route('login'));

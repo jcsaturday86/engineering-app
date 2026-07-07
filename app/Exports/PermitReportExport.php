@@ -15,27 +15,50 @@ class PermitReportExport implements FromCollection, WithHeadings, WithMapping, W
 
     public function collection()
     {
-        return Application::with('permitType')
+        return Application::with('permitType', 'permits')
             ->whereBetween('created_at', [$this->dateFrom, $this->dateTo . ' 23:59:59'])
+            ->where(function ($q) {
+                $q->where('status', 'permit_generated')
+                    ->orWhere(function ($q2) {
+                        $q2->where('status', 'paid')
+                            ->whereHas('permits', function ($q3) {
+                                $q3->withTrashed()->where('status', 'revoked');
+                            });
+                    });
+            })
             ->orderBy('created_at')
             ->get();
     }
 
     public function headings(): array
     {
-        return ['Application No.', 'Permit Type', 'Applicant', 'Project Title', 'Status', 'Total Est. Cost', 'Date'];
+        return ['Application No.', 'Permit No.', 'Permit Type', 'Applicant', 'Project Title', 'Status', 'Total Est. Cost', 'Date', 'TTA'];
     }
 
     public function map($app): array
     {
+        $permit = $app->permits->first();
+        $isRevoked = false;
+        if (! $permit) {
+            $permit = $app->permits()->onlyTrashed()->where('status', 'revoked')->latest('deleted_at')->first();
+            $isRevoked = (bool) $permit;
+        }
+
+        $tatStart = $app->submitted_at ?? $app->created_at;
+        $tatDays = $permit ? (int) floor($tatStart->diffInDays($permit->created_at, true)) : null;
+        $permitDate = $permit?->issued_date ?? $permit?->created_at;
+        $dateRange = $permitDate ? $app->created_at->format('M d, Y') . ' - ' . $permitDate->format('M d, Y') : $app->created_at->format('M d, Y');
+
         return [
             $app->application_number,
+            $permit->permit_number ?? '-',
             $app->permitType->name ?? '',
             $app->applicant_last_name . ', ' . $app->applicant_first_name,
             $app->project_title ?? '',
-            ucfirst(str_replace('_', ' ', $app->status)),
+            $isRevoked ? 'Permit Revoked' : ucfirst(str_replace('_', ' ', $app->status)),
             number_format($app->total_estimated_cost, 2),
-            $app->created_at->format('M d, Y'),
+            $dateRange,
+            $tatDays !== null ? $tatDays . ' day' . ($tatDays == 1 ? '' : 's') : '–',
         ];
     }
 

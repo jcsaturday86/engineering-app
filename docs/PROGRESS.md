@@ -21,6 +21,10 @@
 | Test data seeder | DONE | ApplicationSeeder: 5 BP + 5 OP |
 | Revert / send-back actions | DONE | Password-confirmed backward transitions at every workflow step: submission, zoning, engineering assessment, OP-to-draft, permit generation |
 | On-demand barangay lookup | DONE | `GeoController::barangaysForCity()` — AJAX fetch replacing full ~42K-row client-side dataset |
+| Unknown-URL fallback | DONE | `Route::fallback()` — redirect to role-appropriate home or login instead of 404 |
+| Session-expired (419) redirect | DONE | Redirects to login/staff.login with flash message instead of default Page Expired screen |
+| Password visibility toggles | DONE | Client login, staff login, registration, staff account creation |
+| Staff account password complexity | DONE | Admin-supplied password now enforced/used on Create User (was previously discarded, hardcoded to `password123`) |
 
 ---
 
@@ -148,7 +152,11 @@
 | Permit numbering | DONE | CODE-YYYY-MM-NNNNN |
 | QR code verification | DONE | `verification_token` (UUID) per permit; public `/verify/permit/{token}` page (no auth); `general.domain` setting controls the QR's domain |
 | Generate Permit routing fix (OP) | DONE | Occupancy Permits list was posting to the BP-only generate route (404); now branches by `$type` |
-| Revoke generated permit | DONE | `revertGenerate()` / `revertGenerateOp()` — soft-delete Permit, roll status back to `paid`; password-confirmed |
+| Revoke generated permit | DONE | `revertGenerate()` / `revertGenerateOp()` — tags `status = 'revoked'` + soft-delete, retains permit number, blocks regeneration; password-confirmed with required reason |
+| Restore revoked permit | DONE | `restoreRevoke()` / `restoreRevokeOp()` — un-trashes the same Permit row, same number; password-confirmed only |
+| Permits list filters + TTA + Permit No. column | DONE | `/permits/building`, `/permits/occupancy` — Search/Status(incl. Revoked)/Year filters; Permit No. as primary column; TTA beside Date |
+| Building Official snapshot | DONE | Signatory captured on `Permit` at generation time; used by both PDFs + verification page; immune to later Signatory edits |
+| Printed permit footer note | DONE | "Computer-generated permit. Printed on: {date} \| Printed by: {user}" on both BP/OP PDFs |
 | Evaluation report PDF | DONE | |
 
 ---
@@ -159,6 +167,8 @@
 |---------|--------|-------|
 | Permit / Revenue / Collection reports | DONE | |
 | Excel + PDF export | DONE | |
+| Permit report status filter + Permit No./TTA columns | DONE | Filters to Permit Generated/Revoked only; combined app-date→permit-date range |
+| Permit report peso sign fix | DONE | Switched PDF font to DejaVu Sans (bundled with DomPDF) — Helvetica/Arial lack the ₱ glyph |
 
 ---
 
@@ -166,8 +176,9 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| System settings | DONE | Includes `general.logo` (file upload, GD-resized), `general.zip_code`, `general.domain` |
-| User management | DONE | |
+| System settings | DONE | Includes `general.logo` and `general.dpwh_logo` (file uploads, GD-resized, per-key storage path), `general.zip_code`, `general.domain` |
+| User management | DONE | Create User: password now admin-set with complexity enforcement + strength UI (was hardcoded `password123`) |
+| User management: role select / blank-field bug | PENDING | Create/Edit User form is currently unusable end-to-end — role `<select>` sends IDs but validation expects names; `User::create()` crashes if middle_name/phone/department/position are blank. Found during password-complexity work, tracked separately (not yet fixed) |
 | Role/permission matrix | DONE | |
 | Fee schedule management | DONE | |
 | Signatory management | DONE | |

@@ -153,12 +153,56 @@
 - Added a **Year filter** (`?year=`, defaults to current year, current + previous year options) to `/applications` and `/occupancy-applications`
 - Added a **Turn Around Time** column to both indexes: whole days from `submitted_at` (or `created_at`) to the latest generated Permit's `created_at`, `–` if not yet generated; caught and fixed a Carbon 3 `diffInDays()` regression (defaults to non-absolute, returns a negative float) during verification
 
+### Permit Revocation Redesign: Retain, Block Regeneration, Restore — COMPLETED
+
+- Revoking a permit now tags `Permit.status = 'revoked'` (plus a required `revoke_reason`) in addition to the existing soft-delete, instead of just soft-deleting — the row and its permit number are preserved forever, not silently discarded
+- `PermitController::doGenerate()` refuses to create a new permit for an application with a revoked permit on file, closing the gap where revoking then re-generating produced a brand-new, differently-numbered permit
+- New `restoreRevoke()` / `restoreRevokeOp()` + `permits.restorePermit` / `permits.restorePermit.op` routes — un-trash the exact same Permit row, `status` back to `generated`, application back to `permit_generated`; password-confirm only (no reason), consistent with every other revert/undo action in the app
+- `permits/index.blade.php`: "Permit Revoked" status badge, revoked permit number shown in red strikethrough instead of `-`, "Generate Permit" replaced entirely by "Restore Permit" for revoked applications
+- Added Search/Status(incl. new `revoked` pseudo-status)/Year filters to `/permits/building` and `/permits/occupancy`, matching the application indexes; Permit No. promoted to the first/primary column (was Application No.); added a TTA column beside Date; shortened action button labels ("Restore"/"Generate"/"Print"/"Revoke")
+
+### Building Official Snapshot on Permit Generation — COMPLETED
+
+- New `permits.building_official_name/_title/_designation/_license_no` columns, populated once by `doGenerate()` from the active `building_official` Signatory and never re-fetched — survives later Signatory edits, revoke, and restore
+- Both printed PDF templates and the public verification page (`verify/permit.blade.php`, new "Issued By" row) now read this snapshot instead of the live Signatory row
+- Pre-existing permits best-effort backfilled with the then-current official in the same migration, since there's no historical record of who held the role at each past generation time
+
+### Permit Report Enhancements & Peso Sign Fix — COMPLETED
+
+- `/reports/permits` (PDF + Excel) now filters to Permit Generated/Revoked applications only (previously unfiltered by status), and adds Permit No. + TTA columns and a combined application-date→permit-date Date range
+- Fixed the peso sign (₱) rendering as a missing-glyph box in the PDF — DomPDF's default Helvetica/Arial substitute lacks the U+20B1 glyph; switched to the bundled `DejaVu Sans` font (confirmed via `FontLib` glyph-map inspection to include it)
+- Added explicit `<colgroup>` column widths + `table-layout: fixed` to the report table after the new columns caused text-wrapping misalignment in the 10-column layout
+
+### DPWH Logo Setting & Settings File-Upload Path Bug — COMPLETED
+
+- New `general.dpwh_logo` file-type setting (Settings → General), used by the Occupancy Permit PDF, falling back to the static `public/images/dpwh-logo.png` asset when empty
+- Fixed a bug this surfaced: `SettingsController::update()` hardcoded every file-upload setting to the same storage path (`logos/city-seal.png`) — a second file setting would have silently overwritten (or been overwritten by) the first; paths are now derived per setting key
+
+### Staff Account Password Complexity — COMPLETED
+
+- `SettingsController::storeUser()` now validates (`Password::min(8)->mixedCase()->numbers()->symbols()`, `confirmed`) and actually applies the admin-supplied password — previously the Create User form collected a password + confirmation but the controller silently discarded both and hardcoded `password123` for every new staff account
+- `settings/user-form.blade.php` ported the same live strength bar, 5-item complexity checklist, and match indicator already used on the client registration page, plus show/hide toggles on both password fields
+- **Found but not fixed (tracked separately):** the role `<select>` sends numeric IDs while validation expects role names (`exists:roles,name`), and `User::create()` throws "Undefined array key" whenever middle_name/phone/department/position are left blank — together these make Create/Edit User fail on every submission regardless of the password fix. Verified the password logic in isolation by working around both bugs in test requests.
+
+### Session/URL Handling & Login UX Polish — COMPLETED
+
+- `Route::fallback()` redirects any unmatched URL to the role-appropriate home (or `login` for guests) instead of a 404
+- A CSRF-expired (419) request now redirects to `login`/`staff.login` with a flash message instead of Laravel's default "Page Expired" screen — required matching on the wrapped `HttpException`'s status code, since Laravel converts `TokenMismatchException` to a generic `HttpException(419)` before render callbacks run
+- Added the existing registration-page password show/hide toggle to client login and staff login
+
+### Printed Permit Footer Note — COMPLETED
+
+- Both permit PDFs show "This is a computer-generated permit. Printed on: {date} | Printed by: {user's full name}" below the existing legal footer, computed fresh on every render
+- Fixed a page-overflow regression this caused on the Building Permit's single fixed-height page by trimming other vertical margins (signature block, footer spacing) by a matching amount
+- Bumped the note's font from 8px to 10px for readability, re-verified it still fits on one page
+
 ---
 
 ## Upcoming Tasks
 
 | Task | Priority | Notes |
 |------|----------|-------|
+| Fix Create/Edit User form (role select + blank-field crash) | High | Currently unusable end-to-end — see "Staff Account Password Complexity" above |
 | Additional permit types (FP, EP, DP, etc.) | Medium | Currently only BP and OP are active |
 | Document requirement upload UI | Low | Model/route exists, UI needs improvement |
 | Email notification configuration | Low | SMTP settings, notification templates |

@@ -48,7 +48,7 @@ engineering-app/
 | Collection | collections | morphTo: applicationable. hasMany: collectionDetails. hasOne: voidTransaction. SoftDeletes, LogsActivity |
 | CollectionDetail | collection_details | belongsTo: collection |
 | VoidTransaction | void_transactions | belongsTo: collection |
-| Permit | permits | morphTo: applicationable. SoftDeletes, LogsActivity. `verification_token` (UUID) set on generation, used for the public QR-code verification link |
+| Permit | permits | morphTo: applicationable. SoftDeletes, LogsActivity. `verification_token` (UUID) set on generation, used for the public QR-code verification link. `status` includes `revoked`; `revoke_reason` and `building_official_*` snapshot columns added for revocation/audit |
 | Document | documents | morphTo: applicationable |
 
 ### Reference/Lookup Models
@@ -151,17 +151,23 @@ print only. Billing is auto-generated on assessment finalize via `BillingService
 - `receipt`, `voidForm`, `processVoid`
 
 ### PermitController
-buildingIndex, occupancyIndex, generate (BP), revertGenerate (BP), generateOp (OP), revertGenerateOp (OP), print, zoningCertification, locationalClearance, evaluationReport
+buildingIndex, occupancyIndex, generate (BP), revertGenerate (BP), restoreRevoke (BP), generateOp (OP), revertGenerateOp (OP), restoreRevokeOp (OP), print, zoningCertification, locationalClearance, evaluationReport
 
-`revertGenerate`/`revertGenerateOp` soft-delete the generated `Permit` and roll the application status back to `paid` (`revert-permits` permission).
+`buildingIndex`/`occupancyIndex` accept `search`, `status` (including a `revoked` pseudo-status matched via `whereHas('permits', fn ($q) => $q->withTrashed()->where('status', 'revoked'))`), and `year` (defaults to current year) query params.
 
-`generate`/`generateOp` (via `doGenerate()`) set a `verification_token` (UUID) on the new `Permit` row. `print()` additionally builds a QR code (`endroid/qr-code`) encoding the public verification URL (`{general.domain setting|app.url}/verify/permit/{token}`) and passes it (plus `sealImage`, `dpwhLogo`) to the `pdf.building-permit` / `pdf.occupancy-permit` templates.
+`revertGenerate`/`revertGenerateOp` (`revert-permits` permission) tag the `Permit` `status = 'revoked'` (with a required `revoke_reason`) and soft-delete it, rolling the application status back to `paid`. `doGenerate()` refuses to create a new permit while a revoked permit exists for the application (`onlyTrashed()->where('status', 'revoked')->exists()`). `restoreRevoke`/`restoreRevokeOp` (same permission, password-confirm only) reverse this: `$permit->restore()`, `status` back to `generated`, application back to `permit_generated`.
+
+`generate`/`generateOp` (via `doGenerate()`) set a `verification_token` (UUID) on the new `Permit` row, and snapshot the currently-active `building_official` Signatory onto `building_official_name`/`_title`/`_designation`/`_license_no` — a one-time capture that survives Signatory edits, revoke, and restore. `print()` additionally builds a QR code (`endroid/qr-code`) encoding the public verification URL (`{general.domain setting|app.url}/verify/permit/{token}`) and passes it (plus `sealImage`, `dpwhLogo` — both sourced from `Setting`, each falling back to a static default) to the `pdf.building-permit` / `pdf.occupancy-permit` templates, which read the Building Official line from the permit's own snapshot columns, not the live Signatory.
 
 ### VerifyController (public, no auth)
 `show(string $token)` — `GET /verify/permit/{token}`, throttled. Looks up `Permit::where('verification_token', $token)`; renders `verify/permit.blade.php` with the permit/applicant details if found, or a "could not be verified" state if not.
 
 ### Other Controllers
 DashboardController, OnlineApplicationController, ReportController, SettingsController, FeeScheduleController, ProfileController
+
+`ReportController::generate()` (permits report) and `App\Exports\PermitReportExport` filter to `permit_generated`/revoked applications only, and add Permit No./TTA columns.
+
+`SettingsController::storeUser()` validates and applies an admin-supplied password (`Password::min(8)->mixedCase()->numbers()->symbols()`, `confirmed`) instead of hardcoding every new staff account to `password123`. `update()` (Settings → General file uploads) derives each file setting's storage path from its key via a `match` expression, rather than a single hardcoded path shared by all file settings.
 
 ---
 
@@ -227,6 +233,8 @@ application-form, building-permit (NBC Form B-018 style, city seal + QR code), o
 |----------|---------|
 | AppServiceProvider | Morph map: bp → Application, op → OccupancyApplication |
 | SelfHealingServiceProvider | Auto DB + migrations + seeds on boot |
+
+`bootstrap/app.php` — `withExceptions()` renders any 419 `HttpException` (CSRF/session expiry) as a redirect to `login`/`staff.login` with a flash message. `routes/web.php` ends with `Route::fallback()`, redirecting any unmatched URL to the role-appropriate home or `login`.
 
 ## Seeders (9)
 

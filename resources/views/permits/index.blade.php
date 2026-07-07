@@ -17,27 +17,67 @@
         <h2 class="text-xl font-bold text-gray-900">{{ $type === 'building' ? 'Building Permits' : 'Occupancy Permits' }}</h2>
     </div>
 
+    {{-- Filters --}}
+    <div class="bg-white rounded-xl border border-gray-200 p-4">
+        <form method="GET" class="flex flex-wrap items-end gap-4" autocomplete="off">
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-xs font-medium text-gray-500 mb-1">Search</label>
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Name, application number, project..."
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Status</label>
+                <select name="status" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                    <option value="">All</option>
+                    @foreach(['paid' => 'Paid', 'permit_generated' => 'Permit generated', 'released' => 'Released', 'revoked' => 'Revoked'] as $value => $label)
+                        <option value="{{ $value }}" {{ request('status') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Year</label>
+                <select name="year" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                    @foreach([now()->year, now()->year - 1] as $y)
+                        <option value="{{ $y }}" {{ $year == $y ? 'selected' : '' }}>{{ $y }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <button type="submit" class="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition">
+                <i class="fas fa-search mr-1"></i> Filter
+            </button>
+            @if(request()->hasAny(['search', 'status']) || $year != now()->year)
+                <a href="{{ $type === 'building' ? route('permits.building') : route('permits.occupancy') }}" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Clear</a>
+            @endif
+        </form>
+    </div>
+
     {{-- Table --}}
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
-                        <th class="text-left px-4 py-3 font-medium text-gray-500">Application No.</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-500">Permit No.</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Applicant</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Project Title</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Status</th>
-                        <th class="text-left px-4 py-3 font-medium text-gray-500">Permit No.</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Date</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-500">TTA</th>
                         <th class="text-right px-4 py-3 font-medium text-gray-500">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse($applications as $app)
+                    @php
+                        $revokedPermit = $app->status === 'paid' && $app->permits->isEmpty()
+                            ? $app->permits()->onlyTrashed()->where('status', 'revoked')->latest('deleted_at')->first()
+                            : null;
+                        $wasRevoked = (bool) $revokedPermit;
+                    @endphp
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3">
-                            <a href="{{ route('applications.show', $app) }}" class="font-mono text-blue-600 hover:text-blue-800 font-medium">
-                                {{ $app->application_number }}
+                            <a href="{{ route('applications.show', $app) }}" class="font-mono font-medium hover:underline {{ $revokedPermit ? 'text-red-600 line-through' : 'text-blue-600 hover:text-blue-800' }}" @if($revokedPermit) title="Revoked" @endif>
+                                {{ $app->permits->first()->permit_number ?? ($revokedPermit->permit_number ?? '-') }}
                             </a>
                         </td>
                         <td class="px-4 py-3 text-gray-900">{{ $app->applicant_last_name }}, {{ $app->applicant_first_name }}</td>
@@ -56,37 +96,95 @@
                                     'cancelled' => 'bg-red-100 text-red-700',
                                 ];
                             @endphp
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $colors[$app->status] ?? 'bg-gray-100 text-gray-600' }}">
-                                {{ ucfirst(str_replace('_', ' ', $app->status)) }}
-                            </span>
-                        </td>
-                        <td class="px-4 py-3 text-gray-600">
-                            @if($app->permits->isNotEmpty())
-                                <span class="font-mono text-sm">{{ $app->permits->first()->permit_number }}</span>
+                            @if($wasRevoked)
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                    Permit Revoked
+                                </span>
                             @else
-                                <span class="text-gray-400">-</span>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $colors[$app->status] ?? 'bg-gray-100 text-gray-600' }}">
+                                    {{ ucfirst(str_replace('_', ' ', $app->status)) }}
+                                </span>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-gray-500">{{ $app->created_at->format('M d, Y') }}</td>
+                        <td class="px-4 py-3 text-gray-600">
+                            @php
+                                $tatPermit = $app->permits->first() ?? $revokedPermit;
+                                $tatStart = $app->submitted_at ?? $app->created_at;
+                                $tatDays = $tatPermit ? (int) floor($tatStart->diffInDays($tatPermit->created_at, true)) : null;
+                            @endphp
+                            {{ $tatDays !== null ? $tatDays . ' day' . ($tatDays == 1 ? '' : 's') : '–' }}
+                        </td>
                         <td class="px-4 py-3 text-right">
-                            @if($app->permits->isEmpty())
+                            @if($wasRevoked)
+                                @can('revert-permits')
+                                <div class="inline-flex items-center gap-1.5" x-data="{ showRestoreModal: false, restorePassword: '' }">
+                                    <button type="button" @click="showRestoreModal = true; restorePassword = ''"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition">
+                                        <i class="fas fa-history"></i> Restore
+                                    </button>
+
+                                    <div x-show="showRestoreModal" x-cloak
+                                        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+                                        @keydown.escape.window="showRestoreModal = false">
+                                        <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6 text-left" @click.outside="showRestoreModal = false">
+                                            <div class="flex items-center gap-3 mb-4">
+                                                <div class="inline-flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full">
+                                                    <i class="fas fa-lock text-blue-600"></i>
+                                                </div>
+                                                <div>
+                                                    <h3 class="text-lg font-semibold text-gray-900">Confirm Restore</h3>
+                                                    <p class="text-sm text-gray-500">This will restore the revoked permit (same permit number) and set the application back to Permit Generated.</p>
+                                                </div>
+                                            </div>
+
+                                            @if($errors->has('password'))
+                                                <div class="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                                                    {{ $errors->first('password') }}
+                                                </div>
+                                            @endif
+
+                                            <form action="{{ $type === 'building' ? route('permits.restorePermit', $app) : route('permits.restorePermit.op', $app) }}" method="POST" autocomplete="off">
+                                                @csrf
+                                                <div class="mb-4">
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
+                                                    <input type="password" name="password" x-model="restorePassword" required
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        placeholder="Enter your account password">
+                                                </div>
+                                                <div class="flex items-center justify-end gap-3">
+                                                    <button type="button" @click="showRestoreModal = false"
+                                                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                                                        Cancel
+                                                    </button>
+                                                    <button type="submit" :disabled="!restorePassword"
+                                                        class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                                        <i class="fas fa-history"></i> Confirm & Restore
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                @endcan
+                            @elseif($app->permits->isEmpty())
                                 <form action="{{ $type === 'building' ? route('permits.generate', $app) : route('permits.generate.op', $app) }}" method="POST" class="inline" autocomplete="off">
                                     @csrf
                                     <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition">
-                                        <i class="fas fa-file-alt"></i> Generate Permit
+                                        <i class="fas fa-file-alt"></i> Generate
                                     </button>
                                 </form>
                             @else
-                                <div class="inline-flex items-center gap-1.5" x-data="{ showRevokeModal: false, revokePassword: '' }">
+                                <div class="inline-flex items-center gap-1.5" x-data="{ showRevokeModal: false, revokePassword: '', revokeReason: '' }">
                                     <a href="{{ route('permits.print', $app->permits->first()) }}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition">
-                                        <i class="fas fa-print"></i> Print Permit
+                                        <i class="fas fa-print"></i> Print
                                     </a>
 
                                     @can('revert-permits')
                                     @if($app->status === 'permit_generated')
-                                        <button type="button" @click="showRevokeModal = true; revokePassword = ''"
+                                        <button type="button" @click="showRevokeModal = true; revokePassword = ''; revokeReason = ''"
                                             class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-300 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50 transition">
-                                            <i class="fas fa-undo"></i> Revoke Permit
+                                            <i class="fas fa-undo"></i> Revoke
                                         </button>
 
                                         <div x-show="showRevokeModal" x-cloak
@@ -103,14 +201,20 @@
                                                     </div>
                                                 </div>
 
-                                                @if($errors->has('password'))
+                                                @if($errors->has('password') || $errors->has('reason'))
                                                     <div class="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
-                                                        {{ $errors->first('password') }}
+                                                        {{ $errors->first('password') ?: $errors->first('reason') }}
                                                     </div>
                                                 @endif
 
                                                 <form action="{{ $type === 'building' ? route('permits.revertGenerate', $app) : route('permits.revertGenerate.op', $app) }}" method="POST" autocomplete="off">
                                                     @csrf
+                                                    <div class="mb-4">
+                                                        <label class="block text-sm font-medium text-gray-700 mb-1">Reason for Revoking <span class="text-red-500">*</span></label>
+                                                        <textarea name="reason" x-model="revokeReason" required rows="3"
+                                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                                            placeholder="Provide a detailed reason for revoking this permit"></textarea>
+                                                    </div>
                                                     <div class="mb-4">
                                                         <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
                                                         <input type="password" name="password" x-model="revokePassword" required
@@ -122,7 +226,7 @@
                                                             class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
                                                             Cancel
                                                         </button>
-                                                        <button type="submit" :disabled="!revokePassword"
+                                                        <button type="submit" :disabled="!revokePassword || !revokeReason"
                                                             class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
                                                             <i class="fas fa-undo"></i> Confirm & Revoke
                                                         </button>

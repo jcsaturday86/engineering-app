@@ -59,6 +59,7 @@
         .sig-line .fill { border-bottom: 1px solid #333; display: inline-block; min-width: 180px; }
 
         .footer-note { margin-top: 10px; font-size: 11px; font-weight: bold; text-align: center; }
+        .generated-note { margin-top: 4px; font-size: 10px; font-weight: normal; text-align: center; color: #555; }
     </style>
 </head>
 <body>
@@ -149,7 +150,7 @@
             @endif
         </div>
         <div class="col sig-col">
-            <div class="sig-name">{{ strtoupper(trim(($signatories['building_official']->title ?? '') . ' ' . ($signatories['building_official']->name ?? ''))) }}</div>
+            <div class="sig-name">{{ strtoupper(trim(($permit->building_official_title ?? '') . ' ' . ($permit->building_official_name ?? ''))) }}</div>
             <div class="sig-title">BUILDING OFFICIAL</div>
             <div class="sig-line">Date: <span class="fill">&nbsp;</span></div>
         </div>
@@ -157,6 +158,9 @@
 
     <div class="footer-note">
         THIS PERMIT MAY BE CANCELLED OR REVOKED PURSUANT TO SECTION 309 OF THE NATIONAL BUILDING CODE OF THE PHILIPPINES (PD 1096)
+    </div>
+    <div class="generated-note">
+        This is a computer-generated permit. Printed on: {{ now()->format('m/d/Y') }} | Printed by: {{ auth()->user()?->full_name }}
     </div>
 
 </div>

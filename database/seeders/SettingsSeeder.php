@@ -86,6 +86,13 @@ class SettingsSeeder extends Seeder
             ],
             [
                 'group' => 'general',
+                'key' => 'general.dpwh_logo',
+                'value' => '',
+                'type' => 'file',
+                'description' => 'DPWH logo (PNG/JPG) — printed on the Occupancy Permit PDF',
+            ],
+            [
+                'group' => 'general',
                 'key' => 'general.area_number',
                 'value' => '3314-W',
                 'type' => 'string',

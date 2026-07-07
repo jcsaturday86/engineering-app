@@ -42,6 +42,13 @@
                             <dd class="text-gray-900">{{ $permit->issued_date ? \Carbon\Carbon::parse($permit->issued_date)->format('F d, Y') : '—' }}</dd>
                         </div>
                         <div>
+                            <dt class="text-xs font-medium text-gray-500 uppercase">Issued By</dt>
+                            <dd class="text-gray-900">{{ trim(($permit->building_official_title ?? '') . ' ' . ($permit->building_official_name ?? '')) ?: '—' }}</dd>
+                            @if($permit->building_official_designation)
+                                <dd class="text-gray-500 text-xs">{{ $permit->building_official_designation }}</dd>
+                            @endif
+                        </div>
+                        <div>
                             <dt class="text-xs font-medium text-gray-500 uppercase">Status</dt>
                             <dd class="text-gray-900">{{ ucfirst(str_replace('_', ' ', $application->status ?? '')) }}</dd>
                         </div>

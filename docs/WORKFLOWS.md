@@ -212,9 +212,20 @@ Every forward step below has a corresponding backward action, each requiring pas
 | Return to Zoning (from Engineering) | `AssessmentController::returnToZoning()` | `return-to-zoning` | BP assessment screen; deletes the BP engineering assessment items, sends application back to Planning |
 | Revert engineering finalize | `AssessmentController::revertEngineering()` / `revertEngineeringOp()` | `revert-assessments` | Un-finalizes a BP/OP engineering assessment |
 | Revert OP assessment to draft | `AssessmentController::revertToDraftOp()` | `revert-submission` | OP-only; only while `status = zoning_assessed` (not yet finalized); deletes all occupancy fee entries and the occupancy Assessment, sets status back to `draft` |
-| Revoke generated permit | `PermitController::revertGenerate()` / `revertGenerateOp()` | `revert-permits` | Soft-deletes the `Permit`, rolls application status back to `paid` |
+| Revoke generated permit | `PermitController::revertGenerate()` / `revertGenerateOp()` | `revert-permits` | Tags the `Permit` as `status = 'revoked'` (with a required reason) and soft-deletes it — the permit number is retained, never reused; rolls application status back to `paid`. `doGenerate()` refuses to create a new permit for an application with a revoked permit on file. |
+| Restore revoked permit | `PermitController::restoreRevoke()` / `restoreRevokeOp()` | `revert-permits` | Un-trashes the same `Permit` row, sets `status` back to `generated`, application back to `permit_generated`. Password-confirm only (no reason). |
 
 All "Return to Zoning" / "Revert to Draft" buttons live in the page **header** of `assessments/assess.blade.php`, not inside the Summary tab's content — a tab-gated location would leave them invisible on default page load (the assess screen lands on the first fee-entry tab, not Summary).
+
+---
+
+## Permits List (`/permits/building`, `/permits/occupancy`)
+
+`PermitController::buildingIndex()` / `occupancyIndex()` list applications at `paid`, `permit_generated`, or `released`, with:
+- **Filters** — Search (app number/applicant/project title), Status (Paid, Permit generated, Released, **Revoked** — matched as `status = 'paid'` + a trashed permit tagged `revoked`), Year (defaults to current year).
+- **Permit No.** as the primary (first) column — links to the application Show page, red-strikethrough for a revoked permit's number, `-` if never generated.
+- **TTA column** beside Date, same day-count logic as the application indexes.
+- Actions: **Generate** (no permit yet), **Print** / **Revoke** (active permit), **Restore** (revoked permit — replaces Generate entirely, since a new permit cannot be created while a revoked one exists on file).
 
 ---
 
@@ -254,6 +265,7 @@ The payment form (`collections/create.blade.php`) is a compact, single-screen PO
 | Revert zoning finalize | `revert-zoning` | planning-officer |
 | Revert engineering finalize / return to zoning | `revert-assessments`, `return-to-zoning` | engineering-officer |
 | Revoke generated permit | `revert-permits` | engineering-officer |
+| Restore revoked permit | `revert-permits` | engineering-officer |
 
 ---
 
@@ -295,8 +307,23 @@ qrImage   = QR PNG encoding verifyUrl (endroid/qr-code), embedded as base64 data
 ```
 
 `GET /verify/permit/{token}` (public, throttled `throttle:30,1`, no auth) → `VerifyController::show()` looks up the `Permit` by token:
-- **Found** → `verify/permit.blade.php` shows permit type (Building Permit / Certificate of Occupancy), permit number, date issued, status, applicant name, project title, location
+- **Found** → `verify/permit.blade.php` shows permit type (Building Permit / Certificate of Occupancy), permit number, date issued, **Issued By** (the snapshotted Building Official — title/name/designation, immutable per permit, see the Building Official Snapshot note in `docs/PROJECT_CONTEXT.md`), status, applicant name, project title, location
 - **Not found** → same view renders a "This permit could not be verified" message (still `200 OK` — doesn't leak token validity via status code)
+
+---
+
+## Reports (`/reports/permits`)
+
+`ReportController::generate()` and `PermitReportExport` filter the Permit Report (PDF + Excel) to applications at `permit_generated`, or `paid` with a revoked permit on file (same status semantics as the Permits List) — previously the report included every status with no filter. Both formats include Permit No. and TTA columns and a combined application-date → permit-date Date range. The PDF's peso sign (₱) is rendered with the `DejaVu Sans` font (bundled with DomPDF) instead of the default Helvetica/Arial substitute, which lacks that glyph and rendered it as a box/`?`.
+
+---
+
+## Miscellaneous
+
+- **Unknown-URL fallback** — any unmatched route redirects to the role-appropriate home (or `login` if a guest) instead of a 404 page (`Route::fallback()`).
+- **Session-expired redirect** — a CSRF token mismatch (expired session, "Page Expired") redirects to `login` or `staff.login` with a flash message instead of showing Laravel's default 419 page.
+- **Password visibility toggles** — client login, staff login, and both password fields on Create User (`settings/user-form.blade.php`) have show/hide toggles, matching the one already on client registration.
+- **Printed permit footer** — both permit PDFs show "This is a computer-generated permit. Printed on: {date} | Printed by: {user}" below the legal footer note, computed fresh on every print.
 
 ### Notifications
 

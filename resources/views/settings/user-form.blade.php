@@ -20,7 +20,30 @@
     </div>
 
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <form method="POST" action="{{ $user ? route('settings.users.update', $user) : route('settings.users.store') }}" autocomplete="off">
+        <form method="POST" action="{{ $user ? route('settings.users.update', $user) : route('settings.users.store') }}" autocomplete="off" x-data="{
+            pw: '',
+            pwConfirm: '',
+            get strength() {
+                let s = 0;
+                if (this.pw.length >= 8) s++;
+                if (/[a-z]/.test(this.pw) && /[A-Z]/.test(this.pw)) s++;
+                if (/[0-9]/.test(this.pw)) s++;
+                if (/[^A-Za-z0-9]/.test(this.pw)) s++;
+                return s;
+            },
+            get strengthLabel() {
+                return ['', 'Weak', 'Fair', 'Good', 'Strong'][this.strength];
+            },
+            get strengthColor() {
+                return ['', 'bg-red-500', 'bg-yellow-500', 'bg-blue-500', 'bg-green-500'][this.strength];
+            },
+            get matched() {
+                return this.pwConfirm.length > 0 && this.pw === this.pwConfirm;
+            },
+            get notMatched() {
+                return this.pwConfirm.length > 0 && this.pw !== this.pwConfirm;
+            }
+        }">
             @csrf
             @if($user)
                 @method('PUT')
@@ -128,18 +151,70 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
-                        <input type="password" id="password" name="password"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            required>
+                        <div class="relative">
+                            <input type="password" id="password" name="password"
+                                @input="pw = $event.target.value"
+                                class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                required>
+                            <button type="button" onclick="togglePassword('password', this)" class="absolute inset-y-0 right-0 px-3 flex items-center z-20 text-gray-400 hover:text-gray-600">
+                                <i class="fas fa-eye text-sm"></i>
+                            </button>
+                        </div>
+                        {{-- Password strength bar --}}
+                        <div x-show="pw.length > 0" x-cloak class="mt-2">
+                            <div class="flex gap-1">
+                                <template x-for="i in 4">
+                                    <div class="h-1 flex-1 rounded-full transition-all" :class="i <= strength ? strengthColor : 'bg-gray-200'"></div>
+                                </template>
+                            </div>
+                            <p class="text-xs mt-1 font-medium" :class="{
+                                'text-red-500': strength === 1,
+                                'text-yellow-600': strength === 2,
+                                'text-blue-600': strength === 3,
+                                'text-green-600': strength === 4
+                            }" x-text="strengthLabel"></p>
+                            {{-- Complexity requirements checklist --}}
+                            <div class="mt-2 space-y-0.5">
+                                <div class="flex items-center gap-1.5">
+                                    <i class="fas text-[10px]" :class="pw.length >= 8 ? 'fa-check-circle text-green-500' : 'fa-circle text-gray-300'"></i>
+                                    <span class="text-xs" :class="pw.length >= 8 ? 'text-green-600' : 'text-gray-400'">At least 8 characters</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <i class="fas text-[10px]" :class="/[A-Z]/.test(pw) ? 'fa-check-circle text-green-500' : 'fa-circle text-gray-300'"></i>
+                                    <span class="text-xs" :class="/[A-Z]/.test(pw) ? 'text-green-600' : 'text-gray-400'">One uppercase letter (A-Z)</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <i class="fas text-[10px]" :class="/[a-z]/.test(pw) ? 'fa-check-circle text-green-500' : 'fa-circle text-gray-300'"></i>
+                                    <span class="text-xs" :class="/[a-z]/.test(pw) ? 'text-green-600' : 'text-gray-400'">One lowercase letter (a-z)</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <i class="fas text-[10px]" :class="/[0-9]/.test(pw) ? 'fa-check-circle text-green-500' : 'fa-circle text-gray-300'"></i>
+                                    <span class="text-xs" :class="/[0-9]/.test(pw) ? 'text-green-600' : 'text-gray-400'">One number (0-9)</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <i class="fas text-[10px]" :class="/[^A-Za-z0-9]/.test(pw) ? 'fa-check-circle text-green-500' : 'fa-circle text-gray-300'"></i>
+                                    <span class="text-xs" :class="/[^A-Za-z0-9]/.test(pw) ? 'text-green-600' : 'text-gray-400'">One special character (!@#$%&*)</span>
+                                </div>
+                            </div>
+                        </div>
                         @error('password')
                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
                     <div>
                         <label for="password_confirmation" class="block text-sm font-medium text-gray-700 mb-1">Confirm Password <span class="text-red-500">*</span></label>
-                        <input type="password" id="password_confirmation" name="password_confirmation"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            required>
+                        <div class="relative">
+                            <input type="password" id="password_confirmation" name="password_confirmation"
+                                @input="pwConfirm = $event.target.value"
+                                class="w-full px-3 py-2 pr-10 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-blue-500"
+                                :class="notMatched ? 'border-red-300 focus:ring-red-500' : matched ? 'border-green-300 focus:ring-green-500' : 'border-gray-300 focus:ring-blue-500'"
+                                required>
+                            <button type="button" onclick="togglePassword('password_confirmation', this)" class="absolute inset-y-0 right-0 px-3 flex items-center z-20 text-gray-400 hover:text-gray-600">
+                                <i class="fas fa-eye text-sm"></i>
+                            </button>
+                        </div>
+                        <p x-show="matched" x-cloak class="mt-1 text-xs text-green-600"><i class="fas fa-check-circle mr-0.5"></i> Passwords match</p>
+                        <p x-show="notMatched" x-cloak class="mt-1 text-xs text-red-500"><i class="fas fa-times-circle mr-0.5"></i> Passwords do not match</p>
                     </div>
                 </div>
                 @endif
@@ -157,4 +232,23 @@
         </form>
     </div>
 </div>
+
+@if(!$user)
+<script>
+function togglePassword(inputId, btn) {
+    var input = document.getElementById(inputId);
+    var icon = btn.querySelector('i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+    input.focus();
+}
+</script>
+@endif
 @endsection

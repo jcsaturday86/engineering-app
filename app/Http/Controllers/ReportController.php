@@ -51,8 +51,17 @@ class ReportController extends Controller
         }
 
         $data = match ($validated['report_type']) {
-            'permits' => Application::with('permitType')
+            'permits' => Application::with('permitType', 'permits')
                 ->whereBetween('created_at', [$dateFrom, $dateTo . ' 23:59:59'])
+                ->where(function ($q) {
+                    $q->where('status', 'permit_generated')
+                        ->orWhere(function ($q2) {
+                            $q2->where('status', 'paid')
+                                ->whereHas('permits', function ($q3) {
+                                    $q3->withTrashed()->where('status', 'revoked');
+                                });
+                        });
+                })
                 ->orderBy('created_at')->get(),
             default => Collection::with('application.permitType')
                 ->where('status', 'active')

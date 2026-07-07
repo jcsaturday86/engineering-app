@@ -16,26 +16,59 @@ use Illuminate\Support\Facades\Hash;
 
 class PermitController extends Controller
 {
-    public function buildingIndex()
+    public function buildingIndex(Request $request)
     {
-        $applications = Application::with('permitType', 'permits')
-            ->whereIn('status', ['paid', 'permit_generated', 'released'])
-            ->latest()
-            ->paginate(20);
+        $query = Application::with('permitType', 'permits')
+            ->whereIn('status', ['paid', 'permit_generated', 'released']);
+
+        $this->applyPermitFilters($query, $request);
+
+        $year = $request->filled('year') ? (int) $request->year : now()->year;
+        $query->whereYear('created_at', $year);
+
+        $applications = $query->latest()->paginate(20)->withQueryString();
 
         $type = 'building';
-        return view('permits.index', compact('applications', 'type'));
+        return view('permits.index', compact('applications', 'type', 'year'));
     }
 
-    public function occupancyIndex()
+    public function occupancyIndex(Request $request)
     {
-        $applications = OccupancyApplication::with('applicationType', 'permits')
-            ->whereIn('status', ['paid', 'permit_generated', 'released'])
-            ->latest()
-            ->paginate(20);
+        $query = OccupancyApplication::with('applicationType', 'permits')
+            ->whereIn('status', ['paid', 'permit_generated', 'released']);
+
+        $this->applyPermitFilters($query, $request);
+
+        $year = $request->filled('year') ? (int) $request->year : now()->year;
+        $query->whereYear('created_at', $year);
+
+        $applications = $query->latest()->paginate(20)->withQueryString();
 
         $type = 'occupancy';
-        return view('permits.index', compact('applications', 'type'));
+        return view('permits.index', compact('applications', 'type', 'year'));
+    }
+
+    private function applyPermitFilters($query, Request $request): void
+    {
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('application_number', 'like', "%{$search}%")
+                    ->orWhere('applicant_first_name', 'like', "%{$search}%")
+                    ->orWhere('applicant_last_name', 'like', "%{$search}%")
+                    ->orWhere('project_title', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('status')) {
+            if ($request->status === 'revoked') {
+                $query->where('status', 'paid')->whereHas('permits', function ($q) {
+                    $q->withTrashed()->where('status', 'revoked');
+                });
+            } else {
+                $query->where('status', $request->status);
+            }
+        }
     }
 
     // BP permit generation
@@ -56,10 +89,15 @@ class PermitController extends Controller
             return back()->with('error', 'Application must be paid before generating permit.');
         }
 
+        if ($application->permits()->onlyTrashed()->where('status', 'revoked')->exists()) {
+            return back()->with('error', "This application's permit was revoked. Restore the previous permit instead of generating a new one.");
+        }
+
         $permitType = PermitType::where('code', $permitCode)->firstOrFail();
         $morphType = $permitCode === 'OP' ? 'op' : 'bp';
+        $buildingOfficial = Signatory::where('role', 'building_official')->where('is_active', true)->first();
 
-        DB::transaction(function () use ($application, $permitType, $permitCode, $morphType) {
+        DB::transaction(function () use ($application, $permitType, $permitCode, $morphType, $buildingOfficial) {
             $counter = Permit::withTrashed()
                     ->where('permit_type_id', $permitType->id)
                     ->where('permit_year', now()->year)
@@ -80,6 +118,10 @@ class PermitController extends Controller
                 'issued_date' => now()->toDateString(),
                 'processed_by' => Auth::id(),
                 'status' => 'generated',
+                'building_official_name' => $buildingOfficial?->name,
+                'building_official_title' => $buildingOfficial?->title,
+                'building_official_designation' => $buildingOfficial?->designation,
+                'building_official_license_no' => $buildingOfficial?->license_no,
             ]);
 
             $application->update([
@@ -114,7 +156,10 @@ class PermitController extends Controller
 
     private function doRevertGenerate(Request $request, PermitApplicationContract $application)
     {
-        $request->validate(['password' => 'required|string']);
+        $request->validate([
+            'password' => 'required|string',
+            'reason' => 'required|string|max:500',
+        ]);
 
         if (! Hash::check($request->input('password'), Auth::user()->password)) {
             return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
@@ -124,8 +169,12 @@ class PermitController extends Controller
             return back()->with('error', 'Only applications with a generated permit can have it revoked.');
         }
 
-        DB::transaction(function () use ($application) {
-            $application->permits()->get()->each(function ($permit) {
+        DB::transaction(function () use ($application, $request) {
+            $application->permits()->get()->each(function ($permit) use ($request) {
+                $permit->update([
+                    'status' => 'revoked',
+                    'revoke_reason' => $request->input('reason'),
+                ]);
                 $permit->delete();
             });
 
@@ -135,9 +184,52 @@ class PermitController extends Controller
             ]);
         });
 
-        activity()->causedBy(Auth::user())->performedOn($application)->log('Permit generation reverted');
+        activity()->causedBy(Auth::user())->performedOn($application)
+            ->withProperties(['reason' => $request->input('reason')])
+            ->log('Permit generation reverted');
 
         return back()->with('success', 'Permit generation reverted.');
+    }
+
+    // BP restore revoked permit
+    public function restoreRevoke(Request $request, Application $application)
+    {
+        return $this->doRestoreRevoke($request, $application);
+    }
+
+    // OP restore revoked permit
+    public function restoreRevokeOp(Request $request, OccupancyApplication $occupancyApplication)
+    {
+        return $this->doRestoreRevoke($request, $occupancyApplication);
+    }
+
+    private function doRestoreRevoke(Request $request, PermitApplicationContract $application)
+    {
+        $request->validate(['password' => 'required|string']);
+
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
+        $permit = $application->permits()->onlyTrashed()->where('status', 'revoked')->latest('deleted_at')->first();
+
+        if (! $permit) {
+            return back()->with('error', 'No revoked permit found to restore.');
+        }
+
+        DB::transaction(function () use ($application, $permit) {
+            $permit->restore();
+            $permit->update(['status' => 'generated']);
+
+            $application->update([
+                'status' => 'permit_generated',
+                'issued_date' => $permit->issued_date,
+            ]);
+        });
+
+        activity()->causedBy(Auth::user())->performedOn($application)->log('Permit revocation reversed');
+
+        return back()->with('success', 'Permit restored successfully.');
     }
 
     public function print(Permit $permit)
@@ -170,9 +262,14 @@ class PermitController extends Controller
         }
 
         $dpwhLogo = null;
-        $dpwhLogoPath = public_path('images/dpwh-logo.png');
-        if (file_exists($dpwhLogoPath)) {
-            $dpwhLogo = 'data:image/png;base64,' . base64_encode(file_get_contents($dpwhLogoPath));
+        if (! empty($settings['general.dpwh_logo']) && \Illuminate\Support\Facades\Storage::disk('public')->exists($settings['general.dpwh_logo'])) {
+            $mime = \Illuminate\Support\Facades\Storage::disk('public')->mimeType($settings['general.dpwh_logo']);
+            $dpwhLogo = 'data:' . $mime . ';base64,' . base64_encode(\Illuminate\Support\Facades\Storage::disk('public')->get($settings['general.dpwh_logo']));
+        } else {
+            $dpwhLogoPath = public_path('images/dpwh-logo.png');
+            if (file_exists($dpwhLogoPath)) {
+                $dpwhLogo = 'data:image/png;base64,' . base64_encode(file_get_contents($dpwhLogoPath));
+            }
         }
 
         $verifyPath = route('verify.permit', $permit->verification_token, absolute: false);
