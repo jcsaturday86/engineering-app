@@ -284,7 +284,7 @@ The payment form (`collections/create.blade.php`) is a compact, single-screen PO
 
 | Template | Trigger |
 |----------|---------|
-| application-form | ApplicationController::printForm |
+| application-form | ApplicationController::printForm / OccupancyApplicationController::printForm — browser-print HTML (not DomPDF); Unified Application Form for Building Permit reproduced as a background-image overlay (`public/images/forms/unified-bp-form-p{1,2}.png`) with ~84 absolutely-positioned dynamic fields; city seal pulled dynamically from `Setting` (`general.logo`) |
 | building-permit | PermitController::print (BP) — NBC Form B-018 style, A4 landscape, city seal, QR verification code |
 | occupancy-permit | PermitController::print (OP) — DPWH Certificate of Occupancy style, A4 landscape, DPWH logo + city seal, QR verification code |
 | assessment-summary | AssessmentController::print (BP only) — Code 128 barcode above BP number; Approved By = building_official signatory; no Fire Code Fees section |

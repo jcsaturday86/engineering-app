@@ -13,6 +13,7 @@ use App\Models\OccupancySubGroup;
 use App\Models\PermitType;
 use App\Models\Province;
 use App\Models\ScopeOfWork;
+use App\Models\Signatory;
 use App\Models\User;
 use App\Notifications\ApplicationSubmittedNotification;
 use Illuminate\Http\Request;
@@ -277,7 +278,16 @@ class ApplicationController extends Controller
             'applicationOccupancyGroups.occupancySubGroup',
         ]);
 
-        return view('pdf.application-form', compact('application'));
+        $signatories = Signatory::where('is_active', true)->get()->keyBy('role');
+
+        $settings = \App\Models\Setting::where('group', 'general')->pluck('value', 'key');
+        $sealImage = null;
+        if (! empty($settings['general.logo']) && \Illuminate\Support\Facades\Storage::disk('public')->exists($settings['general.logo'])) {
+            $mime = \Illuminate\Support\Facades\Storage::disk('public')->mimeType($settings['general.logo']);
+            $sealImage = 'data:' . $mime . ';base64,' . base64_encode(\Illuminate\Support\Facades\Storage::disk('public')->get($settings['general.logo']));
+        }
+
+        return view('pdf.application-form', compact('application', 'signatories', 'sealImage'));
     }
 
     private function getFormData(?int $permitTypeId = null): array

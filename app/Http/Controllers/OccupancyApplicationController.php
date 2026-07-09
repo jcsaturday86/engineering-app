@@ -232,7 +232,16 @@ class OccupancyApplicationController extends Controller
 
         $application = $occupancyApplication;
 
-        return view('pdf.application-form', compact('application'));
+        $signatories = \App\Models\Signatory::where('is_active', true)->get()->keyBy('role');
+
+        $settings = \App\Models\Setting::where('group', 'general')->pluck('value', 'key');
+        $sealImage = null;
+        if (! empty($settings['general.logo']) && \Illuminate\Support\Facades\Storage::disk('public')->exists($settings['general.logo'])) {
+            $mime = \Illuminate\Support\Facades\Storage::disk('public')->mimeType($settings['general.logo']);
+            $sealImage = 'data:' . $mime . ';base64,' . base64_encode(\Illuminate\Support\Facades\Storage::disk('public')->get($settings['general.logo']));
+        }
+
+        return view('pdf.application-form', compact('application', 'signatories', 'sealImage'));
     }
 
     private function getFormData(int $permitTypeId): array

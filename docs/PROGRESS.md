@@ -37,7 +37,7 @@
 | Application numbering | DONE | BP-YYYY-MM-NNNNN |
 | Occupancy group selection | DONE | Groups A–J with sub-groups |
 | All BP form fields | DONE | Applicant, enterprise, project, building, costs, engineers |
-| Application form print | DONE | Browser print, legal layout |
+| Application form print | DONE | Browser print, background-image overlay of the official 2-page Unified Application Form (8.5×13in long bond), ~84 dynamic fields, dynamic city seal from Settings |
 | Status workflow | DONE | 8-state machine |
 | Submission notification | DONE | Notifies engineering users |
 | FSEC No. / Date Issued fields | DONE | Reference-only fields on the application form, shown on the printed Building Permit |

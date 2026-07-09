@@ -196,6 +196,13 @@
 - Fixed a page-overflow regression this caused on the Building Permit's single fixed-height page by trimming other vertical margins (signature block, footer spacing) by a matching amount
 - Bumped the note's font from 8px to 10px for readability, re-verified it still fits on one page
 
+### Unified Application Form — Background-Image Overlay Rebuild — COMPLETED
+
+- Rebuilt `resources/views/pdf/application-form.blade.php` from a semantic HTML/table replica to a **background-image overlay**: `public/images/forms/unified-bp-form-p1.png` / `-p2.png` (scanned official 2-page form) are full-page CSS backgrounds, with ~84 dynamic fields (applicant/owner data, scope-of-work and occupancy-group checkmarks, costs, dates, signatories) absolutely positioned on top in inch units, so the printed output is visually near-identical to the government form
+- No PDF-rasterization tooling (Ghostscript/ImageMagick/poppler) was available or installed on the dev machine — background PNGs were produced via Windows' built-in WinRT `Windows.Data.Pdf.PdfDocument` API from PowerShell instead; field positions were calibrated by scanning the source PNG for exact line/border pixel coordinates with PHP GD rather than by eyeballing screenshots
+- Official city seal (top-left, page 1) now renders **dynamically** from `Setting` (`group=general`, `key=general.logo`), base64-embedded — same pattern as `$sealImage` in `PermitController` — instead of a hardcoded file; wired into both `ApplicationController::printForm()` and `OccupancyApplicationController::printForm()`
+- Page 2 overlay adds the Building Official's name (bold, underlined) and designation, 15px, centered below the Terms and Conditions box, sourced from `Signatory` (`role=building_official`)
+
 ---
 
 ## Upcoming Tasks
