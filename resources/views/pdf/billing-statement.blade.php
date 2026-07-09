@@ -6,6 +6,7 @@
         @page { margin: 20mm 15mm; size: A4 portrait; }
         body { font-family: Arial, sans-serif; font-size: 10px; color: #333; }
         .header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .header img.seal { height: 55px; margin-bottom: 4px; }
         .header h4 { margin: 2px 0; font-size: 11px; text-transform: uppercase; }
         .header h2 { margin: 8px 0 3px; font-size: 16px; }
         .info { margin-bottom: 15px; }
@@ -22,8 +23,11 @@
 </head>
 <body>
     <div class="header">
+        @if(!empty($sealImage))
+            <img src="{{ $sealImage }}" class="seal" alt="Official Seal">
+        @endif
         <h4>Republic of the Philippines</h4>
-        <h4>City / Municipality</h4>
+        <h4>{{ $settings['general.city'] ?? 'City' }}, {{ $settings['general.province'] ?? 'Province' }}</h4>
         <h4>Office of the Building Official</h4>
         <h2>BILLING STATEMENT</h2>
     </div>

@@ -16,6 +16,7 @@
 | Activity logging | DONE | Application, Assessment, Collection, Permit |
 | Soft deletes | DONE | All transaction tables |
 | Settings management | DONE | Key-value with admin UI |
+| Dynamic branding (seal/logos/favicon) | DONE | `Setting::general()`/`imageDataUri()` helpers; seal on all printed documents; `general.favicon` browser-tab icon (falls back to seal); `general.national_govt_logo` on both application forms |
 | Browser autofill disabled | DONE | autocomplete="off" on all forms |
 | Form validation UX | DONE | Error banner, section highlighting, scroll-to-error |
 | Test data seeder | DONE | ApplicationSeeder: 5 BP + 5 OP |
@@ -37,7 +38,8 @@
 | Application numbering | DONE | BP-YYYY-MM-NNNNN |
 | Occupancy group selection | DONE | Groups A–J with sub-groups |
 | All BP form fields | DONE | Applicant, enterprise, project, building, costs, engineers |
-| Application form print | DONE | Browser print, background-image overlay of the official 2-page Unified Application Form (8.5×13in long bond), ~84 dynamic fields, dynamic city seal from Settings |
+| Application form print | DONE | Browser print, background-image overlay of the official 2-page Unified Application Form (8.5×13in long bond), ~84 dynamic fields; overlaid letterhead (seal left, National Govt logo right, city/province from Settings); Area No. from `general.area_number`; p2 applicant signature line (Building Official block removed with the new scan) |
+| Cancel hidden after permit generation | DONE | Show-page Cancel button excluded for `permit_generated` (in addition to paid/released/cancelled) |
 | Status workflow | DONE | 8-state machine |
 | Submission notification | DONE | Notifies engineering users |
 | FSEC No. / Date Issued fields | DONE | Reference-only fields on the application form, shown on the printed Building Permit |
@@ -56,6 +58,7 @@
 | Character of Occupancy | DONE | Shared occupancy group selection |
 | Status workflow (skips zoning) | DONE | submitted → engineering_assessed |
 | Polymorphic downstream | DONE | assessments, billings, collections, permits, documents |
+| OP application form print (PDF) | DONE | Dedicated `occupancy-application-form.blade.php` (DomPDF, A4) — fixed crash from reusing the BP overlay view; official Certificate of Occupancy application layout with two-column signatory block |
 | Revert submission / revert-to-draft | DONE | `revertSubmission()`; `AssessmentController::revertToDraftOp()` also purges occupancy fee entries |
 | OP-appropriate status labels | DONE | `zoning_assessed` shown as "For Occupancy Assessment" (no zoning stage in OP) |
 | Year filter + Turn Around Time column | DONE | `/occupancy-applications` index; Project Title column (replaced Applicant Address) |
@@ -110,8 +113,8 @@
 | Occupancy fee tab — OP (BOPMS-style) | DONE | 8 OCC_* types, dynamic unit label (Costing/Area/Unit/Meters); range_based w/ excess_every, per_unit, percentage all verified |
 | Assessment finalization lock | DONE | BP + zoning: add/remove/autocompute blocked after finalize (UI + server guards) |
 | Finalize stays on Summary tab | DONE | Redirects to ?tab=SUMMARY |
-| BP assessment PDF | DONE | Fire Code Fees removed; Code 128 barcode above BP number; Approved By from building_official signatory |
-| OP assessment PDF | DONE | Separate `assessment-summary-op` template titled "OCCUPANCY PERMIT ASSESSMENT"; only Occupancy Fees section (no Zoning/BP/Other Fees) |
+| BP assessment PDF | DONE | Fire Code Fees removed; Code 128 barcode above BP number; Approved By from building_official signatory; city seal header, enlarged fonts |
+| OP assessment PDF | DONE | Separate `assessment-summary-op` template titled "OCCUPANCY PERMIT ASSESSMENT"; only Occupancy Fees section (no Zoning/BP/Other Fees); city seal header, enlarged fonts |
 | Print button on BP + OP assessment index | DONE | Shown when status = engineering_assessed or billed |
 | Revert engineering finalize (BP + OP) | DONE | `revertEngineering()` / `revertEngineeringOp()` — password-confirmed un-finalize |
 | Zoning fees missing from printed Summary of Computation | DONE (fixed) | Root cause: `fee_category_id` never set on zoning `AssessmentItem::create()` calls; fixed + backfilled |
@@ -123,9 +126,9 @@
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Payment collection (cash/check/online) | DONE | |
-| Official receipt generation | DONE | PDF, unique OR number |
-| Void transaction | DONE | Password verify, void tracking |
-| Collection history | DONE | |
+| Official receipt generation | DONE | PDF, unique OR number, city seal header |
+| Void transaction | DONE | Password verify, void tracking; header button removed from /collections (route remains) |
+| Collection history | DONE | "My Collections": scoped to logged-in collector, month filter (default current month) |
 | Barcode scan / search on Collections | DONE | Exact app-number match → payment form; partial match filters list |
 | Cash change display | DONE | Live Alpine calc; server rejects insufficient cash amount |
 | No-scroll payment form redesign | DONE | POS-style 3-col amount strip, segmented payment mode, sticky action bar |
@@ -138,7 +141,7 @@
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Billing auto-generation | DONE | Auto on assessment finalize (BillingService::generateFor); BL-YYYY-MM-NNNNN; Billing menu/page removed |
-| Billing statement PDF | DONE | billing.print route kept |
+| Billing statement PDF | DONE | billing.print route kept; city seal + city/province from Settings |
 | Billing status tracking | DONE | unpaid, partial, paid, void |
 
 ---
@@ -147,7 +150,7 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Building permit PDF | DONE | NBC Form B-018 style — A4 landscape, city seal, thick bordered frame, QR verification code |
+| Building permit PDF | DONE | NBC Form B-018 style — A4 landscape, city seal + DPWH logo header, thick bordered frame, QR verification code |
 | Occupancy permit PDF | DONE | DPWH Certificate of Occupancy style — A4 landscape, DPWH logo + city seal, QR verification code |
 | Permit numbering | DONE | CODE-YYYY-MM-NNNNN |
 | QR code verification | DONE | `verification_token` (UUID) per permit; public `/verify/permit/{token}` page (no auth); `general.domain` setting controls the QR's domain |
@@ -157,7 +160,7 @@
 | Permits list filters + TTA + Permit No. column | DONE | `/permits/building`, `/permits/occupancy` — Search/Status(incl. Revoked)/Year filters; Permit No. as primary column; TTA beside Date |
 | Building Official snapshot | DONE | Signatory captured on `Permit` at generation time; used by both PDFs + verification page; immune to later Signatory edits |
 | Printed permit footer note | DONE | "Computer-generated permit. Printed on: {date} \| Printed by: {user}" on both BP/OP PDFs |
-| Evaluation report PDF | DONE | |
+| Evaluation report PDF | DONE | City seal + Republic/city/province header |
 
 ---
 
@@ -176,7 +179,7 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| System settings | DONE | Includes `general.logo` and `general.dpwh_logo` (file uploads, GD-resized, per-key storage path), `general.zip_code`, `general.domain` |
+| System settings | DONE | File settings: `general.logo`, `general.favicon`, `general.dpwh_logo`, `general.national_govt_logo` (GD-resized, per-key storage path); strings: `general.city`/`general.province` (real values seeded), `general.area_number`, `general.zip_code`, `general.domain` |
 | User management | DONE | Create User: password now admin-set with complexity enforcement + strength UI (was hardcoded `password123`) |
 | User management: role select / blank-field bug | PENDING | Create/Edit User form is currently unusable end-to-end — role `<select>` sends IDs but validation expects names; `User::create()` crashes if middle_name/phone/department/position are blank. Found during password-complexity work, tracked separately (not yet fixed) |
 | Role/permission matrix | DONE | |
@@ -193,7 +196,7 @@
 | Online application submission | DONE | Auto-submits |
 | Status tracking | DONE | Timeline view |
 | Document requirement upload | PARTIAL | Model/route exists, UI needs work |
-| Permit download | DONE | When status = released |
+| Permit download | DONE | When status = released; now carries the same seal/DPWH logo/QR as the staff print path (previously rendered without them) |
 
 ---
 

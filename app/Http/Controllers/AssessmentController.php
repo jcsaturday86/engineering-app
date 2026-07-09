@@ -1585,8 +1585,10 @@ class AssessmentController extends Controller
             $generator->getBarcode($application->application_number, $generator::TYPE_CODE_128, 2, 80)
         );
 
+        $sealImage = Setting::imageDataUri($settings, 'general.logo');
+
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary', compact(
-            'application', 'settings', 'buildingAssessment',
+            'application', 'settings', 'sealImage', 'buildingAssessment',
             'zoningAssessment', 'itemsByCategory', 'zoningByCategory',
             'barangayName', 'preparedBy', 'buildingOfficial', 'barcodeImage'
         ));
@@ -1625,8 +1627,10 @@ class AssessmentController extends Controller
             $generator->getBarcode($application->application_number, $generator::TYPE_CODE_128, 2, 80)
         );
 
+        $sealImage = Setting::imageDataUri($settings, 'general.logo');
+
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary-op', compact(
-            'application', 'settings', 'occupancyAssessment',
+            'application', 'settings', 'sealImage', 'occupancyAssessment',
             'itemsByCategory', 'barangayName', 'preparedBy',
             'buildingOfficial', 'barcodeImage'
         ));

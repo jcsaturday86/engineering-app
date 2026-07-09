@@ -35,7 +35,9 @@ class SettingsController extends Controller
 
             $path = match ($key) {
                 'general.logo' => 'logos/city-seal.png',
+                'general.favicon' => 'logos/favicon.png',
                 'general.dpwh_logo' => 'logos/dpwh-logo.png',
+                'general.national_govt_logo' => 'logos/national-govt-logo.png',
                 default => 'logos/' . str_replace('.', '-', $key) . '.png',
             };
             $this->storeResizedLogo($file, $path);

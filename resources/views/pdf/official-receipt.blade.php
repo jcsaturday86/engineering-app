@@ -26,6 +26,10 @@
             border-bottom: 2px solid #333;
             padding-bottom: 15px;
         }
+        .header img.seal {
+            height: 60px;
+            margin-bottom: 6px;
+        }
         .header .municipality {
             font-size: 14px;
             font-weight: bold;
@@ -140,6 +144,9 @@
     <div class="container">
         {{-- Header --}}
         <div class="header">
+            @if(!empty($sealImage))
+                <img src="{{ $sealImage }}" class="seal" alt="Official Seal">
+            @endif
             <p class="municipality">Republic of the Philippines</p>
             <p class="department">Office of the Building Official — Engineering Department</p>
             <p class="title">Official Receipt</p>

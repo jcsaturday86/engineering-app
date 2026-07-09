@@ -21,7 +21,8 @@
         .header-cell { display: table-cell; vertical-align: middle; }
         .seal-cell { width: 90px; text-align: right; padding-right: 6px; }
         .seal-cell img.seal { height: 100px; }
-        .spacer-cell { width: 90px; }
+        .spacer-cell { width: 90px; text-align: left; padding-left: 6px; }
+        .spacer-cell img.dpwh { height: 100px; }
         .text-cell { text-align: center; }
         .header p { margin: 1px 0; font-size: 13.5px; }
         .header .office { font-weight: bold; font-size: 14.5px; margin-top: 2px; }
@@ -84,7 +85,11 @@
                 <p>Province of {{ $settings['general.province'] ?? 'Province' }}</p>
                 <p class="office">OFFICE OF THE BUILDING OFFICIAL</p>
             </div>
-            <div class="header-cell spacer-cell"></div>
+            <div class="header-cell spacer-cell">
+                @if(!empty($dpwhLogo))
+                    <img class="dpwh" src="{{ $dpwhLogo }}">
+                @endif
+            </div>
         </div>
     </div>
 

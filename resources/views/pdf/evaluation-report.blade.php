@@ -19,6 +19,18 @@
             color: #000;
             line-height: 1.3;
         }
+        .header {
+            text-align: center;
+            margin-bottom: 6px;
+        }
+        .header img.seal {
+            height: 55px;
+            margin-bottom: 4px;
+        }
+        .header p {
+            margin: 0;
+            font-size: 10.5px;
+        }
         .page-title {
             text-align: center;
             font-size: 16px;
@@ -181,6 +193,14 @@
 @endphp
 
 {{-- ===================== PAGE 1 ===================== --}}
+<div class="header">
+    @if(!empty($sealImage))
+        <img src="{{ $sealImage }}" class="seal" alt="Official Seal">
+    @endif
+    <p>Republic of the Philippines</p>
+    <p>{{ $settings['general.city'] ?? 'City of San Fernando' }}, Province of {{ $settings['general.province'] ?? 'La Union' }}</p>
+</div>
+
 <div class="page-title">EVALUATION REPORT</div>
 
 <div class="section-title">A.&nbsp;&nbsp;APPLICATION AND PROJECT INFORMATION</div>

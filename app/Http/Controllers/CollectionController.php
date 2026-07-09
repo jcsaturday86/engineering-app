@@ -61,12 +61,19 @@ class CollectionController extends Controller
 
         $forPayment = $bpForPayment->concat($opForPayment)->sortByDesc('created_at');
 
+        $month = $request->get('month', now()->format('Y-m'));
+        $monthStart = \Carbon\Carbon::createFromFormat('Y-m', $month)->startOfMonth();
+        $monthEnd = $monthStart->copy()->endOfMonth();
+
         $collections = Collection::with('applicationable', 'collectedBy')
             ->where('status', 'active')
+            ->where('collected_by', Auth::id())
+            ->whereBetween('or_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
             ->latest()
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
-        return view('collections.index', compact('collections', 'forPayment', 'search'));
+        return view('collections.index', compact('collections', 'forPayment', 'search', 'month'));
     }
 
     // BP payment
@@ -200,7 +207,10 @@ class CollectionController extends Controller
 
         $application = $collection->applicationable;
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.official-receipt', compact('collection', 'application'));
+        $settings = \App\Models\Setting::general();
+        $sealImage = \App\Models\Setting::imageDataUri($settings, 'general.logo');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.official-receipt', compact('collection', 'application', 'settings', 'sealImage'));
         $pdf->setPaper('a4', 'portrait');
 
         return $pdf->stream("or_{$collection->or_number}.pdf");

@@ -345,7 +345,26 @@ class OnlineApplicationController extends Controller
         $signatories = \App\Models\Signatory::where('is_active', true)->get()->keyBy('role');
         $template = $permitCode === 'OP' ? 'pdf.occupancy-permit' : 'pdf.building-permit';
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($template, compact('permit', 'application', 'signatories'));
+        $settings = \App\Models\Setting::general();
+        $sealImage = \App\Models\Setting::imageDataUri($settings, 'general.logo');
+        $dpwhLogo = \App\Models\Setting::imageDataUri($settings, 'general.dpwh_logo');
+        if (! $dpwhLogo) {
+            $dpwhLogoPath = public_path('images/dpwh-logo.png');
+            if (file_exists($dpwhLogoPath)) {
+                $dpwhLogo = 'data:image/png;base64,' . base64_encode(file_get_contents($dpwhLogoPath));
+            }
+        }
+
+        $verifyPath = route('verify.permit', $permit->verification_token, absolute: false);
+        $domain = ! empty($settings['general.domain']) ? rtrim($settings['general.domain'], '/') : rtrim(config('app.url'), '/');
+        $qrCode = new \Endroid\QrCode\QrCode(
+            data: $domain . $verifyPath,
+            size: 300,
+            margin: 4,
+        );
+        $qrImage = (new \Endroid\QrCode\Writer\PngWriter())->write($qrCode)->getDataUri();
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($template, compact('permit', 'application', 'signatories', 'settings', 'sealImage', 'dpwhLogo', 'qrImage'));
         $pdf->setPaper('a4', 'landscape');
 
         return $pdf->download("permit_{$permit->permit_number}.pdf");

@@ -37,6 +37,8 @@
   Any state ──→ [cancelled] (with reason)
 ```
 
+The Cancel button on the BP/OP application Show pages is hidden once status reaches `paid`, `released`, `permit_generated`, or `cancelled` — a generated permit must be revoked through the Permits workflow instead of cancelling the application outright.
+
 ### Step Details
 
 | Step | Status | Actor | Controller | Action |
@@ -244,6 +246,9 @@ On the payment form, when Payment Mode = Cash, a live Alpine-computed box shows 
 
 The payment form (`collections/create.blade.php`) is a compact, single-screen POS-style layout: Application No./Applicant, OR Number/Paid By, and a three-column Amount Due / Amount Received / Change strip, followed by a segmented Cash/Check/Online control and a sticky action bar — designed so the collector doesn't need to scroll while processing a payment.
 
+### My Collections (Payment History)
+The `/collections` Payment History table is scoped to the **logged-in collector only** (`collected_by = Auth::id()`) and filtered by month (`?month=YYYY-MM`, defaults to the current month) via an auto-submitting month picker in the table header. The "Void Collection" header button was removed from this page (the `/collections/void` route still exists).
+
 ---
 
 ## Role-Based Access Per Step
@@ -284,16 +289,19 @@ The payment form (`collections/create.blade.php`) is a compact, single-screen PO
 
 | Template | Trigger |
 |----------|---------|
-| application-form | ApplicationController::printForm / OccupancyApplicationController::printForm — browser-print HTML (not DomPDF); Unified Application Form for Building Permit reproduced as a background-image overlay (`public/images/forms/unified-bp-form-p{1,2}.png`) with ~84 absolutely-positioned dynamic fields; city seal pulled dynamically from `Setting` (`general.logo`) |
-| building-permit | PermitController::print (BP) — NBC Form B-018 style, A4 landscape, city seal, QR verification code |
+| application-form | ApplicationController::printForm (BP only) — browser-print HTML (not DomPDF); Unified Application Form for Building Permit reproduced as a background-image overlay (`public/images/forms/unified-bp-form-p{1,2}.png`) with ~84 absolutely-positioned dynamic fields; letterhead is overlaid (seal `general.logo` left, `general.national_govt_logo` right, Republic/city/province from settings centered); Area No. falls back to `general.area_number`; p2 ends with the applicant's name over a SIGNATURE OVER PRINTED NAME OF OWNER/APPLICANT line |
+| occupancy-application-form | OccupancyApplicationController::printForm (OP only) — DomPDF A4 portrait; Unified Application Form for Certificate of Occupancy; two-logo header, FULL/PARTIAL from applicationType, static requirements checklist, two-column signatory block (Inspected by: building_official Signatory / Submitted by: applicant + Attested by: full-time inspector with blank PRC table) |
+| building-permit | PermitController::print (BP) — NBC Form B-018 style, A4 landscape, city seal (left) + DPWH logo (right), QR verification code |
 | occupancy-permit | PermitController::print (OP) — DPWH Certificate of Occupancy style, A4 landscape, DPWH logo + city seal, QR verification code |
-| assessment-summary | AssessmentController::print (BP only) — Code 128 barcode above BP number; Approved By = building_official signatory; no Fire Code Fees section |
-| assessment-summary-op | AssessmentController::printOp (OP only) — titled "OCCUPANCY PERMIT ASSESSMENT"; only an Occupancy Fees section (no Zoning/Building/Electrical/Mechanical/Other Fees/Filing/Processing) |
-| billing-statement | BillingController::print |
-| official-receipt | CollectionController::receipt |
+| assessment-summary | AssessmentController::print (BP only) — city seal header; Code 128 barcode above BP number; Approved By = building_official signatory; no Fire Code Fees section |
+| assessment-summary-op | AssessmentController::printOp (OP only) — city seal header; titled "OCCUPANCY PERMIT ASSESSMENT"; only an Occupancy Fees section (no Zoning/Building/Electrical/Mechanical/Other Fees/Filing/Processing) |
+| billing-statement | BillingController::print — city seal + city/province from settings |
+| official-receipt | CollectionController::receipt — city seal header |
 | zoning-certification | PermitController::zoningCertification |
 | locational-clearance | PermitController::locationalClearance |
-| evaluation-report | PermitController::evaluationReport |
+| evaluation-report | PermitController::evaluationReport — city seal + Republic/city/province header |
+
+All seal/logo images above are sourced dynamically from Settings → General (`Setting::general()` + `Setting::imageDataUri()`), so an admin logo change propagates to every printed document. `OnlineApplicationController::doDownloadPermit()` (client-portal download) passes the same seal/logo/QR variables as the staff print path.
 
 ---
 

@@ -382,7 +382,10 @@ class PermitController extends Controller
         $application->load('zoningAssessment', 'buildingBarangay', 'applicantBarangay', 'applicantCity');
         $signatories = Signatory::where('is_active', true)->get()->keyBy('role');
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.evaluation-report', compact('application', 'signatories'));
+        $settings = \App\Models\Setting::general();
+        $sealImage = \App\Models\Setting::imageDataUri($settings, 'general.logo');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.evaluation-report', compact('application', 'signatories', 'settings', 'sealImage'));
         $pdf->setPaper('a4', 'portrait');
 
         return $pdf->stream("evaluation_{$application->application_number}.pdf");

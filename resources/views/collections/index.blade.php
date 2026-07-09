@@ -13,11 +13,6 @@
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h2 class="text-xl font-bold text-gray-900">Collections</h2>
-        <div class="flex gap-2">
-            <a href="{{ route('collections.void') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 border border-red-200 transition">
-                <i class="fas fa-ban"></i> Void Collection
-            </a>
-        </div>
     </div>
 
     {{-- Barcode Scan / Search --}}
@@ -99,6 +94,17 @@
 
     {{-- Payment History --}}
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h3 class="text-sm font-semibold text-gray-700">
+                <i class="fas fa-receipt mr-1"></i> My Collections
+            </h3>
+            <form method="GET" action="{{ route('collections.index') }}" class="flex items-center gap-2">
+                <label for="month" class="text-xs font-medium text-gray-500">Month</label>
+                <input type="month" id="month" name="month" value="{{ $month }}"
+                    onchange="this.form.submit()"
+                    class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </form>
+        </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 border-b border-gray-200">

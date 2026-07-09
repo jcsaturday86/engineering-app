@@ -241,7 +241,16 @@ class OccupancyApplicationController extends Controller
             $sealImage = 'data:' . $mime . ';base64,' . base64_encode(\Illuminate\Support\Facades\Storage::disk('public')->get($settings['general.logo']));
         }
 
-        return view('pdf.application-form', compact('application', 'signatories', 'sealImage'));
+        $nationalGovtLogo = null;
+        if (! empty($settings['general.national_govt_logo']) && \Illuminate\Support\Facades\Storage::disk('public')->exists($settings['general.national_govt_logo'])) {
+            $mime = \Illuminate\Support\Facades\Storage::disk('public')->mimeType($settings['general.national_govt_logo']);
+            $nationalGovtLogo = 'data:' . $mime . ';base64,' . base64_encode(\Illuminate\Support\Facades\Storage::disk('public')->get($settings['general.national_govt_logo']));
+        }
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.occupancy-application-form', compact('application', 'signatories', 'sealImage', 'nationalGovtLogo', 'settings'));
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->stream("op_application_{$application->application_number}.pdf");
     }
 
     private function getFormData(int $permitTypeId): array

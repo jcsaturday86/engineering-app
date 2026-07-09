@@ -31,14 +31,14 @@ class SettingsSeeder extends Seeder
             [
                 'group' => 'general',
                 'key' => 'general.province',
-                'value' => 'Sample Province',
+                'value' => 'La Union',
                 'type' => 'string',
                 'description' => 'Province name',
             ],
             [
                 'group' => 'general',
                 'key' => 'general.city',
-                'value' => 'Sample City',
+                'value' => 'City of San Fernando',
                 'type' => 'string',
                 'description' => 'City or municipality name',
             ],
@@ -86,10 +86,24 @@ class SettingsSeeder extends Seeder
             ],
             [
                 'group' => 'general',
+                'key' => 'general.favicon',
+                'value' => '',
+                'type' => 'file',
+                'description' => 'Browser tab icon (PNG/JPG) — shown on every page. Falls back to the Official Logo if not set.',
+            ],
+            [
+                'group' => 'general',
                 'key' => 'general.dpwh_logo',
                 'value' => '',
                 'type' => 'file',
                 'description' => 'DPWH logo (PNG/JPG) — printed on the Occupancy Permit PDF',
+            ],
+            [
+                'group' => 'general',
+                'key' => 'general.national_govt_logo',
+                'value' => '',
+                'type' => 'file',
+                'description' => 'National Government logo (PNG/JPG) — printed on the left of the Occupancy Permit Application Form',
             ],
             [
                 'group' => 'general',

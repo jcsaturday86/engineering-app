@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Billing;
+use App\Models\Setting;
 
 class BillingController extends Controller
 {
@@ -17,7 +18,10 @@ class BillingController extends Controller
 
         $application = $billing->applicationable;
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.billing-statement', compact('billing', 'application'));
+        $settings = Setting::general();
+        $sealImage = Setting::imageDataUri($settings, 'general.logo');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.billing-statement', compact('billing', 'application', 'settings', 'sealImage'));
         $pdf->setPaper('a4', 'portrait');
 
         return $pdf->stream("billing_{$billing->billing_number}.pdf");

@@ -203,6 +203,41 @@
 - Official city seal (top-left, page 1) now renders **dynamically** from `Setting` (`group=general`, `key=general.logo`), base64-embedded — same pattern as `$sealImage` in `PermitController` — instead of a hardcoded file; wired into both `ApplicationController::printForm()` and `OccupancyApplicationController::printForm()`
 - Page 2 overlay adds the Building Official's name (bold, underlined) and designation, 15px, centered below the Terms and Conditions box, sourced from `Signatory` (`role=building_official`)
 
+### OP Application Form — Dedicated DomPDF Template & Print Fix — COMPLETED
+
+- `occupancy-applications/{id}/print` crashed by reusing the BP `application-form` view (`$application->permitType->code` — no such relation on `OccupancyApplication`, plus dozens of BP-only fields); new dedicated `pdf/occupancy-application-form.blade.php` rendered via DomPDF (A4 portrait, 0.75in margins, locational-clearance CSS pattern) reproducing the official "Unified Application Form for Certificate of Occupancy"
+- Two-logo header: Official Seal (`general.logo`) left, National Government Logo (new `general.national_govt_logo` file setting) right, Republic/City/Province centered
+- FULL/PARTIAL checkbox reads `applicationType->name` (Full/Partial application types), FSIC checkbox from `fsic_no`; requirements checklist rendered as 5 static unchecked boxes (no backing data model, per decision)
+- Signatory block iterated against user-supplied reference mockups into a two-column layout: left "Inspected by:" — blank signature line, then the `building_official` Signatory's name + designation; right "Submitted by:" — applicant name over its line, CTC fields, then "Attested by: / FULL-TIME INSPECTOR OR SUPERVISOR OF CONSTRUCTION" with a blank ARCHITECT OR CIVIL ENGINEER line, Date line, and a blank PRC/PTR/TIN/CTC table (3-cell last row); both columns' signature lines mirrored/vertically aligned
+
+### BP Unified Application Form — New Backgrounds & Overlay Letterhead — COMPLETED
+
+- Both background scans replaced (`public/images/forms/unified-bp-form-p1.png` / `-p2.png`); p1 kept identical dimensions/registration (title band pixel-verified at the same row) so no field recalibration was needed below the header
+- New p1 has no pre-printed header — letterhead is now overlaid: seal (`general.logo`) left, National Government Logo right, "Republic of the Philippines / {general.city} / Province of {general.province}" centered (settings values updated from Sample City/Province to City of San Fernando / La Union, in DB + seeder)
+- Area No. digit box now filled from `application.area_number` with fallback to the `general.area_number` setting (fixed LGU district code — was always blank before)
+- Readability audit of all 83 overlay fields: PTR-issued-at and Gov't ID fields re-tuned to fit; the two physically-too-narrow Place Issued cells now use `text-overflow: ellipsis`; Enterprise Name overlay removed entirely — pixel measurement proved the "FOR CONSTRUCTION OWNED BY AN ENTERPRISE" label occupies its whole cell, so the overlay printed on top of label text
+- New p2 (1700×2600 = exactly 8.5×13in — needs its own `background-size: 8.5in 13in` override vs p1's Legal-crop sizing) ends with "SIGNATURE OVER PRINTED NAME OF OWNER/APPLICANT"; the Building Official name/designation overlay was removed and replaced by the applicant's name centered above that line (position pixel-matched to the scan)
+
+### Dynamic Branding: Favicon Setting & Seal on Every Printed Document — COMPLETED
+
+- New `Setting::general()` and `Setting::imageDataUri()` static helpers centralize the settings-fetch + base64-data-URI pattern used by every PDF controller
+- New `general.favicon` file setting; `partials/favicon.blade.php` (included in `layouts/app`, `layouts/guest`, `auth/staff-login`, `verify/permit`) resolves favicon → seal → static `favicon.ico`, replacing the default Laravel tab icon on all pages
+- Audit of all 12 PDF/print-producing controller methods found and fixed: Official Receipt, Billing Statement, BP/OP Assessment Summaries, and Evaluation Report had **no seal at all** (now render it, headers restructured); `OnlineApplicationController::doDownloadPermit()` rendered the same permit templates as the staff print path but passed **none** of `settings`/`sealImage`/`dpwhLogo`/`qrImage` (client-downloaded permits silently lost all branding + QR — now fully wired); `building-permit.blade.php` never rendered the `$dpwhLogo` the controller always built (now shown in the header's right cell)
+- BP + OP assessment summary PDFs: seal enlarged (42→68px) and all font sizes bumped ~15-20% for readability, verified single-page
+
+### Collections Page: My-Collections Scope, Month Filter, Void Button Removal — COMPLETED
+
+- `/collections` Payment History ("My Collections") now shows only the logged-in collector's own transactions (`collected_by = Auth::id()`), filtered by month (`?month=YYYY-MM`, auto-submitting `<input type=month>`, defaults to current month); verified by reassigning a collection to another user (row count dropped) then restoring
+- "Void Collection" header button removed from the index (route/page still exist)
+
+### Application Show Pages: Cancel Hidden After Permit Generation — COMPLETED
+
+- `applications/{id}` and `occupancy-applications/{id}`: the Cancel button's status exclusion list gained `permit_generated` (alongside cancelled/paid/released) — an application with a generated permit must go through permit revocation instead
+
+### BP Test Data — COMPLETED
+
+- Created BP-2026-07-00006 (id 8, status `submitted`) with every required field populated: full applicant/address/ID data, project + location (lot/block/TCT/tax dec), complete cost breakdown (₱2.05M), engineer + PEE professional blocks, owner block, FSEC reference, electrical loads, occupancy group A1 — for end-to-end print/assessment testing
+
 ---
 
 ## Upcoming Tasks

@@ -4,13 +4,14 @@
 <meta charset="utf-8">
 <style>
 @page { margin: 14mm 14mm 14mm 14mm; size: A4 portrait; }
-body { font-family: Arial, sans-serif; font-size: 9.5px; color: #000; line-height: 1.35; }
+body { font-family: Arial, sans-serif; font-size: 11.5px; color: #000; line-height: 1.35; }
 
 /* ── Header ── */
 .hdr { text-align: center; margin-bottom: 6px; }
-.hdr p  { margin: 1px 0; font-size: 9.5px; }
-.hdr .city { font-weight: bold; font-size: 11px; }
-.hdr .office { text-decoration: underline; font-weight: bold; font-size: 10px; margin-top: 4px; }
+.hdr img.seal { height: 68px; margin-bottom: 4px; }
+.hdr p  { margin: 1px 0; font-size: 11.5px; }
+.hdr .city { font-weight: bold; font-size: 13.5px; }
+.hdr .office { text-decoration: underline; font-weight: bold; font-size: 12px; margin-top: 4px; }
 
 /* ── App info block ── */
 .info-wrap { width: 100%; margin-bottom: 6px; }
@@ -18,17 +19,17 @@ body { font-family: Arial, sans-serif; font-size: 9.5px; color: #000; line-heigh
 .info-label { font-weight: normal; }
 .info-val { font-weight: bold; text-decoration: underline; }
 .barcode-cell { text-align: right; vertical-align: top; padding-left: 8px; }
-.barcode { font-family: monospace; font-size: 7px; letter-spacing: 1px; word-break: break-all; border: 1px solid #000; padding: 2px 4px; display: inline-block; }
+.barcode { font-family: monospace; font-size: 8.5px; letter-spacing: 1px; word-break: break-all; border: 1px solid #000; padding: 2px 4px; display: inline-block; }
 
 /* ── Title ── */
-.soc-title { text-align: center; font-weight: bold; text-decoration: underline; font-size: 11px; margin: 8px 0 10px; }
+.soc-title { text-align: center; font-weight: bold; text-decoration: underline; font-size: 13.5px; margin: 8px 0 10px; }
 
 /* ── Section layout ── */
 .section { margin-bottom: 8px; }
-.sec-header { font-weight: bold; font-size: 9.5px; margin-bottom: 2px; }
+.sec-header { font-weight: bold; font-size: 11.5px; margin-bottom: 2px; }
 
 /* ── Fee table (shared) ── */
-table.ft { width: 100%; border-collapse: collapse; font-size: 9px; }
+table.ft { width: 100%; border-collapse: collapse; font-size: 11px; }
 table.ft td { padding: 1.5px 3px; vertical-align: top; }
 table.ft .col-desc { width: 38%; }
 table.ft .col-unit { width: 8%;  text-align: right; }
@@ -37,25 +38,28 @@ table.ft .col-add  { width: 12%; text-align: right; }
 table.ft .col-amt  { width: 14%; text-align: right; border-bottom: 1px solid #000; }
 table.ft .col-sub  { width: 14%; text-align: right; font-weight: bold; }
 table.ft .col-sub-placeholder { width: 14%; }
-table.ft .th { font-weight: normal; font-size: 8.5px; border-bottom: 1px solid #555; padding-bottom: 1px; }
+table.ft .th { font-weight: normal; font-size: 10.5px; border-bottom: 1px solid #555; padding-bottom: 1px; }
 table.ft .section-total td { font-weight: bold; }
 table.ft .sec-total-amt { text-align: right; font-weight: bold; border-top: 1px solid #000; }
 
 /* ── Grand total ── */
-.grand-total { text-align: right; font-weight: bold; font-size: 10.5px; margin-top: 10px; padding-top: 4px; border-top: 2px solid #000; }
+.grand-total { text-align: right; font-weight: bold; font-size: 13px; margin-top: 10px; padding-top: 4px; border-top: 2px solid #000; }
 
 /* ── Signatures ── */
 .sig-wrap { width: 100%; margin-top: 30px; }
 .sig-wrap td { width: 50%; vertical-align: top; padding: 0 10px; }
-.sig-name { font-weight: bold; text-align: center; font-size: 9.5px; margin-top: 2px; }
-.sig-title { text-align: center; font-size: 8.5px; }
-.sig-line { border-top: 1px solid #000; margin-top: 28px; padding-top: 2px; font-size: 8.5px; }
+.sig-name { font-weight: bold; text-align: center; font-size: 11.5px; margin-top: 2px; }
+.sig-title { text-align: center; font-size: 10.5px; }
+.sig-line { border-top: 1px solid #000; margin-top: 28px; padding-top: 2px; font-size: 10.5px; }
 </style>
 </head>
 <body>
 
 {{-- ═══════════════ HEADER ═══════════════ --}}
 <div class="hdr">
+    @if(!empty($sealImage))
+        <img src="{{ $sealImage }}" class="seal" alt="Official Seal">
+    @endif
     <p>Republic of the Philippines</p>
     <p class="city">{{ strtoupper($settings['general.city'] ?? 'CITY') }}, {{ strtoupper($settings['general.province'] ?? 'PROVINCE') }}</p>
     <p class="office">OFFICE OF THE CITY ENGINEER</p>

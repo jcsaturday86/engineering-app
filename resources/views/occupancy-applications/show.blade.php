@@ -97,7 +97,7 @@
                         </div>
                     </div>
                 @endif
-                @if(!in_array($application->status, ['cancelled', 'paid', 'released']))
+                @if(!in_array($application->status, ['cancelled', 'paid', 'released', 'permit_generated']))
                     <form method="POST" action="{{ route('occupancy-applications.cancel', $application) }}" class="inline" onsubmit="return confirm('Are you sure you want to cancel this application? This action cannot be undone.')" autocomplete="off">
                         @csrf
                         <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition">

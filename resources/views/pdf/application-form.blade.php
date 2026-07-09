@@ -74,7 +74,8 @@
             -webkit-print-color-adjust: exact;
         }
         .p1 { background-image: url('{{ asset('images/forms/unified-bp-form-p1.png') }}'); }
-        .p2 { background-image: url('{{ asset('images/forms/unified-bp-form-p2.png') }}'); }
+        {{-- Page 2 source scan is exactly 8.5in x 13in (no blank Legal-size margin to crop) --}}
+        .p2 { background-image: url('{{ asset('images/forms/unified-bp-form-p2.png') }}'); background-size: 8.5in 13in; }
 
         /* Overlay field: absolutely positioned dynamic value */
         .f {
@@ -89,6 +90,8 @@
         }
         .ctr { text-align: center; }
         .sm { font-size: 7pt; }
+        .clip { overflow: hidden; text-overflow: ellipsis; }
+        .hdr { position: absolute; top:0; left:0; width:8.5in; text-align:center; font: 9.5pt/1.35 Arial, sans-serif; }
     </style>
 </head>
 <body>
@@ -104,14 +107,16 @@
 {{-- ======================== PAGE 1 ======================== --}}
 <div class="print-page p1">
 
-    {{-- Official city seal (dynamic, from Settings > General > Logo) --}}
+    {{-- Letterhead: Official city seal (left), Republic/City/Province (center), National Government Logo (right) --}}
     @if($sealImage ?? null)
-    <img src="{{ $sealImage }}" alt="Official Seal" style="position:absolute; top:0.18in; left:0.35in; width:0.78in; height:0.78in;">
+    <img src="{{ $sealImage }}" alt="Official Seal" style="position:absolute; top:0.04in; left:0.35in; width:0.72in; height:0.72in;">
     @endif
-
-    {{-- Header blanks --}}
-    <div class="f" style="top:0.40in; left:4.05in; font-weight:bold;">SAN FERNANDO</div>
-    <div class="f" style="top:0.54in; left:3.55in; font-weight:bold;">LA UNION</div>
+    @if($nationalGovtLogo ?? null)
+    <img src="{{ $nationalGovtLogo }}" alt="National Government Logo" style="position:absolute; top:0.04in; left:7.43in; width:0.72in; height:0.72in;">
+    @endif
+    <div class="hdr" style="top:0.08in;">Republic of the Philippines</div>
+    <div class="hdr" style="top:0.25in; font-weight:bold;">{{ $settings['general.city'] ?? 'City of San Fernando' }}</div>
+    <div class="hdr" style="top:0.42in;">Province of {{ $settings['general.province'] ?? 'La Union' }}</div>
 
     {{-- Simple / Complex --}}
     @if($complexity === 'Simple')<div class="c" style="top:1.01in; left:2.77in;">&#10004;</div>@endif
@@ -130,9 +135,7 @@
 
     {{-- Application No. / Area No. digit boxes --}}
     <div class="f ctr" style="top:1.87in; left:0.40in; width:1.49in; font-size:8pt;">{{ $application->application_number }}</div>
-    @if($application->area_number ?? false)
-    <div class="f ctr" style="top:1.87in; left:6.63in; width:1.46in; font-size:8pt;">{{ $application->area_number }}</div>
-    @endif
+    <div class="f ctr" style="top:1.87in; left:6.63in; width:1.46in; font-size:8pt;">{{ $application->area_number ?: ($settings['general.area_number'] ?? '') }}</div>
 
     {{-- BOX 1: Owner / Applicant --}}
     <div class="f" style="top:2.36in; left:1.60in;">{{ $application->applicant_last_name }}</div>
@@ -140,8 +143,10 @@
     <div class="f" style="top:2.36in; left:4.95in;">{{ $mi }}</div>
     <div class="f" style="top:2.36in; left:5.50in;">{{ $application->applicant_tin ?? '' }}</div>
 
-    {{-- Enterprise / Form of Ownership --}}
-    <div class="f" style="top:2.72in; left:0.50in;">{{ $application->enterprise_name ?? '' }}</div>
+    {{-- Form of Ownership. The "FOR CONSTRUCTION OWNED BY AN ENTERPRISE" cell to its left is a
+         2-line label that fills its entire cell on the printed form (measured: label glyphs span
+         the full cell height/width) — there is no blank space left to overlay the enterprise
+         name there without printing over the label text, so it is not rendered on this page. --}}
     <div class="f" style="top:2.72in; left:2.78in;">{{ $application->formOfOwnership?->name ?? '' }}</div>
 
     {{-- Address row --}}
@@ -273,43 +278,36 @@
     <div class="f sm" style="top:8.38in; left:6.80in;">{{ $application->engineer_prc_validity?->format('m/d/Y') ?? '' }}</div>
     <div class="f" style="top:8.54in; left:5.00in;">{{ $application->engineer_ptr_no ?? '' }}</div>
     <div class="f sm" style="top:8.55in; left:6.80in;">{{ $application->engineer_ptr_date_issued?->format('m/d/Y') ?? '' }}</div>
-    <div class="f sm" style="top:8.71in; left:4.90in; max-width:1.28in; overflow:hidden;">{{ $application->engineer_ptr_issued_at ?? '' }}</div>
+    <div class="f clip" style="top:8.71in; left:4.90in; max-width:1.28in; font-size:6.5pt;">{{ $application->engineer_ptr_issued_at ?? '' }}</div>
     <div class="f sm" style="top:8.71in; left:6.55in;">{{ $application->engineer_tin ?? '' }}</div>
 
     {{-- BOX 3: Applicant --}}
     <div class="f ctr" style="top:9.36in; left:0.66in; width:2.49in; font-weight:bold;">{{ strtoupper(trim($application->applicant_first_name . ' ' . $mi . ' ' . $application->applicant_last_name)) }}</div>
     <div class="f" style="top:9.38in; left:3.58in;">{{ $application->applicant_date_signed?->format('m/d/Y') ?? '' }}</div>
     <div class="f" style="top:9.71in; left:0.85in; max-width:3.4in; overflow:hidden;">{{ $application->applicant_street }}, {{ $application->applicantBarangay?->name }}, {{ $application->applicantCity?->name }}</div>
-    <div class="f sm" style="top:9.90in; left:1.25in;">{{ $application->applicant_govt_id ?? '' }}</div>
+    <div class="f clip" style="top:9.90in; left:1.25in; max-width:1.15in; font-size:7pt;">{{ $application->applicant_govt_id ?? '' }}</div>
     <div class="f sm" style="top:9.90in; left:2.50in;">{{ $application->applicant_id_date_issued?->format('m/d/Y') ?? '' }}</div>
-    <div class="f sm" style="top:9.90in; left:3.60in; max-width:0.66in; overflow:hidden;">{{ $application->applicant_id_place_issued ?? '' }}</div>
+    <div class="f clip" style="top:9.90in; left:3.60in; max-width:0.66in; font-size:6pt;">{{ $application->applicant_id_place_issued ?? '' }}</div>
 
     {{-- BOX 4: Lot Owner / Authorized Representative --}}
     <div class="f ctr" style="top:9.36in; left:4.55in; width:2.35in; font-weight:bold;">{{ strtoupper($application->owner_name ?? '') }}</div>
     <div class="f" style="top:9.38in; left:7.32in;">{{ $application->owner_date_signed?->format('m/d/Y') ?? '' }}</div>
     <div class="f" style="top:9.71in; left:4.75in; max-width:3.3in; overflow:hidden;">{{ $application->owner_address ?? '' }}</div>
-    <div class="f sm" style="top:9.90in; left:5.08in; max-width:0.58in; overflow:hidden;">{{ $application->owner_govt_id ?? '' }}</div>
+    <div class="f clip" style="top:9.90in; left:5.08in; max-width:0.58in; font-size:5.5pt;">{{ $application->owner_govt_id ?? '' }}</div>
     <div class="f sm" style="top:9.90in; left:6.00in;">{{ $application->owner_id_date_issued?->format('m/d/Y') ?? '' }}</div>
-    <div class="f sm" style="top:9.90in; left:7.33in; max-width:0.72in; overflow:hidden;">{{ $application->owner_id_place_issued ?? '' }}</div>
+    <div class="f clip" style="top:9.90in; left:7.33in; max-width:0.72in; font-size:6pt;">{{ $application->owner_id_place_issued ?? '' }}</div>
 
     {{-- BOX 5 (notarial) is completed by hand — no overlay fields --}}
 
 </div>{{-- end page 1 --}}
 
 {{-- ======================== PAGE 2 ======================== --}}
-{{-- Box 6 (assessed fees), Terms and Conditions, and the Building Official
-     signature are all part of the background form image. --}}
+{{-- Box 6 (assessed fees) and Terms and Conditions are part of the background form image.
+     The signature line at the bottom is for the Owner/Applicant (not the Building Official). --}}
 <div class="print-page p2 page-break">
-    @if(isset($signatories['building_official']))
-        <div class="f ctr" style="top:11.55in; left:0in; width:8.5in; font-size:15px;">
-            <span style="font-weight:bold; border-bottom:1px solid #000; padding-bottom:2px; display:inline-block;">
-                {{ strtoupper(trim(($signatories['building_official']->title ?? '') . ' ' . $signatories['building_official']->name)) }}
-            </span>
-        </div>
-        <div class="f ctr" style="top:11.78in; left:0in; width:8.5in; font-size:15px;">
-            {{ $signatories['building_official']->designation ?? 'City Engineer & Building Official' }}
-        </div>
-    @endif
+    <div class="f ctr" style="top:12.32in; left:4.765in; width:3.225in; font-size:12px; font-weight:bold;">
+        {{ strtoupper(trim($application->applicant_first_name . ' ' . $mi . ' ' . $application->applicant_last_name)) }}
+    </div>
 </div>
 
 </body>
