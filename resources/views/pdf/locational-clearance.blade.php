@@ -6,7 +6,7 @@
     <style>
         @page {
             size: A4 portrait;
-            margin: 20mm 25mm;
+            margin: 0.75in;
         }
         * {
             margin: 0;
@@ -15,286 +15,286 @@
         }
         body {
             font-family: Arial, sans-serif;
-            font-size: 11px;
-            color: #333;
-            line-height: 1.6;
+            font-size: 12.5px;
+            color: #000;
+            line-height: 1.2;
         }
-        .container {
-            max-width: 100%;
-            padding: 0;
+        .content {
+            padding: 0.75in;
         }
         .header {
             text-align: center;
-            margin-bottom: 20px;
-            border-bottom: 3px double #333;
-            padding-bottom: 12px;
-        }
-        .header .republic {
-            font-size: 11px;
-            margin-bottom: 2px;
-        }
-        .header .municipality {
-            font-size: 14px;
-            font-weight: bold;
-            text-transform: uppercase;
-            margin-bottom: 2px;
-        }
-        .header .office {
-            font-size: 12px;
-            margin-bottom: 8px;
-        }
-        .header .title {
-            font-size: 16px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-top: 5px;
-        }
-        .decision-info {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .decision-info .decision-number {
-            font-size: 13px;
-            font-weight: bold;
-            color: #c00;
-        }
-        .decision-info .decision-date {
-            font-size: 11px;
-            margin-top: 3px;
-        }
-        .body-text {
-            text-align: justify;
-            margin-bottom: 15px;
-            font-size: 11px;
-            line-height: 1.8;
-            text-indent: 40px;
-        }
-        .section-title {
-            font-size: 12px;
-            font-weight: bold;
-            text-transform: uppercase;
-            background-color: #e8e8e8;
-            padding: 5px 8px;
-            border: 1px solid #999;
-            margin-bottom: 0;
-        }
-        .section-body {
-            border: 1px solid #999;
-            border-top: none;
-            padding: 10px;
-            margin-bottom: 15px;
-        }
-        .field-row {
             margin-bottom: 6px;
-            overflow: hidden;
         }
-        .field-label {
-            font-weight: bold;
-            font-size: 10px;
-            color: #555;
-            text-transform: uppercase;
-        }
-        .field-value {
-            font-size: 11px;
-            padding: 2px 0;
-            border-bottom: 1px dotted #999;
-            min-height: 16px;
-        }
-        .findings-box {
-            border: 1px solid #999;
-            padding: 10px;
-            margin-bottom: 15px;
-            background-color: #fafafa;
-            min-height: 60px;
-            white-space: pre-wrap;
-            font-size: 11px;
-            line-height: 1.6;
-        }
-        .decision-box {
-            border: 2px solid #333;
-            padding: 12px;
-            margin-bottom: 15px;
-            background-color: #f0f8f0;
-            text-align: center;
-        }
-        .decision-box .decision-label {
-            font-size: 12px;
-            font-weight: bold;
-            text-transform: uppercase;
+        .header img.seal {
+            height: 85px;
             margin-bottom: 5px;
         }
-        .decision-box .decision-text {
-            font-size: 13px;
-            font-weight: bold;
-            color: #006600;
+        .header p {
+            margin: 0;
+            font-size: 11.5px;
         }
-        table.fee-table {
+        .header .office {
+            font-size: 12.5px;
+            font-weight: bold;
+        }
+        .title {
+            text-align: center;
+            font-size: 15px;
+            font-weight: bold;
+            margin: 6px 0;
+            line-height: 1.2;
+        }
+        table.form-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 12px;
+            margin-bottom: 0;
         }
-        table.fee-table th,
-        table.fee-table td {
-            border: 1px solid #999;
-            padding: 5px 8px;
+        table.form-table td {
+            border: 1px solid #000;
+            padding: 2px 6px;
+            font-size: 11.5px;
+            vertical-align: top;
+        }
+        table.form-table .lbl {
+            font-size: 10px;
+            color: #333;
+            display: block;
+            margin-bottom: 1px;
+        }
+        .decision-row td {
+            font-weight: bold;
+        }
+        .decision-row .granted {
+            color: #006600;
+        }
+        .conditions-title {
             font-size: 11px;
-            text-align: left;
-        }
-        table.fee-table th {
-            background-color: #e8e8e8;
             font-weight: bold;
+            margin: 6px 0 2px;
+        }
+        .conditions-list {
             font-size: 10px;
-            text-transform: uppercase;
+            line-height: 1.2;
         }
-        table.fee-table td.amount {
-            text-align: right;
-            white-space: nowrap;
+        .cond-row {
+            display: table;
+            width: 100%;
+            margin-bottom: 0;
         }
-        table.fee-table tfoot td {
+        .cond-box {
+            display: table-cell;
+            width: 22px;
             font-weight: bold;
-            background-color: #f5f5f5;
+            vertical-align: top;
         }
-        .signature-block {
-            margin-top: 50px;
-            width: 280px;
-            float: right;
+        .cond-text {
+            display: table-cell;
+            vertical-align: top;
+        }
+        .sub-conditions {
+            margin-left: 20px;
+        }
+        .footer-block {
+            margin-top: 6px;
+            display: table;
+            width: 100%;
+        }
+        .footer-left {
+            display: table-cell;
+            width: 55%;
+            font-size: 11.5px;
+            vertical-align: bottom;
+        }
+        .footer-left .row {
+            margin-bottom: 2px;
+        }
+        .footer-left .label {
+            display: inline-block;
+            min-width: 105px;
+        }
+        .footer-right {
+            display: table-cell;
+            width: 45%;
             text-align: center;
+            vertical-align: bottom;
         }
-        .signature-block .sig-line {
-            border-top: 1px solid #333;
-            padding-top: 4px;
-            font-size: 12px;
+        .footer-right .sig-line {
+            font-size: 12.5px;
             font-weight: bold;
-            margin-top: 40px;
         }
-        .signature-block .sig-title {
-            font-size: 10px;
-            color: #555;
+        .footer-right .sig-designation {
+            font-size: 10.5px;
         }
-        .signature-block .sig-designation {
-            font-size: 10px;
-            color: #777;
-            font-style: italic;
+        .form-code {
+            margin-top: 5px;
+            font-size: 9.5px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        {{-- Header --}}
-        <div class="header">
-            <p class="republic">Republic of the Philippines</p>
-            <p class="municipality">{{ config('app.municipality_name', 'City/Municipality Name') }}</p>
-            <p class="office">Office of the Building Official</p>
-            <p class="title">Decision on Zoning and Locational Clearance</p>
-        </div>
-
-        {{-- Decision Number and Date --}}
-        <div class="decision-info">
-            <p class="decision-number">Decision No.: {{ $application->zoningAssessment?->decision_no ?? '___________' }}</p>
-            <p class="decision-date">Date: {{ $application->zoningAssessment?->certificate_date?->format('F d, Y') ?? '___________' }}</p>
-        </div>
-
-        {{-- Body Text --}}
-        <p class="body-text">
-            After careful evaluation of the application for <strong>Locational Clearance</strong>
-            filed by <strong>{{ $application->applicant_full_name }}</strong>
-            for the project <strong>{{ $application->project_title ?? '___________' }}</strong>
-            located at <strong>{{ $application->building_street }}{{ $application->buildingBarangay ? ', Brgy. ' . $application->buildingBarangay->name : '' }}</strong>,
-            the undersigned hereby <strong>GRANTS</strong> locational clearance for the above-described project subject to the following conditions and findings:
-        </p>
-
-        {{-- Applicant and Project Details --}}
-        <div class="section-title">Applicant and Project Details</div>
-        <div class="section-body">
-            <div class="field-row">
-                <div class="field-label">Applicant Name</div>
-                <div class="field-value">{{ $application->applicant_full_name }}</div>
-            </div>
-            <div class="field-row">
-                <div class="field-label">Project Title</div>
-                <div class="field-value">{{ $application->project_title ?? '' }}</div>
-            </div>
-            <div class="field-row">
-                <div class="field-label">Project Location</div>
-                <div class="field-value">
-                    {{ $application->building_street }}{{ $application->buildingBarangay ? ', Brgy. ' . $application->buildingBarangay->name : '' }}
-                </div>
-            </div>
-            <div class="field-row">
-                <div class="field-label">Project Classification</div>
-                <div class="field-value">{{ $application->zoningAssessment?->project_classification ?? '' }}</div>
-            </div>
-        </div>
-
-        {{-- Findings / Evaluation --}}
-        <div class="section-title">Findings / Evaluation</div>
-        <div class="findings-box">{{ $application->zoningAssessment?->findings_evaluation ?? 'No findings recorded.' }}</div>
-
-        {{-- Decision --}}
-        <div class="decision-box">
-            <div class="decision-label">Decision Recommended</div>
-            <div class="decision-text">{{ $application->zoningAssessment?->decision_recommended ?? 'Pending' }}</div>
-        </div>
-
-        {{-- Fee Paid --}}
-        @php
-            $locationalFees = collect();
-            $locationalFeeTotal = 0;
-            if ($application->collections) {
-                foreach ($application->collections as $collection) {
-                    if ($collection->collectionDetails) {
-                        $filtered = $collection->collectionDetails->filter(function ($detail) {
-                            return stripos($detail->fee_category, 'Locational') !== false;
-                        });
-                        $locationalFees = $locationalFees->merge($filtered);
-                    }
-                }
-                $locationalFeeTotal = $locationalFees->sum('amount');
-            }
-        @endphp
-
-        @if($locationalFees->count())
-            <div class="section-title">Fees Paid</div>
-            <table class="fee-table">
-                <thead>
-                    <tr>
-                        <th>Description</th>
-                        <th style="width: 150px; text-align: right;">Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($locationalFees as $fee)
-                    <tr>
-                        <td>{{ $fee->description }}</td>
-                        <td class="amount">&#8369;{{ number_format($fee->amount, 2) }}</td>
-                    </tr>
-                    @endforeach
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td>Total</td>
-                        <td class="amount">&#8369;{{ number_format($locationalFeeTotal, 2) }}</td>
-                    </tr>
-                </tfoot>
-            </table>
+<div class="content">
+    {{-- Header --}}
+    <div class="header">
+        @if($sealImage)
+            <img src="{{ $sealImage }}" class="seal" alt="Seal">
         @endif
+        <p>Republic of the Philippines</p>
+        <p class="office">{{ $settings['general.planning_office_name'] ?? 'CITY PLANNING & DEVELOPMENT OFFICE' }}</p>
+        <p>{{ $settings['general.planning_office_address'] ?? 'Second Floor, City Hall Annex Building' }}</p>
+        <p>City of San Fernando, La Union</p>
+        <p>Tel. No. {{ $settings['general.planning_office_telephone'] ?? '(072) 888-69-01 Local 120' }}</p>
+    </div>
 
-        {{-- Signatory --}}
-        <div class="signature-block">
+    {{-- Title --}}
+    <div class="title">DECISION ON ZONING<br>LOCATIONAL CLEARANCE</div>
+
+    @php
+        $za = $application->zoningAssessment;
+        $applicantName = strtoupper(trim(
+            $application->applicant_last_name . ', ' . $application->applicant_first_name
+            . ($application->applicant_middle_name ? ' ' . mb_substr($application->applicant_middle_name, 0, 1) . '.' : '')
+        ));
+        $address = trim(collect([
+            $application->applicant_street,
+            $application->applicantBarangay?->name,
+            $application->applicantCity?->name,
+        ])->filter()->implode(', '));
+        $typeOfProject = trim(collect([
+            $za?->project_classification,
+            $application->project_title,
+        ])->filter()->implode(', '));
+    @endphp
+
+    {{-- Application No. / Decision No. / Dates --}}
+    <table class="form-table">
+        <tr>
+            <td style="width:50%;">
+                <span class="lbl">Application No.</span>
+                {{ $application->application_number }}
+            </td>
+            <td style="width:50%;">
+                <span class="lbl">LC Decision No.</span>
+                {{ $za?->decision_no ?? '___________' }}
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <span class="lbl">Date of Receipt</span>
+                {{ $application->submitted_at?->format('F d, Y') ?? '___________' }}
+            </td>
+            <td>
+                <span class="lbl">Date of Issue</span>
+                {{ $za?->certificate_date?->format('F d, Y') ?? '___________' }}
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <span class="lbl">Name of Applicant</span>
+                {{ $applicantName }}
+            </td>
+            <td>
+                <span class="lbl">Name of Corporation</span>
+                {{ $application->enterprise_name ?: '—' }}
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <span class="lbl">Address/T.I.N.</span>
+                {{ $address ?: '—' }}
+            </td>
+            <td>
+                <span class="lbl">Address/T.I.N.</span>
+                {{ $application->applicant_tin ?: '—' }}
+            </td>
+        </tr>
+        <tr>
+            <td style="width:60%;">
+                <span class="lbl">Type of Project</span>
+                {{ $typeOfProject ?: '—' }}
+            </td>
+            <td>
+                <span class="lbl">Area (sq.m.)</span>
+                {{ $application->lot_area ?? $application->total_floor_area ?? '—' }}
+                <br>
+                <span class="lbl" style="margin-top:4px;">Location</span>
+                {{ $application->buildingBarangay?->name ?? '—' }}
+                <br>
+                <span class="lbl" style="margin-top:4px;">Lot</span>
+                {{ $application->lot_no ?: '—' }}
+                <br>
+                <span class="lbl" style="margin-top:4px;">Bldg. Coverage</span>
+                {{ $za?->building_coverage ?? '—' }}
+            </td>
+        </tr>
+        <tr class="decision-row">
+            <td style="width:60%;">
+                <span class="lbl" style="font-weight:normal;">Decision</span>
+                <span class="granted">{{ strtoupper($za?->decision_recommended ?? 'PENDING') }}</span>
+            </td>
+            <td>
+                <span class="lbl" style="font-weight:normal;">Grounds for Denied Application</span>
+                — — —
+            </td>
+        </tr>
+    </table>
+
+    {{-- Conditions --}}
+    <div class="conditions-title">Conditions (with /):</div>
+    <div class="conditions-list">
+        <div class="cond-row"><div class="cond-box">[ / ]</div><div class="cond-text">All conditions stipulated herein form part of this decision and are subject to monitoring.</div></div>
+        <div class="cond-row"><div class="cond-box">[ / ]</div><div class="cond-text">Non-compliance therewith shall be a cause for cancellation or legal action.</div></div>
+        <div class="cond-row"><div class="cond-box">[ / ]</div><div class="cond-text">The applicable requirements of other government agencies and applicable provisions of existing laws shall be complied with.</div></div>
+        <div class="cond-row"><div class="cond-box">[ / ]</div><div class="cond-text">No activity other than that applied for shall be conducted within the project site.</div></div>
+        <div class="cond-row"><div class="cond-box">[ / ]</div><div class="cond-text">No major expansion, alteration and/or improvement shall be introduced without prior clearance from this Office.</div></div>
+        <div class="cond-row"><div class="cond-box">[ / ]</div><div class="cond-text">This decision shall not be construed as a certification of CPDO as to the ownership by the applicant of the parcel of land subject of this decision.</div></div>
+        <div class="cond-row"><div class="cond-box">[ / ]</div><div class="cond-text">Any misrepresentation, false statement or allegation material to the issuance of this decision shall be sufficient cause for its revocation.</div></div>
+        <div class="cond-row"><div class="cond-box">[ / ]</div><div class="cond-text">Additional Conditions:</div></div>
+        <div class="sub-conditions">
+            <div class="cond-row"><div class="cond-box">[ / ]</div><div class="cond-text">Provisions as to setback, yard requirement, bulk, easement, area, height and other restrictions shall strictly conform with the requirements of the National Building Code and other related laws.</div></div>
+            <div class="cond-row"><div class="cond-box">[ / ]</div><div class="cond-text">This decision shall be considered automatically revoked if project is not commenced within one (1) year from the date of its issuance.</div></div>
+            <div class="cond-row"><div class="cond-box">[ / ]</div><div class="cond-text">Any complaint against the issuance of this Clearance found valid after due hearing shall be sufficient cause for its suspension or revocation.</div></div>
+            <div class="cond-row"><div class="cond-box">[ / ]</div><div class="cond-text">This shall be without prejudice to the rights and interests of parties having valid claim/s over the lot/s subject of the application.</div></div>
+            <div class="cond-row"><div class="cond-box">[&nbsp;&nbsp;&nbsp;]</div><div class="cond-text">Secure an Environmental Compliance Certificate (ECC) or Certificate of Non-Coverage (CNC) from DENR prior to introducing development within the site. Submit a copy thereof to this Office within six (6) months from issuance of this Clearance.</div></div>
+            <div class="cond-row"><div class="cond-box">[&nbsp;&nbsp;&nbsp;]</div><div class="cond-text">For other conditions, see Reverse Side.</div></div>
+        </div>
+    </div>
+
+    {{-- Footer: O.R. details + Signature --}}
+    @php
+        $lcFees = collect();
+        foreach ($application->collections ?? [] as $collection) {
+            foreach ($collection->collectionDetails ?? [] as $detail) {
+                if (stripos($detail->fee_category, 'ZONING_LC') !== false) {
+                    $lcFees->push($detail);
+                }
+            }
+        }
+        $lcFeeTotal = $lcFees->sum('amount');
+        $paymentCollection = $lcFees->first()?->collection;
+    @endphp
+
+    <div class="footer-block">
+        <div class="footer-left">
+            <div class="row"><span class="label">O.R. No.:</span> {{ $paymentCollection->or_number ?? '___________' }}</div>
+            <div class="row"><span class="label">Date Issued:</span> {{ $paymentCollection?->or_date?->format('m/d/Y') ?? '___________' }}</div>
+            <div class="row"><span class="label">Amount Issued:</span> Php {{ number_format($lcFeeTotal, 2) }}</div>
+            <div class="row"><span class="label">Issued by:</span> City of San Fernando, La Union</div>
+        </div>
+        <div class="footer-right">
             @if(isset($signatories['planning_officer']))
-                <div class="sig-line">{{ $signatories['planning_officer']->name }}</div>
-                @if($signatories['planning_officer']->title)
-                    <div class="sig-title">{{ $signatories['planning_officer']->title }}</div>
-                @endif
+                <div class="sig-line">{{ strtoupper(trim(($signatories['planning_officer']->title ?? '') . ' ' . $signatories['planning_officer']->name)) }}</div>
                 @if($signatories['planning_officer']->designation)
                     <div class="sig-designation">{{ $signatories['planning_officer']->designation }}</div>
                 @endif
             @else
                 <div class="sig-line">&nbsp;</div>
-                <div class="sig-title">Planning Officer</div>
+                <div class="sig-designation">Zoning Inspector</div>
             @endif
         </div>
     </div>
+
+    <div class="form-code">PDO-012-&Oslash;</div>
+</div>
 </body>
 </html>

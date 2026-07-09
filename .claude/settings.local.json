@@ -101,7 +101,16 @@
       "Bash(php -l app/Http/Controllers/VerifyController.php)",
       "Bash(grep -n '$table->' C:/xampp/htdocs/engineering-app/database/migrations/2026_06_23_080005_create_applications_table.php)",
       "Bash(grep -n '$table->' C:/xampp/htdocs/engineering-app/database/migrations/2026_06_25_020000_create_occupancy_applications_table.php)",
-      "Bash(curl -s \"http://localhost:8100/verify/permit/87de9fe5-7328-4df6-8724-f334658b53fe\")"
+      "Bash(curl -s \"http://localhost:8100/verify/permit/87de9fe5-7328-4df6-8724-f334658b53fe\")",
+      "Bash(rm -f storage/app/temp_lc4.pdf)",
+      "Bash(cp \"C:/xampp/htdocs/engineering-app/storage/app/temp_lc5.pdf\" \"C:/Users/JAYCAR~1/AppData/Local/Temp/claude/C--xampp-htdocs-engineering-app/80b4d8b2-6a63-4704-9397-2303c3138762/scratchpad/lc5.pdf\")",
+      "Bash(cp \"C:/xampp/htdocs/engineering-app/storage/app/temp_zc6.pdf\" \"C:/Users/JAYCAR~1/AppData/Local/Temp/claude/C--xampp-htdocs-engineering-app/80b4d8b2-6a63-4704-9397-2303c3138762/scratchpad/zc6.pdf\")",
+      "Bash(cp \"C:/xampp/htdocs/engineering-app/storage/app/temp_lc6.pdf\" \"C:/Users/JAYCAR~1/AppData/Local/Temp/claude/C--xampp-htdocs-engineering-app/80b4d8b2-6a63-4704-9397-2303c3138762/scratchpad/lc6.pdf\")",
+      "Bash(cp \"C:/xampp/htdocs/engineering-app/storage/app/temp_lc7.pdf\" \"C:/Users/JAYCAR~1/AppData/Local/Temp/claude/C--xampp-htdocs-engineering-app/80b4d8b2-6a63-4704-9397-2303c3138762/scratchpad/lc7.pdf\")",
+      "Bash(rm -f storage/app/temp_lc7.pdf)",
+      "Bash(cp \"C:/xampp/htdocs/engineering-app/storage/app/temp_lc8.pdf\" \"C:/Users/JAYCAR~1/AppData/Local/Temp/claude/C--xampp-htdocs-engineering-app/80b4d8b2-6a63-4704-9397-2303c3138762/scratchpad/lc8.pdf\")",
+      "Bash(cp \"/c/xampp/htdocs/engineering-app/storage/app/temp_eval1.pdf\" \"/c/Users/JAYCAR~1/AppData/Local/Temp/claude/C--xampp-htdocs-engineering-app/80b4d8b2-6a63-4704-9397-2303c3138762/scratchpad/eval_report_test.pdf\")",
+      "Bash(php artisan tinker --execute=\" *)"
     ]
   }
 }

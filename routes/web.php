@@ -188,6 +188,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/{application}/zoning-cert', [PermitController::class, 'zoningCertification'])->name('zoningCert');
         Route::get('/{application}/locational', [PermitController::class, 'locationalClearance'])->name('locational');
         Route::get('/{application}/evaluation', [PermitController::class, 'evaluationReport'])->name('evaluation');
+        // Zoning documents
+        Route::get('/zoning', [PermitController::class, 'zoningIndex'])->name('zoning');
+        Route::post('/{application}/generate-zoning', [PermitController::class, 'generateZoningDocuments'])->name('generateZoning')->middleware('can:generate-permits');
     });
 
     // Reports

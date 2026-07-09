@@ -48,6 +48,58 @@ class PermitController extends Controller
         return view('permits.index', compact('applications', 'type', 'year'));
     }
 
+    public function zoningIndex(Request $request)
+    {
+        $query = Application::with('zoningAssessment')
+            ->whereIn('status', ['paid', 'permit_generated', 'released'])
+            ->where(function ($q) {
+                $q->whereNull('applies_to')->orWhere('applies_to', '!=', 'SKIP_LC');
+            });
+
+        $this->applyPermitFilters($query, $request);
+
+        $year = $request->filled('year') ? (int) $request->year : now()->year;
+        $query->whereYear('created_at', $year);
+
+        $applications = $query->latest()->paginate(20)->withQueryString();
+
+        return view('permits.zoning-index', compact('applications', 'year'));
+    }
+
+    public function generateZoningDocuments(Application $application)
+    {
+        if ($application->status !== 'paid') {
+            return back()->with('error', 'Application must be paid before generating zoning documents.');
+        }
+
+        if ($application->applies_to === 'SKIP_LC') {
+            return back()->with('error', 'Locational Clearance was skipped for this application; zoning documents are not applicable.');
+        }
+
+        $zoningAssessment = $application->zoningAssessment;
+
+        if (! $zoningAssessment) {
+            return back()->with('error', 'No zoning assessment found for this application.');
+        }
+
+        if ($zoningAssessment->decision_no) {
+            return back()->with('error', 'Zoning documents have already been generated for this application.');
+        }
+
+        DB::transaction(function () use ($zoningAssessment, $application) {
+            $decisionNo = (int) \App\Models\ZoningAssessment::whereNotNull('decision_no')->max('decision_no') + 1;
+
+            $zoningAssessment->update([
+                'decision_no' => $decisionNo,
+                'certificate_date' => now()->toDateString(),
+            ]);
+
+            activity()->causedBy(Auth::user())->performedOn($application)->log('Zoning documents generated');
+        });
+
+        return back()->with('success', 'Zoning documents generated successfully.');
+    }
+
     private function applyPermitFilters($query, Request $request): void
     {
         if ($request->filled('search')) {
@@ -291,10 +343,17 @@ class PermitController extends Controller
 
     public function zoningCertification(Application $application)
     {
-        $application->load('zoningAssessment', 'collections.collectionDetails');
+        $application->load('zoningAssessment', 'collections.collectionDetails', 'buildingBarangay');
         $signatories = Signatory::where('is_active', true)->get()->keyBy('role');
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.zoning-certification', compact('application', 'signatories'));
+        $settings = \App\Models\Setting::where('group', 'general')->pluck('value', 'key');
+        $sealImage = null;
+        if (! empty($settings['general.logo']) && \Illuminate\Support\Facades\Storage::disk('public')->exists($settings['general.logo'])) {
+            $mime = \Illuminate\Support\Facades\Storage::disk('public')->mimeType($settings['general.logo']);
+            $sealImage = 'data:' . $mime . ';base64,' . base64_encode(\Illuminate\Support\Facades\Storage::disk('public')->get($settings['general.logo']));
+        }
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.zoning-certification', compact('application', 'signatories', 'sealImage', 'settings'));
         $pdf->setPaper('a4', 'portrait');
 
         return $pdf->stream("zoning_cert_{$application->application_number}.pdf");
@@ -302,10 +361,17 @@ class PermitController extends Controller
 
     public function locationalClearance(Application $application)
     {
-        $application->load('zoningAssessment', 'collections.collectionDetails');
+        $application->load('zoningAssessment', 'collections.collectionDetails', 'buildingBarangay', 'applicantBarangay', 'applicantCity');
         $signatories = Signatory::where('is_active', true)->get()->keyBy('role');
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.locational-clearance', compact('application', 'signatories'));
+        $settings = \App\Models\Setting::where('group', 'general')->pluck('value', 'key');
+        $sealImage = null;
+        if (! empty($settings['general.logo']) && \Illuminate\Support\Facades\Storage::disk('public')->exists($settings['general.logo'])) {
+            $mime = \Illuminate\Support\Facades\Storage::disk('public')->mimeType($settings['general.logo']);
+            $sealImage = 'data:' . $mime . ';base64,' . base64_encode(\Illuminate\Support\Facades\Storage::disk('public')->get($settings['general.logo']));
+        }
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.locational-clearance', compact('application', 'signatories', 'sealImage', 'settings'));
         $pdf->setPaper('a4', 'portrait');
 
         return $pdf->stream("locational_{$application->application_number}.pdf");
@@ -313,7 +379,7 @@ class PermitController extends Controller
 
     public function evaluationReport(Application $application)
     {
-        $application->load('zoningAssessment');
+        $application->load('zoningAssessment', 'buildingBarangay', 'applicantBarangay', 'applicantCity');
         $signatories = Signatory::where('is_active', true)->get()->keyBy('role');
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.evaluation-report', compact('application', 'signatories'));

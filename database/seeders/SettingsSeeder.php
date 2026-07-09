@@ -98,6 +98,27 @@ class SettingsSeeder extends Seeder
                 'type' => 'string',
                 'description' => 'Area/district number code',
             ],
+            [
+                'group' => 'general',
+                'key' => 'general.planning_office_name',
+                'value' => 'CITY PLANNING & DEVELOPMENT OFFICE',
+                'type' => 'string',
+                'description' => 'Planning office name printed on the Zoning Certification PDF header',
+            ],
+            [
+                'group' => 'general',
+                'key' => 'general.planning_office_address',
+                'value' => 'Second Floor, City Hall Annex Building',
+                'type' => 'string',
+                'description' => 'Planning office address printed on the Zoning Certification PDF header',
+            ],
+            [
+                'group' => 'general',
+                'key' => 'general.planning_office_telephone',
+                'value' => '(072) 888-69-01 Local 120',
+                'type' => 'string',
+                'description' => 'Planning office telephone number printed on the Zoning Certification PDF header',
+            ],
 
             // Permit prefix settings
             [
@@ -161,6 +182,13 @@ class SettingsSeeder extends Seeder
         ];
 
         foreach ($settings as $setting) {
+            if ($setting['type'] === 'file') {
+                // File settings are uploaded via the Settings UI — never overwrite an
+                // already-uploaded value with the seeder's empty default on re-run.
+                Setting::firstOrCreate(['key' => $setting['key']], $setting);
+                continue;
+            }
+
             Setting::updateOrCreate(
                 ['key' => $setting['key']],
                 $setting

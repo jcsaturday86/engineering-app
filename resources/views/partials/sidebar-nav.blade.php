@@ -169,6 +169,9 @@
         <a href="{{ route('permits.occupancy') }}" class="block px-3 py-2 text-sm rounded-lg {{ $currentRoute === 'permits.occupancy' ? 'text-primary-700 bg-primary-50 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
             Occupancy Permits
         </a>
+        <a href="{{ route('permits.zoning') }}" class="block px-3 py-2 text-sm rounded-lg {{ $currentRoute === 'permits.zoning' ? 'text-primary-700 bg-primary-50 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
+            Zoning
+        </a>
     </div>
 </div>
 @endcanany

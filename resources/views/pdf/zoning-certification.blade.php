@@ -2,11 +2,11 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Zoning Certification</title>
+    <title>Certification</title>
     <style>
         @page {
             size: A4 portrait;
-            margin: 20mm 25mm;
+            margin: 0.75in;
         }
         * {
             margin: 0;
@@ -15,250 +15,160 @@
         }
         body {
             font-family: Arial, sans-serif;
-            font-size: 11px;
-            color: #333;
+            font-size: 15px;
+            color: #000;
             line-height: 1.6;
         }
-        .container {
-            max-width: 100%;
-            padding: 0;
+        .content {
+            padding: 0.75in;
         }
         .header {
             text-align: center;
-            margin-bottom: 20px;
-            border-bottom: 3px double #333;
-            padding-bottom: 12px;
+            margin-bottom: 30px;
         }
-        .header .republic {
-            font-size: 11px;
-            margin-bottom: 2px;
-        }
-        .header .municipality {
-            font-size: 14px;
-            font-weight: bold;
-            text-transform: uppercase;
-            margin-bottom: 2px;
-        }
-        .header .office {
-            font-size: 12px;
+        .header img.seal {
+            height: 80px;
             margin-bottom: 8px;
         }
-        .header .title {
-            font-size: 18px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            margin-top: 5px;
-        }
-        .cert-info {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .cert-info .cert-number {
+        .header p {
+            margin: 1px 0;
             font-size: 13px;
-            font-weight: bold;
-            color: #c00;
         }
-        .cert-info .cert-date {
-            font-size: 11px;
-            margin-top: 3px;
+        .header .office {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .title {
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            letter-spacing: 6px;
+            margin: 30px 0;
+        }
+        .salutation {
+            margin-bottom: 20px;
+            font-size: 15px;
         }
         .body-text {
             text-align: justify;
-            margin-bottom: 15px;
-            font-size: 11px;
-            line-height: 1.8;
-            text-indent: 40px;
+            font-size: 15px;
+            line-height: 2;
+            text-indent: 50px;
+            margin-bottom: 20px;
         }
-        .section-title {
-            font-size: 12px;
-            font-weight: bold;
-            text-transform: uppercase;
-            background-color: #e8e8e8;
-            padding: 5px 8px;
-            border: 1px solid #999;
-            margin-bottom: 0;
-        }
-        .section-body {
-            border: 1px solid #999;
-            border-top: none;
-            padding: 10px;
-            margin-bottom: 15px;
-        }
-        .field-row {
-            margin-bottom: 6px;
-            overflow: hidden;
-        }
-        .field-label {
-            font-weight: bold;
-            font-size: 10px;
-            color: #555;
-            text-transform: uppercase;
-        }
-        .field-value {
-            font-size: 11px;
-            padding: 2px 0;
-            border-bottom: 1px dotted #999;
-            min-height: 16px;
-        }
-        .fee-section {
-            margin-bottom: 15px;
-        }
-        table.fee-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 12px;
-        }
-        table.fee-table th,
-        table.fee-table td {
-            border: 1px solid #999;
-            padding: 5px 8px;
-            font-size: 11px;
-            text-align: left;
-        }
-        table.fee-table th {
-            background-color: #e8e8e8;
-            font-weight: bold;
-            font-size: 10px;
-            text-transform: uppercase;
-        }
-        table.fee-table td.amount {
-            text-align: right;
-            white-space: nowrap;
-        }
-        table.fee-table tfoot td {
-            font-weight: bold;
-            background-color: #f5f5f5;
+        .body-text u {
+            text-underline-offset: 2px;
         }
         .signature-block {
-            margin-top: 50px;
-            width: 280px;
-            float: right;
+            margin-top: 60px;
+            margin-left: auto;
+            width: 320px;
             text-align: center;
         }
         .signature-block .sig-line {
-            border-top: 1px solid #333;
-            padding-top: 4px;
-            font-size: 12px;
+            font-size: 15px;
             font-weight: bold;
-            margin-top: 40px;
-        }
-        .signature-block .sig-title {
-            font-size: 10px;
-            color: #555;
         }
         .signature-block .sig-designation {
-            font-size: 10px;
-            color: #777;
-            font-style: italic;
+            font-size: 13px;
+        }
+        .footer-details {
+            margin-top: 50px;
+            font-size: 14px;
+        }
+        .footer-details .row {
+            margin-bottom: 6px;
+        }
+        .footer-details .label {
+            display: inline-block;
+            min-width: 150px;
+        }
+        .form-code {
+            margin-top: 40px;
+            font-size: 12px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        {{-- Header --}}
-        <div class="header">
-            <p class="republic">Republic of the Philippines</p>
-            <p class="municipality">{{ config('app.municipality_name', 'City/Municipality Name') }}</p>
-            <p class="office">Office of the Building Official</p>
-            <p class="title">Zoning Certification</p>
-        </div>
-
-        {{-- Certificate Number and Date --}}
-        <div class="cert-info">
-            <p class="cert-number">Certificate No.: {{ $application->zoningAssessment?->decision_no ?? '___________' }}</p>
-            <p class="cert-date">Date: {{ $application->zoningAssessment?->certificate_date?->format('F d, Y') ?? '___________' }}</p>
-        </div>
-
-        {{-- Certification Body Text --}}
-        <p class="body-text">
-            This is to certify that the project <strong>{{ $application->project_title ?? '___________' }}</strong>
-            of <strong>{{ $application->applicant_full_name }}</strong>
-            located at <strong>{{ $application->building_street }}{{ $application->buildingBarangay ? ', Brgy. ' . $application->buildingBarangay->name : '' }}</strong>
-            has been found to be in conformity with the zoning regulations and the Comprehensive Land Use Plan of the City/Municipality.
-        </p>
-
-        {{-- Project Details --}}
-        <div class="section-title">Project Details</div>
-        <div class="section-body">
-            <div class="field-row">
-                <div class="field-label">Project Classification</div>
-                <div class="field-value">{{ $application->zoningAssessment?->project_classification ?? '' }}</div>
-            </div>
-            <div class="field-row">
-                <div class="field-label">Site Zoning Classification</div>
-                <div class="field-value">{{ $application->zoningAssessment?->site_zoning_classification ?? '' }}</div>
-            </div>
-            <div class="field-row">
-                <div class="field-label">Land Use</div>
-                <div class="field-value">{{ $application->zoningAssessment?->right_over_lands ?? '' }}</div>
-            </div>
-            <div class="field-row">
-                <div class="field-label">Project Status</div>
-                <div class="field-value">{{ $application->zoningAssessment?->project_status ?? '' }}</div>
-            </div>
-        </div>
-
-        {{-- Fee Paid --}}
-        @php
-            $zoningFees = collect();
-            $zoningFeeTotal = 0;
-            if ($application->collections) {
-                foreach ($application->collections as $collection) {
-                    if ($collection->collectionDetails) {
-                        $filtered = $collection->collectionDetails->filter(function ($detail) {
-                            return stripos($detail->fee_category, 'Zoning') !== false;
-                        });
-                        $zoningFees = $zoningFees->merge($filtered);
-                    }
-                }
-                $zoningFeeTotal = $zoningFees->sum('amount');
-            }
-        @endphp
-
-        @if($zoningFees->count())
-            <div class="fee-section">
-                <div class="section-title">Fees Paid</div>
-                <table class="fee-table">
-                    <thead>
-                        <tr>
-                            <th>Description</th>
-                            <th style="width: 150px; text-align: right;">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($zoningFees as $fee)
-                        <tr>
-                            <td>{{ $fee->description }}</td>
-                            <td class="amount">&#8369;{{ number_format($fee->amount, 2) }}</td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td>Total</td>
-                            <td class="amount">&#8369;{{ number_format($zoningFeeTotal, 2) }}</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
+<div class="content">
+    {{-- Header --}}
+    <div class="header">
+        @if($sealImage)
+            <img src="{{ $sealImage }}" class="seal" alt="Seal">
         @endif
-
-        {{-- Signatory --}}
-        <div class="signature-block">
-            @if(isset($signatories['planning_officer']))
-                <div class="sig-line">{{ $signatories['planning_officer']->name }}</div>
-                @if($signatories['planning_officer']->title)
-                    <div class="sig-title">{{ $signatories['planning_officer']->title }}</div>
-                @endif
-                @if($signatories['planning_officer']->designation)
-                    <div class="sig-designation">{{ $signatories['planning_officer']->designation }}</div>
-                @endif
-            @else
-                <div class="sig-line">&nbsp;</div>
-                <div class="sig-title">Planning Officer</div>
-            @endif
-        </div>
+        <p>Republic of the Philippines</p>
+        <p class="office">{{ $settings['general.planning_office_name'] ?? 'CITY PLANNING & DEVELOPMENT OFFICE' }}</p>
+        <p>{{ $settings['general.planning_office_address'] ?? 'Second Floor, City Hall Annex Building' }}</p>
+        <p>City of San Fernando, La Union</p>
+        <p>Tel. No. {{ $settings['general.planning_office_telephone'] ?? '(072) 888-69-01 Local 120' }}</p>
     </div>
+
+    {{-- Title --}}
+    <div class="title">C E R T I F I C A T I O N</div>
+
+    {{-- Salutation --}}
+    <div class="salutation">TO WHOM IT MAY CONCERN:</div>
+
+    @php
+        $projectTitle = $application->project_title ?? '___________';
+        $applicantName = strtoupper(trim(
+            $application->applicant_last_name . ', ' . $application->applicant_first_name
+            . ($application->applicant_middle_name ? ' ' . mb_substr($application->applicant_middle_name, 0, 1) . '.' : '')
+        ));
+        $location = $application->buildingBarangay->name ?? $application->building_street ?? '___________';
+        $classification = $application->zoningAssessment?->project_classification ?? '___________';
+        $certDate = $application->zoningAssessment?->certificate_date;
+    @endphp
+
+    {{-- Certification Body --}}
+    <p class="body-text">
+        THIS IS TO CERTIFY that the proposed location of the <u><strong>{{ strtoupper($projectTitle) }}</strong></u> building/fence
+        of <u><strong>{{ $applicantName }}</strong></u> located at <u><strong>{{ $location }}</strong></u> this city
+        declared as <u><strong>{{ strtoupper($classification) }}</strong></u> of the zonification plan of the city.
+    </p>
+
+    <p class="body-text">
+        Issued this <u><strong>{{ $certDate ? $certDate->format('jS') : '____' }}</strong></u> day of
+        <u><strong>{{ $certDate ? $certDate->format('F') : '___________' }}</strong></u>,
+        <u><strong>{{ $certDate ? $certDate->format('Y') : '____' }}</strong></u> at the City of San Fernando,
+        upon the request of <u><strong>{{ $applicantName }}</strong></u> in connection with
+        his/her/their application for building/fencing permit.
+    </p>
+
+    {{-- Signatory --}}
+    <div class="signature-block">
+        @if(isset($signatories['planning_officer']))
+            <div class="sig-line">{{ strtoupper(trim(($signatories['planning_officer']->title ?? '') . ' ' . $signatories['planning_officer']->name)) }}</div>
+            @if($signatories['planning_officer']->designation)
+                <div class="sig-designation">{{ $signatories['planning_officer']->designation }}</div>
+            @endif
+        @else
+            <div class="sig-line">&nbsp;</div>
+            <div class="sig-designation">Zoning Inspector</div>
+        @endif
+    </div>
+
+    {{-- Payment Details --}}
+    @php
+        $zoningFees = collect();
+        foreach ($application->collections ?? [] as $collection) {
+            foreach ($collection->collectionDetails ?? [] as $detail) {
+                if (stripos($detail->fee_category, 'ZONING_CERT') !== false) {
+                    $zoningFees->push($detail);
+                }
+            }
+        }
+        $zoningFeeTotal = $zoningFees->sum('amount');
+        $paymentCollection = $zoningFees->first()?->collection;
+    @endphp
+
+    <div class="footer-details">
+        <div class="row"><span class="label">Amount Paid:</span> Php {{ number_format($zoningFeeTotal, 2) }}</div>
+        <div class="row"><span class="label">Paid Under O.R. No.:</span> {{ $paymentCollection->or_number ?? '___________' }}</div>
+        <div class="row"><span class="label">Date Paid:</span> {{ $paymentCollection?->or_date?->format('m/d/Y') ?? '___________' }}</div>
+    </div>
+
+    <div class="form-code">PDO-011-&Oslash;</div>
+</div>
 </body>
 </html>
