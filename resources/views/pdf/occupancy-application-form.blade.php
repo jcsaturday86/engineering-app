@@ -304,28 +304,29 @@
         <div class="sig2-col left">
             <div class="role-label" style="margin-top:0;">Inspected by:</div>
             <div class="blank-sig-line" style="margin-top:40px;">&nbsp;</div>
+            <div class="sig-caption" style="text-align:center;">Name of Inspector</div>
             <div class="sig-gap"></div>
+            <div class="blank-sig-line">&nbsp;</div>
             @if(isset($signatories['building_official']))
-                <div class="sig-name-plain">{{ strtoupper(trim(($signatories['building_official']->title ?? '') . ' ' . $signatories['building_official']->name)) }}</div>
-                <div class="sig-caption">{{ $signatories['building_official']->designation ?? 'ARCHITECT OR CIVIL ENGINEER' }}</div>
+                <div class="sig-name-plain" style="text-align:center;">{{ strtoupper(trim(($signatories['building_official']->title ?? '') . ' ' . $signatories['building_official']->name)) }}</div>
+                <div class="sig-caption" style="text-align:center;">{{ $signatories['building_official']->designation ?? 'ARCHITECT OR CIVIL ENGINEER' }}</div>
             @else
                 <div class="sig-name-plain">&nbsp;</div>
-                <div class="sig-caption">ARCHITECT OR CIVIL ENGINEER</div>
+                <div class="sig-caption" style="text-align:center;">ARCHITECT OR CIVIL ENGINEER</div>
             @endif
         </div>
         <div class="sig2-col right">
             <div class="role-label" style="margin-top:0;">Submitted by:</div>
-            <div class="sig-name-plain" style="margin-top:40px;">{{ strtoupper(trim($application->applicant_last_name . ', ' . $application->applicant_first_name)) }}</div>
-            <div class="blank-sig-line" style="margin-top:0;">&nbsp;</div>
+            <div class="blank-sig-line" style="margin-top:40px;">&nbsp;</div>
+            <div class="sig-name-plain" style="text-align:center;">{{ strtoupper(trim($application->applicant_last_name . ', ' . $application->applicant_first_name)) }}</div>
             <div class="row" style="margin-top:8px;">Community Tax Certificate No. <span class="fill"></span></div>
             <div class="row">Date Issued: <span class="fill"></span></div>
             <div class="row">Place Issued: <span class="fill"></span></div>
             <div class="sig-gap"></div>
             <div class="role-label" style="margin-top:0;">Attested by:</div>
-            <div class="row" style="margin-top:2px; margin-left:30px; font-weight:bold;">FULL-TIME INSPECTOR OR SUPERVISOR OF CONSTRUCTION</div>
+            <div class="row" style="margin-top:2px;">FULL-TIME INSPECTOR OR SUPERVISOR OF CONSTRUCTION</div>
             <div class="blank-sig-line" style="margin-top:40px;">&nbsp;</div>
-            <div style="text-align:center; font-weight:bold; margin-top:2px;">ARCHITECT OR CIVIL ENGINEER</div>
-            <div style="text-align:center; font-size:9.5px;">(Signed and Sealed Over Printed Name)</div>
+            <div class="sig-caption" style="text-align:center;">Name of Architect or Civil Engineer</div>
             <div style="text-align:center; font-size:9.5px;">Date<span class="fill" style="min-width:130px;"></span></div>
             <table class="prc-table" style="margin-top:4px;">
                 <tr>

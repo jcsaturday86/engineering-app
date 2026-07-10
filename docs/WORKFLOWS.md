@@ -202,6 +202,12 @@ The assessment index tables (`/assessments` and `/assessments/occupancy`) list a
 
 ---
 
+## Print Forms Dropdown (BP Show Page)
+
+`applications/{id}` shows a single right-aligned "Print Forms" dropdown (Alpine) instead of separate buttons: 1. Application Form (`applications.print`), 2–7. Architectural/Structural/Electrical/Sanitary/Mechanical/Electronics (`applications.print.discipline`, one route per discipline key). Architectural renders a real NBC Form A-01 PDF; the other five render a shared blank placeholder pending official source forms.
+
+---
+
 ## Revert / Send-Back Actions
 
 Every forward step below has a corresponding backward action, each requiring password confirmation (`Hash::check()`) and writing an `activity()` log entry. All deletions are soft-deletes.
@@ -271,6 +277,7 @@ The `/collections` Payment History table is scoped to the **logged-in collector 
 | Revert engineering finalize / return to zoning | `revert-assessments`, `return-to-zoning` | engineering-officer |
 | Revoke generated permit | `revert-permits` | engineering-officer |
 | Restore revoked permit | `revert-permits` | engineering-officer |
+| View audit logs | `view-audit-logs` | super-admin only |
 
 ---
 
@@ -289,8 +296,10 @@ The `/collections` Payment History table is scoped to the **logged-in collector 
 
 | Template | Trigger |
 |----------|---------|
-| application-form | ApplicationController::printForm (BP only) — browser-print HTML (not DomPDF); Unified Application Form for Building Permit reproduced as a background-image overlay (`public/images/forms/unified-bp-form-p{1,2}.png`) with ~84 absolutely-positioned dynamic fields; letterhead is overlaid (seal `general.logo` left, `general.national_govt_logo` right, Republic/city/province from settings centered); Area No. falls back to `general.area_number`; p2 ends with the applicant's name over a SIGNATURE OVER PRINTED NAME OF OWNER/APPLICANT line |
+| application-form | ApplicationController::printForm (BP only) — DomPDF (`defaultMediaType=print`, `dpi=200`); Unified Application Form for Building Permit reproduced as a background-image overlay (`public/images/forms/unified-bp-form-p{1,2}.png`) with ~84 absolutely-positioned dynamic fields; letterhead is overlaid (seal `general.logo` left, `general.national_govt_logo` right, Republic/city/province from settings centered); Area No. falls back to `general.area_number`; p2 ends with the applicant's name over a SIGNATURE OVER PRINTED NAME OF OWNER/APPLICANT line |
 | occupancy-application-form | OccupancyApplicationController::printForm (OP only) — DomPDF A4 portrait; Unified Application Form for Certificate of Occupancy; two-logo header, FULL/PARTIAL from applicationType, static requirements checklist, two-column signatory block (Inspected by: building_official Signatory / Submitted by: applicant + Attested by: full-time inspector with blank PRC table) |
+| architectural-form | ApplicationController::printDiscipline (BP only, discipline=architectural) — DomPDF background-image overlay of NBC Form A-01, own scans (`public/images/forms/architectural-p{1,2}.png`); Boxes 1/4/5/6 auto-filled from the Application record, Box 3 left blank for hand-signing, page 2 "Permit Issued By" from the Permit's building-official snapshot |
+| discipline-form | ApplicationController::printDiscipline (BP only, discipline=structural/electrical/sanitary/mechanical/electronics) — shared blank placeholder, DomPDF A4, city seal header |
 | building-permit | PermitController::print (BP) — NBC Form B-018 style, A4 landscape, city seal (left) + DPWH logo (right), QR verification code |
 | occupancy-permit | PermitController::print (OP) — DPWH Certificate of Occupancy style, A4 landscape, DPWH logo + city seal, QR verification code |
 | assessment-summary | AssessmentController::print (BP only) — city seal header; Code 128 barcode above BP number; Approved By = building_official signatory; no Fire Code Fees section |
@@ -323,6 +332,10 @@ qrImage   = QR PNG encoding verifyUrl (endroid/qr-code), embedded as base64 data
 ## Reports (`/reports/permits`)
 
 `ReportController::generate()` and `PermitReportExport` filter the Permit Report (PDF + Excel) to applications at `permit_generated`, or `paid` with a revoked permit on file (same status semantics as the Permits List) — previously the report included every status with no filter. Both formats include Permit No. and TTA columns and a combined application-date → permit-date Date range. The PDF's peso sign (₱) is rendered with the `DejaVu Sans` font (bundled with DomPDF) instead of the default Helvetica/Arial substitute, which lacks that glyph and rendered it as a box/`?`.
+
+## Audit Logs (`/reports/audit-logs`) — Super-Admin Only
+
+`ReportController::auditLogs()` surfaces Spatie's existing `activity_log` table (already written to by Application, OccupancyApplication, Assessment, Collection, Permit, and User). Gated by the `view-audit-logs` permission, granted **only** to `super-admin` — not `administrator` or any other role — both at the route (`middleware('can:view-audit-logs')`, independent of the `reports.` group's blanket `can:view-reports`) and the sidebar link (`@can('view-audit-logs')`, so it's invisible to every other role even if they have `view-reports`). Filters: free-text search (description), causer (user dropdown), subject type (Application/OccupancyApplication/Assessment/Collection/Permit/User), event (created/updated/deleted), and month (`?month=YYYY-MM`, defaults to current month).
 
 ---
 

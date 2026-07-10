@@ -238,6 +238,33 @@
 
 - Created BP-2026-07-00006 (id 8, status `submitted`) with every required field populated: full applicant/address/ID data, project + location (lot/block/TCT/tax dec), complete cost breakdown (₱2.05M), engineer + PEE professional blocks, owner block, FSEC reference, electrical loads, occupancy group A1 — for end-to-end print/assessment testing
 
+### Print Forms Dropdown & Discipline Print Routes — COMPLETED
+
+- BP application Show page: single Print button replaced with a right-aligned "Print Forms" dropdown (Alpine.js) listing 7 numbered items — 1. Application Form, 2–7. Architectural/Structural/Electrical/Sanitary/Mechanical/Electronics
+- New generic route `applications/{id}/print-discipline/{discipline}` → `ApplicationController::printDiscipline()`; `DISCIPLINE_FORMS` const maps each discipline key to a form title. Structural/Electrical/Sanitary/Mechanical/Electronics render a shared blank placeholder (`pdf/discipline-form.blade.php`, DomPDF A4) — no official source form was available for those disciplines yet
+- `applications/{id}/print` (`printForm()`) converted from a browser-print HTML view to an actual DomPDF stream — `defaultMediaType` set to `print` (needed for `@media print` `@page` rules to apply during PDF render, not just browser printing) and `dpi` set to 200 to match the background scan's true resolution (DomPDF's default 96 dpi silently downsamples/blurs a higher-resolution `background-image`)
+
+### Architectural Permit PDF (NBC Form No. A-01) — COMPLETED
+
+- `printDiscipline()` special-cases `architectural` → `ApplicationController::printArchitecturalForm()` → new `pdf/architectural-form.blade.php`, a real 2-page background-image-overlay PDF (same technique as the Unified Application Form) instead of the shared blank placeholder
+- Background PNGs (`public/images/forms/architectural-p1.png` / `-p2.png`, 1700×2600 @ 200dpi) rasterized from the user's own NBC Form A-01 source PDFs via the WinRT `Windows.Data.Pdf.PdfDocument` PowerShell technique; every field position calibrated against the source scan with PHP GD pixel-scanning (border/label detection), not eyeballed
+- All fields sourced from the `Application` record already on file: Box 1 (Owner/Applicant, enterprise name, form of ownership, occupancy, address, location of construction, scope-of-work checkboxes), Box 4/5/6 (Supervision engineer, Building Owner, Lot Owner consent — names, addresses, PRC/PTR/CTC + date/place-issued fields), plus a dynamic letterhead (seal + National Government logo + Republic/City/Province from Settings)
+- Box 3 (Design Professional/Architect) intentionally left blank — the plans may be signed and sealed by an architect different from the engineer of record, so it's filled in by hand rather than auto-populated
+- Page 2's "PERMIT ISSUED BY:" block reads the generated Permit's `building_official_title`/`_name`/`_designation` snapshot columns (same snapshot used by the Building/Occupancy Permit PDFs), rendered only when a Permit exists for the application
+- Readability pass: Box 1's Last Name/First Name/M.I./TIN and Address values moved to sit on the blank line *below* their printed labels (rather than crowding beside them) at a larger font size; Box 6's CTC No./Date Issued/Place Issued given the same below-label treatment with a full 4-digit year
+- Fixed a GD gotcha hit repeatedly during calibration: the source PNGs are palette-indexed, so `imagecolorat()` returns a raw palette index, not an RGB triple — must resolve via `imagecolorsforindex()` before comparing brightness, or measurements silently come out wrong
+
+### Audit Logs Report (Super-Admin Only) — COMPLETED
+
+- New `view-audit-logs` permission, granted only to `super-admin` (not `administrator` or any other role) in `RolePermissionSeeder`
+- `ReportController::auditLogs()` — `GET /reports/audit-logs` (`can:view-audit-logs` middleware, independent of the group's blanket `can:view-reports`), queries Spatie's `Activity` model with `search` (description), `causer_id`, `subject_type` (Application/OccupancyApplication/Assessment/Collection/Permit/User), `event`, and a month filter (defaults to current month), paginated
+- New `reports/audit-logs.blade.php` view; sidebar link gated by `@can('view-audit-logs')` inside the existing Reports section, so it's invisible to every role except super-admin even if they otherwise have `view-reports`
+
+### Full BP/OP End-to-End QA Pass — COMPLETED
+
+- Manual walkthrough of the complete Building Permit and Occupancy Permit lifecycles (application creation through permit generation), exercising every workflow/revert transition, all engineering fee categories, all payment modes, and every print output, using the staff-login curl + WinRT-rasterize + visual-read workflow established earlier in the project
+- Negative/security checks included: attempting revert/void/generate actions without the required permission (expect 403), duplicate OR number submission, double permit generation, and an IDOR check on print routes as a `client`-role user
+
 ---
 
 ## Upcoming Tasks

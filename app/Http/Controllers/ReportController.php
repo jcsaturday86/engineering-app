@@ -7,14 +7,56 @@ use App\Exports\PermitReportExport;
 use App\Exports\RevenueReportExport;
 use App\Models\Application;
 use App\Models\Collection;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
+use Spatie\Activitylog\Models\Activity;
 
 class ReportController extends Controller
 {
     public function permits()
     {
         return view('reports.permits');
+    }
+
+    public function auditLogs(Request $request)
+    {
+        $query = Activity::with(['causer', 'subject']);
+
+        if ($request->filled('search')) {
+            $query->where('description', 'like', '%' . $request->search . '%');
+        }
+
+        if ($request->filled('causer_id')) {
+            $query->where('causer_id', $request->causer_id)->where('causer_type', User::class);
+        }
+
+        if ($request->filled('subject_type')) {
+            $query->where('subject_type', $request->subject_type);
+        }
+
+        if ($request->filled('event')) {
+            $query->where('event', $request->event);
+        }
+
+        $month = $request->get('month', now()->format('Y-m'));
+        $monthStart = \Carbon\Carbon::createFromFormat('Y-m', $month)->startOfMonth();
+        $monthEnd = $monthStart->copy()->endOfMonth();
+        $query->whereBetween('created_at', [$monthStart, $monthEnd]);
+
+        $activities = $query->latest()->paginate(20)->withQueryString();
+
+        $causers = User::orderBy('name')->get(['id', 'name']);
+        $subjectTypes = [
+            \App\Models\Application::class => 'Building Permit Application',
+            \App\Models\OccupancyApplication::class => 'Occupancy Permit Application',
+            \App\Models\Assessment::class => 'Assessment',
+            \App\Models\Collection::class => 'Collection',
+            \App\Models\Permit::class => 'Permit',
+            \App\Models\User::class => 'User',
+        ];
+
+        return view('reports.audit-logs', compact('activities', 'causers', 'subjectTypes', 'month'));
     }
 
     public function revenue()

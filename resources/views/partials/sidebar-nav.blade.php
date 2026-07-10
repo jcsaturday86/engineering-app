@@ -190,6 +190,9 @@
         <a href="{{ route('reports.permits') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Permit Reports</a>
         <a href="{{ route('reports.revenue') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Revenue Reports</a>
         <a href="{{ route('reports.collections') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Collection Reports</a>
+        @can('view-audit-logs')
+        <a href="{{ route('reports.audit-logs') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Audit Logs</a>
+        @endcan
     </div>
 </div>
 @endcan

@@ -41,8 +41,8 @@ File-type settings are each stored at a fixed path derived from their key (`Sett
 The `Setting` model provides two static helpers used by every PDF-producing controller: `Setting::general()` (all `group = general` settings keyed by key) and `Setting::imageDataUri($settings, $key)` (base64 data-URI for a file setting, or null if unset/missing) — centralizing the seal/logo embedding pattern so uploaded branding propagates to all printed documents automatically.
 
 ### Spatie / Laravel System Tables
-- `permissions`, `roles`, `model_has_permissions`, `model_has_roles`, `role_has_permissions`
-- `activity_log` — id, log_name, description, subject_type/id, causer_type/id, properties (json), event
+- `permissions`, `roles`, `model_has_permissions`, `model_has_roles`, `role_has_permissions` — includes `view-audit-logs`, granted only to `super-admin`
+- `activity_log` — id, log_name, description, subject_type/id, causer_type/id, properties (json), event. Surfaced to users via `/reports/audit-logs` (super-admin only), filterable by search/causer/subject type/event/month
 - `password_reset_tokens`, `sessions`, `cache`, `jobs`, `failed_jobs`, `notifications`
 
 ---

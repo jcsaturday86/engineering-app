@@ -24,6 +24,14 @@
     $appTypeName = $application->applicationType->name ?? '';
     $appliesTo = $application->applies_to ?? '';
     $isOp = $application->permitType->code === 'OP';
+
+    // Title-cases an address component (barangay/city names etc. are stored upper-case).
+    $tc = fn (?string $s) => $s ? mb_convert_case(mb_strtolower($s), MB_CASE_TITLE, 'UTF-8') : '';
+    $applicantAddress = trim(collect([
+        $tc($application->applicant_street),
+        $tc($application->applicantBarangay?->name),
+        $tc($application->applicantCity?->name),
+    ])->filter()->implode(', '), ', ');
 @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -73,9 +81,9 @@
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
         }
-        .p1 { background-image: url('{{ asset('images/forms/unified-bp-form-p1.png') }}'); }
+        .p1 { background-image: url('{{ public_path('images/forms/unified-bp-form-p1.png') }}'); }
         {{-- Page 2 source scan is exactly 8.5in x 13in (no blank Legal-size margin to crop) --}}
-        .p2 { background-image: url('{{ asset('images/forms/unified-bp-form-p2.png') }}'); background-size: 8.5in 13in; }
+        .p2 { background-image: url('{{ public_path('images/forms/unified-bp-form-p2.png') }}'); background-size: 8.5in 13in; }
 
         /* Overlay field: absolutely positioned dynamic value */
         .f {
@@ -83,10 +91,28 @@
             font: 8pt/1.1 Arial, sans-serif;
             white-space: nowrap;
         }
-        /* Checkmark inside a pre-printed checkbox */
+        /* Checkmark inside a pre-printed checkbox — DejaVu Sans is used because
+           the checkmark glyph (U+2714) isn't in DomPDF's core Arial/Helvetica font.
+           top/left below mark each box's top-left corner (measured from the background
+           scan via GD pixel scan); width/height/line-height/text-align center the glyph
+           inside that box. .c = small boxes (~0.09in, Scope of Work / Character of
+           Occupancy); .c-lg = large boxes (~0.145in, Simple/Complex, New/Renewal/
+           Amendatory, Applies-also-for). */
         .c {
             position: absolute;
-            font: bold 9pt/1 Arial, sans-serif;
+            width: 0.1in;
+            height: 0.1in;
+            line-height: 0.11in;
+            text-align: center;
+            font: bold 6pt/1 'DejaVu Sans', Arial, sans-serif;
+        }
+        .c-lg {
+            position: absolute;
+            width: 0.145in;
+            height: 0.145in;
+            line-height: 0.145in;
+            text-align: center;
+            font: bold 10pt/1 'DejaVu Sans', Arial, sans-serif;
         }
         .ctr { text-align: center; }
         .sm { font-size: 7pt; }
@@ -119,19 +145,19 @@
     <div class="hdr" style="top:0.42in;">Province of {{ $settings['general.province'] ?? 'La Union' }}</div>
 
     {{-- Simple / Complex --}}
-    @if($complexity === 'Simple')<div class="c" style="top:1.01in; left:2.77in;">&#10004;</div>@endif
-    @if($complexity === 'Complex')<div class="c" style="top:1.01in; left:4.72in;">&#10004;</div>@endif
+    @if($complexity === 'Simple')<div class="c-lg" style="top:1.01in; left:2.745in;">&#10004;</div>@endif
+    @if($complexity === 'Complex')<div class="c-lg" style="top:1.01in; left:4.695in;">&#10004;</div>@endif
 
     {{-- New / Renewal / Amendatory (BP only — OP has no matching boxes on this form) --}}
     @unless($isOp)
-        @if($appTypeName === 'New')<div class="c" style="top:1.24in; left:2.77in;">&#10004;</div>@endif
-        @if($appTypeName === 'Renewal')<div class="c" style="top:1.24in; left:3.74in;">&#10004;</div>@endif
-        @if($appTypeName === 'Amendatory')<div class="c" style="top:1.24in; left:4.72in;">&#10004;</div>@endif
+        @if($appTypeName === 'New')<div class="c-lg" style="top:1.24in; left:2.745in;">&#10004;</div>@endif
+        @if($appTypeName === 'Renewal')<div class="c-lg" style="top:1.24in; left:3.715in;">&#10004;</div>@endif
+        @if($appTypeName === 'Amendatory')<div class="c-lg" style="top:1.24in; left:4.695in;">&#10004;</div>@endif
     @endunless
 
     {{-- Applies also for --}}
-    @if($appliesTo !== 'SKIP_LC')<div class="c" style="top:1.47in; left:2.81in;">&#10004;</div>@endif
-    @if($application->fsec_no)<div class="c" style="top:1.47in; left:4.76in;">&#10004;</div>@endif
+    @if($appliesTo !== 'SKIP_LC')<div class="c-lg" style="top:1.47in; left:2.785in;">&#10004;</div>@endif
+    @if($application->fsec_no)<div class="c-lg" style="top:1.47in; left:4.735in;">&#10004;</div>@endif
 
     {{-- Application No. / Area No. digit boxes --}}
     <div class="f ctr" style="top:1.87in; left:0.40in; width:1.49in; font-size:8pt;">{{ $application->application_number }}</div>
@@ -143,14 +169,14 @@
     <div class="f" style="top:2.36in; left:4.95in;">{{ $mi }}</div>
     <div class="f" style="top:2.36in; left:5.50in;">{{ $application->applicant_tin ?? '' }}</div>
 
-    {{-- Form of Ownership. The "FOR CONSTRUCTION OWNED BY AN ENTERPRISE" cell to its left is a
-         2-line label that fills its entire cell on the printed form (measured: label glyphs span
-         the full cell height/width) — there is no blank space left to overlay the enterprise
-         name there without printing over the label text, so it is not rendered on this page. --}}
+    {{-- "FOR CONSTRUCTION OWNED BY AN ENTERPRISE" is a 2-line label; the enterprise name
+         is overlaid in the blank space to the right of the label text (measured via GD
+         pixel scan against the background scan), before the cell's right divider. --}}
+    <div class="f sm clip" style="top:2.615in; left:1.85in; max-width:0.78in;">{{ $application->enterprise_name ?? '' }}</div>
     <div class="f" style="top:2.72in; left:2.78in;">{{ $application->formOfOwnership?->name ?? '' }}</div>
 
     {{-- Address row --}}
-    <div class="f" style="top:2.98in; left:0.65in; max-width:4.0in;">{{ $application->applicant_street }}, {{ $application->applicantBarangay?->name }}, {{ $application->applicantCity?->name }}</div>
+    <div class="f" style="top:2.98in; left:0.65in; max-width:4.0in;">{{ $applicantAddress }}</div>
     <div class="f" style="top:2.98in; left:4.80in;">{{ $application->applicant_zip_code ?? '' }}</div>
     <div class="f" style="top:2.98in; left:5.50in;">{{ $application->applicant_contact_no ?? '' }}</div>
 
@@ -272,7 +298,7 @@
 
     {{-- BOX 2: Full-time Inspector / Supervisor --}}
     <div class="f ctr" style="top:8.29in; left:0.91in; width:2.91in; font-weight:bold;">{{ strtoupper($application->engineer_name ?? '') }}</div>
-    <div class="f" style="top:8.72in; left:1.85in;">{{ $application->engineer_date_signed?->format('F d, Y') ?? '' }}</div>
+    {{-- Date signed is filled in by hand at signing time, not printed. --}}
     <div class="f" style="top:8.08in; left:4.95in; max-width:3.0in; overflow:hidden;">{{ $application->engineer_address ?? '' }}</div>
     <div class="f" style="top:8.37in; left:5.00in;">{{ $application->engineer_prc_no ?? '' }}</div>
     <div class="f sm" style="top:8.38in; left:6.80in;">{{ $application->engineer_prc_validity?->format('m/d/Y') ?? '' }}</div>
@@ -283,19 +309,19 @@
 
     {{-- BOX 3: Applicant --}}
     <div class="f ctr" style="top:9.36in; left:0.66in; width:2.49in; font-weight:bold;">{{ strtoupper(trim($application->applicant_first_name . ' ' . $mi . ' ' . $application->applicant_last_name)) }}</div>
-    <div class="f" style="top:9.38in; left:3.58in;">{{ $application->applicant_date_signed?->format('m/d/Y') ?? '' }}</div>
-    <div class="f" style="top:9.71in; left:0.85in; max-width:3.4in; overflow:hidden;">{{ $application->applicant_street }}, {{ $application->applicantBarangay?->name }}, {{ $application->applicantCity?->name }}</div>
-    <div class="f clip" style="top:9.90in; left:1.25in; max-width:1.15in; font-size:7pt;">{{ $application->applicant_govt_id ?? '' }}</div>
-    <div class="f sm" style="top:9.90in; left:2.50in;">{{ $application->applicant_id_date_issued?->format('m/d/Y') ?? '' }}</div>
-    <div class="f clip" style="top:9.90in; left:3.60in; max-width:0.66in; font-size:6pt;">{{ $application->applicant_id_place_issued ?? '' }}</div>
+    {{-- Date signed is filled in by hand at signing time, not printed. --}}
+    <div class="f" style="top:9.71in; left:0.85in; max-width:3.4in; overflow:hidden;">{{ $applicantAddress }}</div>
+    <div class="f clip" style="top:9.90in; left:1.27in; max-width:0.62in; font-size:6pt;">{{ $application->applicant_govt_id ?? '' }}</div>
+    <div class="f clip" style="top:9.90in; left:2.48in; max-width:0.48in; font-size:6pt;">{{ $application->applicant_id_date_issued?->format('m/d/Y') ?? '' }}</div>
+    <div class="f clip" style="top:9.90in; left:3.56in; max-width:0.70in; font-size:6pt;">{{ $application->applicant_id_place_issued ?? '' }}</div>
 
     {{-- BOX 4: Lot Owner / Authorized Representative --}}
     <div class="f ctr" style="top:9.36in; left:4.55in; width:2.35in; font-weight:bold;">{{ strtoupper($application->owner_name ?? '') }}</div>
-    <div class="f" style="top:9.38in; left:7.32in;">{{ $application->owner_date_signed?->format('m/d/Y') ?? '' }}</div>
+    {{-- Date signed is filled in by hand at signing time, not printed. --}}
     <div class="f" style="top:9.71in; left:4.75in; max-width:3.3in; overflow:hidden;">{{ $application->owner_address ?? '' }}</div>
-    <div class="f clip" style="top:9.90in; left:5.08in; max-width:0.58in; font-size:5.5pt;">{{ $application->owner_govt_id ?? '' }}</div>
-    <div class="f sm" style="top:9.90in; left:6.00in;">{{ $application->owner_id_date_issued?->format('m/d/Y') ?? '' }}</div>
-    <div class="f clip" style="top:9.90in; left:7.33in; max-width:0.72in; font-size:6pt;">{{ $application->owner_id_place_issued ?? '' }}</div>
+    <div class="f clip" style="top:9.90in; left:5.13in; max-width:0.50in; font-size:6pt;">{{ $application->owner_govt_id ?? '' }}</div>
+    <div class="f clip" style="top:9.90in; left:6.21in; max-width:0.48in; font-size:6pt;">{{ $application->owner_id_date_issued?->format('m/d/Y') ?? '' }}</div>
+    <div class="f clip" style="top:9.90in; left:7.30in; max-width:0.74in; font-size:6pt;">{{ $application->owner_id_place_issued ?? '' }}</div>
 
     {{-- BOX 5 (notarial) is completed by hand — no overlay fields --}}
 
@@ -305,7 +331,7 @@
 {{-- Box 6 (assessed fees) and Terms and Conditions are part of the background form image.
      The signature line at the bottom is for the Owner/Applicant (not the Building Official). --}}
 <div class="print-page p2 page-break">
-    <div class="f ctr" style="top:12.32in; left:4.765in; width:3.225in; font-size:12px; font-weight:bold;">
+    <div class="f ctr" style="top:12.24in; left:4.765in; width:3.225in; font-size:30px; line-height:30px; font-weight:bold;">
         {{ strtoupper(trim($application->applicant_first_name . ' ' . $mi . ' ' . $application->applicant_last_name)) }}
     </div>
 </div>

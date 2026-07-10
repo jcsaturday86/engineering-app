@@ -87,6 +87,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/{application}/cancel', [ApplicationController::class, 'cancel'])->name('cancel')->middleware('can:cancel-applications');
         Route::post('/{application}/revert-submission', [ApplicationController::class, 'revertSubmission'])->name('revertSubmission')->middleware('can:revert-submission');
         Route::get('/{application}/print', [ApplicationController::class, 'printForm'])->name('print')->middleware('can:view-applications');
+        Route::get('/{application}/print-discipline/{discipline}', [ApplicationController::class, 'printDiscipline'])->name('print.discipline')->middleware('can:view-applications');
     });
 
     // Occupancy Permit Applications (OP)
@@ -199,6 +200,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/revenue', [ReportController::class, 'revenue'])->name('revenue');
         Route::get('/collections', [ReportController::class, 'collections'])->name('collections');
         Route::post('/generate', [ReportController::class, 'generate'])->name('generate');
+        Route::get('/audit-logs', [ReportController::class, 'auditLogs'])->middleware('can:view-audit-logs')->name('audit-logs');
     });
 
     // Settings (Admin)

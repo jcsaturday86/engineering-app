@@ -158,9 +158,21 @@
                     </div>
                 @endif
                 @endcan
-                <a href="{{ route('applications.print', $application) }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
-                    <i class="fas fa-print"></i> Print
-                </a>
+                <div x-data="{ open: false }" class="relative ml-auto">
+                    <button type="button" @click="open = !open" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
+                        <i class="fas fa-print"></i> Print Forms <i class="fas fa-chevron-down text-xs text-gray-400"></i>
+                    </button>
+                    <div x-show="open" @click.outside="open = false" x-cloak class="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                        <a href="{{ route('applications.print', $application) }}" target="_blank" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                            <i class="fas fa-print w-4 text-gray-400"></i> 1. Application Form
+                        </a>
+                        @foreach(['architectural' => 'Architectural', 'structural' => 'Structural', 'electrical' => 'Electrical', 'sanitary' => 'Sanitary', 'mechanical' => 'Mechanical', 'electronics' => 'Electronics'] as $discipline => $label)
+                        <a href="{{ route('applications.print.discipline', [$application, $discipline]) }}" target="_blank" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                            <i class="fas fa-print w-4 text-gray-400"></i> {{ $loop->iteration + 1 }}. {{ $label }}
+                        </a>
+                        @endforeach
+                    </div>
+                </div>
             </div>
         </div>
     </div>

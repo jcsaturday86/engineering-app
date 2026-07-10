@@ -38,7 +38,10 @@
 | Application numbering | DONE | BP-YYYY-MM-NNNNN |
 | Occupancy group selection | DONE | Groups A–J with sub-groups |
 | All BP form fields | DONE | Applicant, enterprise, project, building, costs, engineers |
-| Application form print | DONE | Browser print, background-image overlay of the official 2-page Unified Application Form (8.5×13in long bond), ~84 dynamic fields; overlaid letterhead (seal left, National Govt logo right, city/province from Settings); Area No. from `general.area_number`; p2 applicant signature line (Building Official block removed with the new scan) |
+| Application form print | DONE | Now a real DomPDF stream (was browser-print HTML): background-image overlay of the official 2-page Unified Application Form (8.5×13in long bond), ~84 dynamic fields; overlaid letterhead (seal left, National Govt logo right, city/province from Settings); Area No. from `general.area_number`; p2 applicant signature line (Building Official block removed with the new scan); `dpi=200` set explicitly so the background scan isn't downsampled/blurred |
+| Print Forms dropdown | DONE | BP Show page: single "Print Forms" dropdown (Alpine) replacing 7 separate buttons — Application Form + 6 discipline forms (Architectural/Structural/Electrical/Sanitary/Mechanical/Electronics) |
+| Discipline print routes | DONE | `applications/{id}/print-discipline/{discipline}` — Architectural renders a real NBC Form A-01 PDF (`pdf/architectural-form.blade.php`); the other 5 disciplines render a shared blank placeholder (`pdf/discipline-form.blade.php`) pending official source forms |
+| Architectural Permit PDF (NBC Form A-01) | DONE | Background-image overlay (own scans, GD pixel-calibrated); Boxes 1/4/5/6 auto-filled from the Application record + letterhead; Box 3 (Design Professional) left blank for hand-signing; page 2 "Permit Issued By" reads the Permit's building-official snapshot |
 | Cancel hidden after permit generation | DONE | Show-page Cancel button excluded for `permit_generated` (in addition to paid/released/cancelled) |
 | Status workflow | DONE | 8-state machine |
 | Submission notification | DONE | Notifies engineering users |
@@ -172,6 +175,7 @@
 | Excel + PDF export | DONE | |
 | Permit report status filter + Permit No./TTA columns | DONE | Filters to Permit Generated/Revoked only; combined app-date→permit-date range |
 | Permit report peso sign fix | DONE | Switched PDF font to DejaVu Sans (bundled with DomPDF) — Helvetica/Arial lack the ₱ glyph |
+| Audit Logs report | DONE | `/reports/audit-logs`, super-admin only (`view-audit-logs` permission); filters Spatie's `activity_log` by search/causer/subject type/event/month |
 
 ---
 

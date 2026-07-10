@@ -47,7 +47,7 @@
                     @forelse($applications as $app)
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 font-mono text-blue-600">{{ $app->application_number }}</td>
-                        <td class="px-4 py-3">{{ $app->permitType?->name }}</td>
+                        <td class="px-4 py-3">{{ $app->permit_type_name }}</td>
                         <td class="px-4 py-3 text-gray-600 truncate max-w-[200px]">{{ $app->project_title ?? '-' }}</td>
                         <td class="px-4 py-3">
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
@@ -59,11 +59,17 @@
                         </td>
                         <td class="px-4 py-3 text-gray-500">{{ $app->created_at->format('M d, Y') }}</td>
                         <td class="px-4 py-3 text-right space-x-2">
-                            <a href="{{ route('online.show', $app) }}" class="text-blue-600 hover:text-blue-800 text-xs">View</a>
-                            <a href="{{ route('online.upload', $app) }}" class="text-indigo-600 hover:text-indigo-800 text-xs">Upload</a>
-                            <a href="{{ route('online.track', $app) }}" class="text-gray-600 hover:text-gray-800 text-xs">Track</a>
+                            @php
+                                $showRoute = $app->type === 'op' ? 'online.show.op' : 'online.show';
+                                $uploadRoute = $app->type === 'op' ? 'online.upload.op' : 'online.upload';
+                                $trackRoute = $app->type === 'op' ? 'online.track.op' : 'online.track';
+                                $downloadRoute = $app->type === 'op' ? 'online.download.op' : 'online.download';
+                            @endphp
+                            <a href="{{ route($showRoute, $app->id) }}" class="text-blue-600 hover:text-blue-800 text-xs">View</a>
+                            <a href="{{ route($uploadRoute, $app->id) }}" class="text-indigo-600 hover:text-indigo-800 text-xs">Upload</a>
+                            <a href="{{ route($trackRoute, $app->id) }}" class="text-gray-600 hover:text-gray-800 text-xs">Track</a>
                             @if(in_array($app->status, ['permit_generated', 'released']))
-                            <a href="{{ route('online.download', $app) }}" class="text-green-600 hover:text-green-800 text-xs">Download</a>
+                            <a href="{{ route($downloadRoute, $app->id) }}" class="text-green-600 hover:text-green-800 text-xs">Download</a>
                             @endif
                         </td>
                     </tr>
@@ -78,9 +84,6 @@
                 </tbody>
             </table>
         </div>
-        @if($applications->hasPages())
-        <div class="px-4 py-3 border-t border-gray-200">{{ $applications->links() }}</div>
-        @endif
     </div>
 </div>
 @endsection

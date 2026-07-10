@@ -293,7 +293,62 @@ class ApplicationController extends Controller
             $nationalGovtLogo = 'data:' . $mime . ';base64,' . base64_encode(\Illuminate\Support\Facades\Storage::disk('public')->get($settings['general.national_govt_logo']));
         }
 
-        return view('pdf.application-form', compact('application', 'signatories', 'sealImage', 'nationalGovtLogo', 'settings'));
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.application-form', compact('application', 'signatories', 'sealImage', 'nationalGovtLogo', 'settings'));
+        $pdf->setOption('defaultMediaType', 'print');
+        // Background scans are 200 DPI (1700x2800 / 1700x2600); dompdf resamples background-image
+        // to (size_in_points * dpi / 72), so dpi must match the source resolution or it downsamples
+        // and blurs it. Default dpi (96) would shrink 1700px wide art down to 816px.
+        $pdf->setOption('dpi', 200);
+        $pdf->setPaper([0, 0, 612, 936]); // 8.5in x 13in, in points (72pt/in)
+
+        return $pdf->stream("application_{$application->application_number}.pdf");
+    }
+
+    public const DISCIPLINE_FORMS = [
+        'architectural' => 'Architectural Form',
+        'structural' => 'Structural Form',
+        'electrical' => 'Electrical Form',
+        'sanitary' => 'Sanitary Form',
+        'mechanical' => 'Mechanical Form',
+        'electronics' => 'Electronics Form',
+    ];
+
+    public function printDiscipline(Application $application, string $discipline)
+    {
+        abort_unless(array_key_exists($discipline, self::DISCIPLINE_FORMS), 404);
+
+        if ($discipline === 'architectural') {
+            return $this->printArchitecturalForm($application);
+        }
+
+        $formTitle = self::DISCIPLINE_FORMS[$discipline];
+
+        $settings = \App\Models\Setting::general();
+        $sealImage = \App\Models\Setting::imageDataUri($settings, 'general.logo');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.discipline-form', compact('application', 'settings', 'sealImage', 'formTitle'));
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->stream("{$discipline}_{$application->application_number}.pdf");
+    }
+
+    private function printArchitecturalForm(Application $application)
+    {
+        $application->load([
+            'formOfOwnership', 'applicantBarangay', 'applicantCity', 'buildingBarangay',
+            'applicationOccupancyGroups.occupancyGroup', 'permits',
+        ]);
+
+        $settings = \App\Models\Setting::general();
+        $sealImage = \App\Models\Setting::imageDataUri($settings, 'general.logo');
+        $nationalGovtLogo = \App\Models\Setting::imageDataUri($settings, 'general.national_govt_logo');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.architectural-form', compact('application', 'settings', 'sealImage', 'nationalGovtLogo'));
+        $pdf->setOption('defaultMediaType', 'print');
+        $pdf->setOption('dpi', 200);
+        $pdf->setPaper([0, 0, 612, 936]); // 8.5in x 13in, in points (72pt/in)
+
+        return $pdf->stream("architectural_{$application->application_number}.pdf");
     }
 
     private function getFormData(?int $permitTypeId = null): array

@@ -67,6 +67,7 @@ class RolePermissionSeeder extends Seeder
             // Reports
             'view-reports',
             'export-reports',
+            'view-audit-logs',
 
             // Settings
             'manage-settings',
@@ -89,7 +90,10 @@ class RolePermissionSeeder extends Seeder
 
         // Define roles and their permissions
         $rolePermissions = [
-            'super-admin' => $permissions, // All permissions
+            'super-admin' => collect($permissions)
+                ->reject(fn (string $p) => $p === 'view-audit-logs')
+                ->values()
+                ->all(),
 
             'administrator' => collect($permissions)
                 ->reject(fn (string $p) => str_starts_with($p, 'online-'))
