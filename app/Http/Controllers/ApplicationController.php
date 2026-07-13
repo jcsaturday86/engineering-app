@@ -343,7 +343,21 @@ class ApplicationController extends Controller
         $sealImage = \App\Models\Setting::imageDataUri($settings, 'general.logo');
         $nationalGovtLogo = \App\Models\Setting::imageDataUri($settings, 'general.national_govt_logo');
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.architectural-form', compact('application', 'settings', 'sealImage', 'nationalGovtLogo'));
+        // Prefer the generated Permit's immutable building-official snapshot; fall back to the
+        // currently-active Building Official signatory when no Permit has been generated yet.
+        $permit = $application->permits->first();
+        if ($permit) {
+            $boTitle = $permit->building_official_title ?? '';
+            $boName = $permit->building_official_name ?? '';
+            $boDesignation = $permit->building_official_designation ?? 'Building Official';
+        } else {
+            $signatory = \App\Models\Signatory::where('role', 'building_official')->where('is_active', true)->first();
+            $boTitle = $signatory?->title ?? '';
+            $boName = $signatory?->name ?? '';
+            $boDesignation = $signatory?->designation ?? 'Building Official';
+        }
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.architectural-form', compact('application', 'settings', 'sealImage', 'nationalGovtLogo', 'boTitle', 'boName', 'boDesignation'));
         $pdf->setOption('defaultMediaType', 'print');
         $pdf->setOption('dpi', 200);
         $pdf->setPaper([0, 0, 612, 936]); // 8.5in x 13in, in points (72pt/in)

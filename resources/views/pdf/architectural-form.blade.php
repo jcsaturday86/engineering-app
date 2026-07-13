@@ -11,10 +11,10 @@
     $sk = fn ($id) => $scopeId == $id ? '&#10004;' : '';
 
     $primaryOccupancy = $application->applicationOccupancyGroups->first()?->occupancyGroup?->name ?? '';
-    $permit = $application->permits->first();
-    $buildingPermitNo = $permit?->permit_number ?? '';
-    $boName = trim(($permit?->building_official_title ?? '') . ' ' . ($permit?->building_official_name ?? ''));
-    $boDesignation = $permit?->building_official_designation ?? 'Building Official';
+    $buildingPermitNo = $application->permits->first()?->permit_number ?? '';
+    // $boTitle / $boName / $boDesignation come from the controller: the generated Permit's
+    // building-official snapshot if one exists, otherwise the currently-active Signatory.
+    $boFullName = trim(($boTitle ?? '') . ' ' . ($boName ?? ''));
 
     // dompdf's overflow:hidden clipping is unreliable on absolutely positioned text, so
     // very tight cells are hard-truncated here instead of relying on CSS to clip them.
@@ -150,11 +150,11 @@
 
 {{-- ======================== PAGE 2 ======================== --}}
 {{-- Internal office-processing checklist (Boxes 7-9) — no application data to overlay,
-     except the "PERMIT ISSUED BY:" signatory block (Box 9), sourced from the Permit's
-     building-official snapshot. --}}
+     except the "PERMIT ISSUED BY:" signatory block (Box 9): the generated Permit's
+     building-official snapshot, or the currently-active Signatory if no Permit yet. --}}
 <div class="print-page p2 page-break">
-    @if($boName !== '')
-    <div class="f ctr" style="top:11.05in; left:0.7in; width:6.9in; font-weight:bold; font-size:10pt;">{{ strtoupper($boName) }}</div>
+    @if($boFullName !== '')
+    <div class="f ctr" style="top:11.05in; left:0.7in; width:6.9in; font-weight:bold; font-size:10pt;">{{ strtoupper($boFullName) }}</div>
     <div class="f ctr" style="top:11.28in; left:0.7in; width:6.9in; font-size:9pt;">{{ strtoupper($boDesignation) }}</div>
     @endif
 </div>
