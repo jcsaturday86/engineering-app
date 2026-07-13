@@ -73,9 +73,9 @@
     @if($nationalGovtLogo ?? null)
     <img src="{{ $nationalGovtLogo }}" alt="National Government Logo" style="position:absolute; top:0.65in; left:7.12in; width:0.75in; height:0.75in;">
     @endif
-    <div class="hdr" style="top:0.08in;">Republic of the Philippines</div>
-    <div class="hdr" style="top:0.32in; font-weight:bold;">{{ $settings['general.city'] ?? 'City of San Fernando' }}</div>
-    <div class="hdr" style="top:0.56in;">Province of {{ $settings['general.province'] ?? 'La Union' }}</div>
+    <div class="hdr" style="top:0.32in;">Republic of the Philippines</div>
+    <div class="hdr" style="top:0.56in; font-weight:bold;">{{ $settings['general.city'] ?? 'City of San Fernando' }}</div>
+    <div class="hdr" style="top:0.80in;">Province of {{ $settings['general.province'] ?? 'La Union' }}</div>
 
     {{-- Top: Application No. / C-SP No. / Building Permit No. --}}
     <div class="f ctr" style="top:1.97in; left:0.40in; width:2.35in;">{{ $application->application_number }}</div>
