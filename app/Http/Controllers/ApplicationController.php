@@ -391,13 +391,14 @@ class ApplicationController extends Controller
 
     private function printSanitaryForm(Application $application)
     {
-        $application->load(['applicantBarangay', 'applicantCity', 'buildingBarangay']);
+        $application->load(['applicantBarangay', 'applicantCity', 'buildingBarangay', 'permits']);
 
         $settings = \App\Models\Setting::general();
         $sealImage = \App\Models\Setting::imageDataUri($settings, 'general.logo');
         $nationalGovtLogo = \App\Models\Setting::imageDataUri($settings, 'general.national_govt_logo');
+        [$boTitle, $boName, $boDesignation] = $this->resolveBuildingOfficial($application);
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.sanitary-form', compact('application', 'settings', 'sealImage', 'nationalGovtLogo'));
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.sanitary-form', compact('application', 'settings', 'sealImage', 'nationalGovtLogo', 'boTitle', 'boName', 'boDesignation'));
         $pdf->setOption('defaultMediaType', 'print');
         $pdf->setOption('dpi', 200);
         $pdf->setPaper([0, 0, 612, 936]); // 8.5in x 13in, in points (72pt/in)

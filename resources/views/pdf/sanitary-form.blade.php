@@ -8,6 +8,8 @@
     // dompdf's overflow:hidden clipping is unreliable on absolutely positioned text, so
     // very tight cells are hard-truncated here instead of relying on CSS to clip them.
     $trunc = fn (?string $s, int $len) => $s ? \Illuminate\Support\Str::limit($s, $len, '') : '';
+
+    $boFullName = trim(($boTitle ?? '') . ' ' . ($boName ?? ''));
 @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -99,6 +101,10 @@
     <div class="f clip" style="top:9.97in; left:1.56in; max-width:1.00in; font-size:7pt;">{{ $application->proposed_construction_date?->format('m/d/Y') ?? '' }}</div>
     <div class="f clip" style="top:9.97in; left:5.44in; max-width:1.00in; font-size:7pt;">{{ $application->plumbing_cost ? number_format($application->plumbing_cost, 2) : '' }}</div>
     <div class="f clip" style="top:10.25in; left:1.12in; max-width:1.00in; font-size:7pt;">{{ $application->expected_completion_date?->format('m/d/Y') ?? '' }}</div>
+
+    {{-- BOX 2: Building Official title/name/designation, above the signature line beside item 4 --}}
+    <div class="f ctr sm" style="top:11.58in; left:5.94in; width:2.365in; font-weight:bold;">{{ strtoupper($boFullName) }}</div>
+    <div class="f ctr sm" style="top:11.76in; left:5.94in; width:2.365in;">{{ strtoupper($boDesignation ?? '') }}</div>
 
 </div>{{-- end page 1 --}}
 
