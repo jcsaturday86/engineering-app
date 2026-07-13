@@ -183,6 +183,12 @@ class Application extends Model implements PermitApplicationContract
         return 'BP';
     }
 
+    /**
+     * Overrides the stored `total_estimated_cost` column with a live recalculation on every
+     * read — kept in sync with ApplicationController::calculateTotalEstimatedCost() so the
+     * two never drift apart again (previously this accessor silently dropped
+     * equipment_cost_1-4 from every read, making the stored column effectively write-only).
+     */
     public function getTotalEstimatedCostAttribute(): float
     {
         return (float) $this->building_cost
@@ -190,7 +196,11 @@ class Application extends Model implements PermitApplicationContract
             + (float) $this->mechanical_cost
             + (float) $this->electronics_cost
             + (float) $this->plumbing_cost
-            + (float) $this->other_equipment_cost;
+            + (float) $this->other_equipment_cost
+            + (float) $this->equipment_cost_1
+            + (float) $this->equipment_cost_2
+            + (float) $this->equipment_cost_3
+            + (float) $this->equipment_cost_4;
     }
 
     // ---------------------------------------------------------------

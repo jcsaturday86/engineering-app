@@ -761,6 +761,18 @@
                             <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                         @enderror
                     </div>
+                    <div>
+                        <label for="equipment_cost_4" class="block text-xs font-medium text-gray-600 mb-1">Equipment/Labor Cost 5</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">P</span>
+                            <input type="number" name="equipment_cost_4" id="equipment_cost_4" min="0" step="0.01"
+                                x-model.number="costs.equipment_cost_4"
+                                class="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        @error('equipment_cost_4')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
                 </div>
             </div>
 
@@ -942,7 +954,7 @@
                 <div>
                     <label for="applicant_date_signed" class="block text-xs font-medium text-gray-600 mb-1">Date Signed</label>
                     <input type="date" name="applicant_date_signed" id="applicant_date_signed"
-                        value="{{ old('applicant_date_signed', $application->applicant_date_signed ?? '') }}"
+                        value="{{ old('applicant_date_signed', optional($application->applicant_date_signed ?? null)->format('Y-m-d')) }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     @error('applicant_date_signed')
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -1074,7 +1086,10 @@
                 <span class="text-sm font-medium text-gray-700">Include Electrical Permit Details</span>
             </div>
 
-            <fieldset :disabled="!includeElectrical" class="space-y-4 pt-2 border-0 p-0 m-0" :class="{ 'opacity-50': !includeElectrical }">
+            {{-- Note: NOT using the `disabled` attribute here — disabled form fields are excluded
+                 from submission entirely, which previously caused every save made while this
+                 toggle was off to silently null out already-saved electrical/PEE/SEW data. --}}
+            <fieldset class="space-y-4 pt-2 border-0 p-0 m-0" :class="{ 'opacity-50 pointer-events-none': !includeElectrical }">
 
                 {{-- Electrical Loads --}}
                 <div>
@@ -1127,7 +1142,7 @@
                             <div>
                                 <label for="pee_date_signed" class="block text-xs font-medium text-gray-600 mb-1">Date Signed <span class="text-red-500">*</span></label>
                                 <input type="date" name="pee_date_signed" required id="pee_date_signed"
-                                    value="{{ old('pee_date_signed', $application->pee_date_signed ?? '') }}"
+                                    value="{{ old('pee_date_signed', optional($application->pee_date_signed ?? null)->format('Y-m-d')) }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('pee_date_signed')
                                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -1147,7 +1162,7 @@
                             <div>
                                 <label for="pee_prc_validity" class="block text-xs font-medium text-gray-600 mb-1">PRC Validity <span class="text-red-500">*</span></label>
                                 <input type="date" name="pee_prc_validity" required id="pee_prc_validity"
-                                    value="{{ old('pee_prc_validity', $application->pee_prc_validity ?? '') }}"
+                                    value="{{ old('pee_prc_validity', optional($application->pee_prc_validity ?? null)->format('Y-m-d')) }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('pee_prc_validity')
                                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -1167,7 +1182,7 @@
                             <div>
                                 <label for="pee_ptr_date_issued" class="block text-xs font-medium text-gray-600 mb-1">PTR Date Issued <span class="text-red-500">*</span></label>
                                 <input type="date" name="pee_ptr_date_issued" required id="pee_ptr_date_issued"
-                                    value="{{ old('pee_ptr_date_issued', $application->pee_ptr_date_issued ?? '') }}"
+                                    value="{{ old('pee_ptr_date_issued', optional($application->pee_ptr_date_issued ?? null)->format('Y-m-d')) }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('pee_ptr_date_issued')
                                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -1250,7 +1265,7 @@
                             <div>
                                 <label for="sew_date_signed" class="block text-xs font-medium text-gray-600 mb-1">Date Signed <span class="text-red-500">*</span></label>
                                 <input type="date" name="sew_date_signed" required id="sew_date_signed"
-                                    value="{{ old('sew_date_signed', $application->sew_date_signed ?? '') }}"
+                                    value="{{ old('sew_date_signed', optional($application->sew_date_signed ?? null)->format('Y-m-d')) }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('sew_date_signed')
                                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -1270,7 +1285,7 @@
                             <div>
                                 <label for="sew_prc_validity" class="block text-xs font-medium text-gray-600 mb-1">PRC Validity <span class="text-red-500">*</span></label>
                                 <input type="date" name="sew_prc_validity" required id="sew_prc_validity"
-                                    value="{{ old('sew_prc_validity', $application->sew_prc_validity ?? '') }}"
+                                    value="{{ old('sew_prc_validity', optional($application->sew_prc_validity ?? null)->format('Y-m-d')) }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('sew_prc_validity')
                                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -1290,7 +1305,7 @@
                             <div>
                                 <label for="sew_ptr_date_issued" class="block text-xs font-medium text-gray-600 mb-1">PTR Date Issued <span class="text-red-500">*</span></label>
                                 <input type="date" name="sew_ptr_date_issued" required id="sew_ptr_date_issued"
-                                    value="{{ old('sew_ptr_date_issued', $application->sew_ptr_date_issued ?? '') }}"
+                                    value="{{ old('sew_ptr_date_issued', optional($application->sew_ptr_date_issued ?? null)->format('Y-m-d')) }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('sew_ptr_date_issued')
                                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -1405,6 +1420,7 @@
                 equipment_cost_1: {{ old('equipment_cost_1', $application->equipment_cost_1 ?? 0) ?: 0 }},
                 equipment_cost_2: {{ old('equipment_cost_2', $application->equipment_cost_2 ?? 0) ?: 0 }},
                 equipment_cost_3: {{ old('equipment_cost_3', $application->equipment_cost_3 ?? 0) ?: 0 }},
+                equipment_cost_4: {{ old('equipment_cost_4', $application->equipment_cost_4 ?? 0) ?: 0 }},
             },
 
             get totalEstimatedCost() {

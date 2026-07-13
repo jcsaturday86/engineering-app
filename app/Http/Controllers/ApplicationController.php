@@ -104,16 +104,7 @@ class ApplicationController extends Controller
                 'status' => 'draft',
                 'source' => 'walk_in',
                 'entered_by' => Auth::id(),
-                'total_estimated_cost' => ($validated['building_cost'] ?? 0) +
-                    ($validated['electrical_cost'] ?? 0) +
-                    ($validated['mechanical_cost'] ?? 0) +
-                    ($validated['electronics_cost'] ?? 0) +
-                    ($validated['plumbing_cost'] ?? 0) +
-                    ($validated['other_equipment_cost'] ?? 0) +
-                    ($validated['equipment_cost_1'] ?? 0) +
-                    ($validated['equipment_cost_2'] ?? 0) +
-                    ($validated['equipment_cost_3'] ?? 0) +
-                    ($validated['equipment_cost_4'] ?? 0),
+                'total_estimated_cost' => $this->calculateTotalEstimatedCost($validated),
             ]));
 
             $this->saveOccupancyGroups($application, $request);
@@ -169,12 +160,7 @@ class ApplicationController extends Controller
 
         DB::beginTransaction();
         try {
-            $validated['total_estimated_cost'] = ($validated['building_cost'] ?? 0) +
-                ($validated['electrical_cost'] ?? 0) +
-                ($validated['mechanical_cost'] ?? 0) +
-                ($validated['electronics_cost'] ?? 0) +
-                ($validated['plumbing_cost'] ?? 0) +
-                ($validated['other_equipment_cost'] ?? 0);
+            $validated['total_estimated_cost'] = $this->calculateTotalEstimatedCost($validated);
 
             $application->update($validated);
 
@@ -445,6 +431,24 @@ class ApplicationController extends Controller
             'occupancyGroups' => OccupancyGroup::with('subGroups')->where('is_active', true)->orderBy('sort_order')->get(),
             'landClassifications' => LandClassification::where('is_active', true)->get(),
         ];
+    }
+
+    /**
+     * Shared by store() and update() so the two never drift apart again —
+     * previously update() dropped the equipment_cost_1-4 terms that store() included.
+     */
+    private function calculateTotalEstimatedCost(array $validated): float
+    {
+        return ($validated['building_cost'] ?? 0) +
+            ($validated['electrical_cost'] ?? 0) +
+            ($validated['mechanical_cost'] ?? 0) +
+            ($validated['electronics_cost'] ?? 0) +
+            ($validated['plumbing_cost'] ?? 0) +
+            ($validated['other_equipment_cost'] ?? 0) +
+            ($validated['equipment_cost_1'] ?? 0) +
+            ($validated['equipment_cost_2'] ?? 0) +
+            ($validated['equipment_cost_3'] ?? 0) +
+            ($validated['equipment_cost_4'] ?? 0);
     }
 
     private function validateApplication(Request $request): array
