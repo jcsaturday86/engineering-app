@@ -180,7 +180,8 @@
       "Bash(curl -s -b clientcookies.txt http://localhost:8100/online/application/9 -o onlineidor.html -w \"GET /online/application/9 \\(not owner\\) as client: %{http_code}\\\\n\")",
       "Bash(curl -s -b clientcookies.txt http://localhost:8100/online/application/9/download -o onlineidor2.html -w \"GET /online/application/9/download as client: %{http_code}\\\\n\")",
       "Bash(curl -s -b cookies.txt http://localhost:8100/occupancy-applications/create -o opcreate.html -w \"page: %{http_code}\\\\n\")",
-      "PowerShell(powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\\\Users\\\\JAYCAR~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--xampp-htdocs-engineering-app\\\\80b4d8b2-6a63-4704-9397-2303c3138762\\\\scratchpad\\\\rasterize-structural.ps1\")"
+      "PowerShell(powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\\\Users\\\\JAYCAR~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--xampp-htdocs-engineering-app\\\\80b4d8b2-6a63-4704-9397-2303c3138762\\\\scratchpad\\\\rasterize-structural.ps1\")",
+      "PowerShell(powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\\\Users\\\\JAYCAR~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--xampp-htdocs-engineering-app\\\\80b4d8b2-6a63-4704-9397-2303c3138762\\\\scratchpad\\\\rasterize-sanitary.ps1\")"
     ]
   }
 }

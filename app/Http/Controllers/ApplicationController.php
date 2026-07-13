@@ -315,6 +315,10 @@ class ApplicationController extends Controller
             return $this->printElectricalForm($application);
         }
 
+        if ($discipline === 'sanitary') {
+            return $this->printSanitaryForm($application);
+        }
+
         $formTitle = self::DISCIPLINE_FORMS[$discipline];
 
         $settings = \App\Models\Setting::general();
@@ -383,6 +387,22 @@ class ApplicationController extends Controller
         $pdf->setPaper([0, 0, 612, 936]); // 8.5in x 13in, in points (72pt/in)
 
         return $pdf->stream("electrical_{$application->application_number}.pdf");
+    }
+
+    private function printSanitaryForm(Application $application)
+    {
+        $application->load(['applicantBarangay', 'applicantCity', 'buildingBarangay']);
+
+        $settings = \App\Models\Setting::general();
+        $sealImage = \App\Models\Setting::imageDataUri($settings, 'general.logo');
+        $nationalGovtLogo = \App\Models\Setting::imageDataUri($settings, 'general.national_govt_logo');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.sanitary-form', compact('application', 'settings', 'sealImage', 'nationalGovtLogo'));
+        $pdf->setOption('defaultMediaType', 'print');
+        $pdf->setOption('dpi', 200);
+        $pdf->setPaper([0, 0, 612, 936]); // 8.5in x 13in, in points (72pt/in)
+
+        return $pdf->stream("sanitary_{$application->application_number}.pdf");
     }
 
     /**
