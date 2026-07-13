@@ -325,6 +325,10 @@ class ApplicationController extends Controller
             return $this->printStructuralForm($application);
         }
 
+        if ($discipline === 'electrical') {
+            return $this->printElectricalForm($application);
+        }
+
         $formTitle = self::DISCIPLINE_FORMS[$discipline];
 
         $settings = \App\Models\Setting::general();
@@ -374,6 +378,25 @@ class ApplicationController extends Controller
         $pdf->setPaper([0, 0, 612, 936]); // 8.5in x 13in, in points (72pt/in)
 
         return $pdf->stream("structural_{$application->application_number}.pdf");
+    }
+
+    private function printElectricalForm(Application $application)
+    {
+        $application->load([
+            'formOfOwnership', 'applicantBarangay', 'applicantCity', 'buildingBarangay', 'permits',
+        ]);
+
+        $settings = \App\Models\Setting::general();
+        $sealImage = \App\Models\Setting::imageDataUri($settings, 'general.logo');
+        $nationalGovtLogo = \App\Models\Setting::imageDataUri($settings, 'general.national_govt_logo');
+        [$boTitle, $boName, $boDesignation] = $this->resolveBuildingOfficial($application);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.electrical-form', compact('application', 'settings', 'sealImage', 'nationalGovtLogo', 'boTitle', 'boName', 'boDesignation'));
+        $pdf->setOption('defaultMediaType', 'print');
+        $pdf->setOption('dpi', 200);
+        $pdf->setPaper([0, 0, 612, 936]); // 8.5in x 13in, in points (72pt/in)
+
+        return $pdf->stream("electrical_{$application->application_number}.pdf");
     }
 
     /**
