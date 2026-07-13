@@ -15,6 +15,9 @@
     $trunc = fn (?string $s, int $len) => $s ? \Illuminate\Support\Str::limit($s, $len, '') : '';
 
     $kva = fn ($v) => $v !== null ? rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.') : '';
+
+    $sewProfession = $application->sew_profession;
+    $sewCk = fn (array $values) => in_array($sewProfession, $values, true) ? '&#10004;' : '';
 @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -124,18 +127,20 @@
     <div class="f clip" style="top:7.56in; left:4.84in; max-width:1.25in;">{{ $application->pee_ptr_issued_at ?? '' }}</div>
     <div class="f clip" style="top:7.56in; left:6.43in; max-width:1.60in;">{{ $application->pee_tin ?? '' }}</div>
 
-    {{-- BOX 3: Supervisor of Electrical Works — reuses the generic engineer_* fields
-         (no dedicated supervisor data exists separate from the PEE above), matching the
-         same "supervision/in-charge" convention used on the Architectural/Structural forms.
-         Name sits on the blank line above the "(Signature Over Printed Name)" caption. --}}
-    <div class="f ctr" style="top:8.60in; left:0.40in; width:7.65in; font-weight:bold;">{{ strtoupper($application->engineer_name ?? '') }}</div>
-    <div class="f clip" style="top:9.05in; left:1.03in; max-width:3.00in;">{{ $application->engineer_address ?? '' }}</div>
-    <div class="f clip" style="top:9.21in; left:0.96in; max-width:3.05in;">{{ $application->engineer_prc_no ?? '' }}</div>
-    <div class="f clip" style="top:9.21in; left:4.76in; max-width:3.20in;">{{ $application->engineer_prc_validity?->format('m/d/Y') ?? '' }}</div>
-    <div class="f clip" style="top:9.37in; left:0.96in; max-width:3.05in;">{{ $application->engineer_ptr_no ?? '' }}</div>
-    <div class="f clip" style="top:9.37in; left:5.01in; max-width:2.95in;">{{ $application->engineer_ptr_date_issued?->format('m/d/Y') ?? '' }}</div>
-    <div class="f clip" style="top:9.54in; left:1.12in; max-width:2.90in;">{{ $application->engineer_ptr_issued_at ?? '' }}</div>
-    <div class="f clip" style="top:9.54in; left:4.41in; max-width:3.55in;">{{ $application->engineer_tin ?? '' }}</div>
+    {{-- BOX 3: Supervisor of Electrical Works — sourced from the sew_* fields (the BP
+         application form's dedicated "Supervisor / In-Charge of Electrical Works" section),
+         not the generic engineer_* professional-in-charge block used elsewhere.
+         Profession checkbox: sew_profession is 'REE', 'RME', or 'Master Electrician'. --}}
+    @if($sewCk(['REE']))<div class="c" style="top:8.20in; left:3.09in;">&#10004;</div>@endif
+    @if($sewCk(['RME', 'Master Electrician']))<div class="c" style="top:8.20in; left:5.89in;">&#10004;</div>@endif
+    <div class="f ctr" style="top:8.60in; left:0.40in; width:7.65in; font-weight:bold;">{{ strtoupper($application->sew_name ?? '') }}</div>
+    <div class="f clip" style="top:9.05in; left:1.03in; max-width:3.00in;">{{ $application->sew_address ?? '' }}</div>
+    <div class="f clip" style="top:9.21in; left:0.96in; max-width:3.05in;">{{ $application->sew_prc_no ?? '' }}</div>
+    <div class="f clip" style="top:9.21in; left:4.76in; max-width:3.20in;">{{ $application->sew_prc_validity?->format('m/d/Y') ?? '' }}</div>
+    <div class="f clip" style="top:9.37in; left:0.96in; max-width:3.05in;">{{ $application->sew_ptr_no ?? '' }}</div>
+    <div class="f clip" style="top:9.37in; left:5.01in; max-width:2.95in;">{{ $application->sew_ptr_date_issued?->format('m/d/Y') ?? '' }}</div>
+    <div class="f clip" style="top:9.54in; left:1.12in; max-width:2.90in;">{{ $application->sew_ptr_issued_at ?? '' }}</div>
+    <div class="f clip" style="top:9.54in; left:4.41in; max-width:3.55in;">{{ $application->sew_tin ?? '' }}</div>
 
     {{-- BOX 4: Building Owner/Applicant --}}
     <div class="f ctr" style="top:10.50in; left:0.39in; width:3.55in; font-weight:bold;">{{ strtoupper(trim($application->applicant_first_name . ' ' . $mi . ' ' . $application->applicant_last_name)) }}</div>
