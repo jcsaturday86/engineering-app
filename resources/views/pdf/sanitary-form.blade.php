@@ -103,27 +103,18 @@
 </div>{{-- end page 1 --}}
 
 {{-- ======================== PAGE 2 ======================== --}}
-{{-- Box 6 "SANITARY ENGINEER/MASTER PLUMBER SIGNED AND SEALED PLANS SPECIFICATIONS" is left
-     blank — the plans may be signed/sealed by a professional different from the engineer of
-     record, same rationale as the other discipline forms' Design Professional box.
-     Box 7 "IN-CHARGE OF INSTALLATION" reuses the generic engineer_* fields.
+{{-- Box 6 "SANITARY ENGINEER/MASTER PLUMBER SIGNED AND SEALED PLANS SPECIFICATIONS" and
+     Box 7 "...IN-CHARGE OF INSTALLATION" are both left blank — the plans/installation may be
+     signed by a professional different from the engineer of record, same rationale as the
+     other discipline forms' Design Professional box.
      Box 8 is the Applicant's own signature/CTC block. --}}
 <div class="print-page p2 page-break">
 
-    {{-- BOX 7: Sanitary Engineer/Master Plumber In-Charge of Installation --}}
-    <div class="f clip" style="top:6.78in; left:4.15in; max-width:3.6in;">{{ $application->engineer_prc_no ?? '' }}</div>
-    <div class="f ctr" style="top:7.10in; left:0.20in; width:3.85in; font-weight:bold;">{{ strtoupper($application->engineer_name ?? '') }}</div>
-    <div class="f clip" style="top:7.54in; left:0.75in; max-width:3.30in;">{{ $application->engineer_address ?? '' }}</div>
-    <div class="f clip" style="top:7.90in; left:0.69in; max-width:0.80in;">{{ $application->engineer_ptr_no ?? '' }}</div>
-    <div class="f clip" style="top:7.90in; left:2.28in; max-width:1.05in;">{{ $application->engineer_ptr_date_issued?->format('m/d/Y') ?? '' }}</div>
-    <div class="f clip" style="top:7.90in; left:4.15in; max-width:3.30in; font-size:7pt;">{{ $application->engineer_ptr_issued_at ?? '' }}</div>
-    <div class="f clip" style="top:8.35in; left:3.72in; max-width:4.10in;">{{ $application->engineer_tin ?? '' }}</div>
-
-    {{-- BOX 8: Applicant signature + CTC --}}
-    <div class="f ctr" style="top:9.35in; left:0.20in; width:3.85in; font-weight:bold;">{{ strtoupper(trim($application->applicant_first_name . ' ' . $mi . ' ' . $application->applicant_last_name)) }}</div>
-    <div class="f clip" style="top:10.10in; left:0.20in; max-width:1.25in; font-size:7pt;">{{ $application->applicant_govt_id ?? '' }}</div>
-    <div class="f clip" style="top:10.10in; left:1.57in; max-width:1.75in; font-size:7pt;">{{ $application->applicant_id_date_issued?->format('m/d/Y') ?? '' }}</div>
-    <div class="f clip" style="top:10.10in; left:3.42in; max-width:2.00in; font-size:7pt;">{{ $application->applicant_id_place_issued ?? '' }}</div>
+    {{-- BOX 8: Applicant signature + CTC — centered within the box's actual width (0.20in-4.82in) --}}
+    <div class="f ctr" style="top:9.35in; left:0.20in; width:4.62in; font-weight:bold;">{{ strtoupper(trim($application->applicant_first_name . ' ' . $mi . ' ' . $application->applicant_last_name)) }}</div>
+    <div class="f clip" style="top:10.10in; left:0.20in; max-width:1.47in; font-size:7pt;">{{ $application->applicant_govt_id ?? '' }}</div>
+    <div class="f clip" style="top:10.10in; left:1.57in; max-width:1.76in; font-size:7pt;">{{ $application->applicant_id_date_issued?->format('m/d/Y') ?? '' }}</div>
+    <div class="f clip" style="top:10.10in; left:3.42in; max-width:1.35in; font-size:7pt;">{{ $application->applicant_id_place_issued ?? '' }}</div>
 
 </div>
 
