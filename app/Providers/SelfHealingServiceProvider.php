@@ -32,6 +32,7 @@ class SelfHealingServiceProvider extends ServiceProvider
         }
 
         try {
+            $this->ensureFontCacheDirExists();
             $this->ensureDatabaseExists();
             $this->ensureTablesExist();
             $this->ensureRolesExist();
@@ -40,6 +41,21 @@ class SelfHealingServiceProvider extends ServiceProvider
             $this->ensureReferenceDataExists();
         } catch (\Throwable $e) {
             Log::warning('Self-healing encountered an error: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Ensure DomPDF's font cache directory exists. Without it, DomPDF can't
+     * persist parsed font metrics (font_cache config points here) and re-parses
+     * every font — including the DejaVu Sans font used for checkmarks/peso signs
+     * across most PDF templates — on every single render, which is slow.
+     */
+    private function ensureFontCacheDirExists(): void
+    {
+        $dir = storage_path('fonts');
+
+        if (! is_dir($dir)) {
+            @mkdir($dir, 0775, true);
         }
     }
 

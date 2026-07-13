@@ -81,9 +81,9 @@
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
         }
-        .p1 { background-image: url('{{ public_path('images/forms/unified-bp-form-p1.png') }}'); }
+        .p1 { background-image: url('{{ public_path('images/forms/unified-bp-form-p1.jpg') }}'); }
         {{-- Page 2 source scan is exactly 8.5in x 13in (no blank Legal-size margin to crop) --}}
-        .p2 { background-image: url('{{ public_path('images/forms/unified-bp-form-p2.png') }}'); background-size: 8.5in 13in; }
+        .p2 { background-image: url('{{ public_path('images/forms/unified-bp-form-p2.jpg') }}'); background-size: 8.5in 13in; }
 
         /* Overlay field: absolutely positioned dynamic value */
         .f {

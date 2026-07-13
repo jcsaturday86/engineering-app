@@ -42,8 +42,8 @@
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
         }
-        .p1 { background-image: url('{{ public_path('images/forms/architectural-p1.png') }}'); }
-        .p2 { background-image: url('{{ public_path('images/forms/architectural-p2.png') }}'); }
+        .p1 { background-image: url('{{ public_path('images/forms/architectural-p1.jpg') }}'); }
+        .p2 { background-image: url('{{ public_path('images/forms/architectural-p2.jpg') }}'); }
 
         .f {
             position: absolute;

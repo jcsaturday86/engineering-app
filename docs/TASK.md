@@ -260,6 +260,13 @@
 - `ReportController::auditLogs()` — `GET /reports/audit-logs` (`can:view-audit-logs` middleware, independent of the group's blanket `can:view-reports`), queries Spatie's `Activity` model with `search` (description), `causer_id`, `subject_type` (Application/OccupancyApplication/Assessment/Collection/Permit/User), `event`, and a month filter (defaults to current month), paginated
 - New `reports/audit-logs.blade.php` view; sidebar link gated by `@can('view-audit-logs')` inside the existing Reports section, so it's invisible to every role except super-admin even if they otherwise have `view-reports`
 
+### PDF Print Performance Fix (5-8s → ~2s) — COMPLETED
+
+- Profiled `Dompdf::render()` directly (bypassing HTTP) to find that DomPDF's PNG-embedding path (full GD decode + manual alpha/pixel handling + Flate re-encode) accounted for ~95% of render time on the two background-image-overlay templates (Unified Application Form, Architectural Permit) — stripping the `background-image` rule dropped render from 7.2s to 0.3s
+- Converted the 4 full-page background scans (`unified-bp-form-p{1,2}`, `architectural-p{1,2}`) from PNG to JPEG (quality 90, flattened onto white), updated the two Blade templates' `background-image` rules accordingly — `dpi=200` unchanged, sharpness confirmed unaffected by visual crop comparison; total print time dropped to ~2s
+- Original PNGs kept on disk (unreferenced) as the lossless source for any future GD pixel-scan recalibration
+- Also fixed two supporting issues found during profiling: DomPDF's `font_cache` directory (`storage/fonts`) didn't exist, so font metrics were re-parsed from scratch on every render — created it and added `SelfHealingServiceProvider::ensureFontCacheDirExists()` so it self-heals; and PHP OPcache was disabled in the local XAMPP `php.ini` — enabled it (`validate_timestamps=1`, `revalidate_freq=0` so dev edits still apply immediately), speeding up every page in the app, not just PDFs
+
 ### Full BP/OP End-to-End QA Pass — COMPLETED
 
 - Manual walkthrough of the complete Building Permit and Occupancy Permit lifecycles (application creation through permit generation), exercising every workflow/revert transition, all engineering fee categories, all payment modes, and every print output, using the staff-login curl + WinRT-rasterize + visual-read workflow established earlier in the project
