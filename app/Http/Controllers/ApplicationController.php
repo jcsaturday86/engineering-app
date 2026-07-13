@@ -321,6 +321,10 @@ class ApplicationController extends Controller
             return $this->printArchitecturalForm($application);
         }
 
+        if ($discipline === 'structural') {
+            return $this->printStructuralForm($application);
+        }
+
         $formTitle = self::DISCIPLINE_FORMS[$discipline];
 
         $settings = \App\Models\Setting::general();
@@ -342,20 +346,7 @@ class ApplicationController extends Controller
         $settings = \App\Models\Setting::general();
         $sealImage = \App\Models\Setting::imageDataUri($settings, 'general.logo');
         $nationalGovtLogo = \App\Models\Setting::imageDataUri($settings, 'general.national_govt_logo');
-
-        // Prefer the generated Permit's immutable building-official snapshot; fall back to the
-        // currently-active Building Official signatory when no Permit has been generated yet.
-        $permit = $application->permits->first();
-        if ($permit) {
-            $boTitle = $permit->building_official_title ?? '';
-            $boName = $permit->building_official_name ?? '';
-            $boDesignation = $permit->building_official_designation ?? 'Building Official';
-        } else {
-            $signatory = \App\Models\Signatory::where('role', 'building_official')->where('is_active', true)->first();
-            $boTitle = $signatory?->title ?? '';
-            $boName = $signatory?->name ?? '';
-            $boDesignation = $signatory?->designation ?? 'Building Official';
-        }
+        [$boTitle, $boName, $boDesignation] = $this->resolveBuildingOfficial($application);
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.architectural-form', compact('application', 'settings', 'sealImage', 'nationalGovtLogo', 'boTitle', 'boName', 'boDesignation'));
         $pdf->setOption('defaultMediaType', 'print');
@@ -363,6 +354,53 @@ class ApplicationController extends Controller
         $pdf->setPaper([0, 0, 612, 936]); // 8.5in x 13in, in points (72pt/in)
 
         return $pdf->stream("architectural_{$application->application_number}.pdf");
+    }
+
+    private function printStructuralForm(Application $application)
+    {
+        $application->load([
+            'formOfOwnership', 'applicantBarangay', 'applicantCity', 'buildingBarangay',
+            'applicationOccupancyGroups.occupancyGroup', 'permits',
+        ]);
+
+        $settings = \App\Models\Setting::general();
+        $sealImage = \App\Models\Setting::imageDataUri($settings, 'general.logo');
+        $nationalGovtLogo = \App\Models\Setting::imageDataUri($settings, 'general.national_govt_logo');
+        [$boTitle, $boName, $boDesignation] = $this->resolveBuildingOfficial($application);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.structural-form', compact('application', 'settings', 'sealImage', 'nationalGovtLogo', 'boTitle', 'boName', 'boDesignation'));
+        $pdf->setOption('defaultMediaType', 'print');
+        $pdf->setOption('dpi', 200);
+        $pdf->setPaper([0, 0, 612, 936]); // 8.5in x 13in, in points (72pt/in)
+
+        return $pdf->stream("structural_{$application->application_number}.pdf");
+    }
+
+    /**
+     * Prefer the generated Permit's immutable building-official snapshot; fall back to the
+     * currently-active Building Official signatory when no Permit has been generated yet.
+     *
+     * @return array{0: string, 1: string, 2: string} [title, name, designation]
+     */
+    private function resolveBuildingOfficial(Application $application): array
+    {
+        $permit = $application->permits->first();
+
+        if ($permit) {
+            return [
+                $permit->building_official_title ?? '',
+                $permit->building_official_name ?? '',
+                $permit->building_official_designation ?? 'Building Official',
+            ];
+        }
+
+        $signatory = \App\Models\Signatory::where('role', 'building_official')->where('is_active', true)->first();
+
+        return [
+            $signatory?->title ?? '',
+            $signatory?->name ?? '',
+            $signatory?->designation ?? 'Building Official',
+        ];
     }
 
     private function getFormData(?int $permitTypeId = null): array
