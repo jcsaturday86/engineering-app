@@ -137,6 +137,8 @@
     <div class="f clip" style="top:13.60in; left:5.84in; max-width:1.0in;">{{ optional($application->owner_id_date_issued)->format('m/d/Y') }}</div>
     <div class="f clip" style="top:13.60in; left:6.91in; max-width:1.35in;">{{ $application->owner_id_place_issued ?? '' }}</div>
 
+    <div class="f ctr" style="bottom:0.12in; left:0; width:8.5in; font-size:6pt; color:#555;">This is a computer-generated document. Printed on: {{ now()->format('m/d/Y') }} | Printed by: {{ auth()->user()?->full_name }}</div>
+
 </div>{{-- end page 1 --}}
 
 {{-- ======================== PAGE 2 ======================== --}}
@@ -147,6 +149,8 @@
     {{-- BOX 9: Permit Issued By — Building Official --}}
     <div class="f ctr" style="top:10.55in; left:2.37in; width:3.5in; font-weight:bold;">{{ strtoupper($boFullName) }}</div>
     <div class="f ctr" style="top:10.75in; left:2.37in; width:3.5in;">{{ strtoupper($boDesignation ?? '') }}</div>
+
+    <div class="f ctr" style="bottom:0.12in; left:0; width:8.5in; font-size:6pt; color:#555;">This is a computer-generated document. Printed on: {{ now()->format('m/d/Y') }} | Printed by: {{ auth()->user()?->full_name }}</div>
 
 </div>
 

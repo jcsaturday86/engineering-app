@@ -325,6 +325,8 @@
 
     {{-- BOX 5 (notarial) is completed by hand — no overlay fields --}}
 
+    <div class="f ctr" style="bottom:0.12in; left:0; width:8.5in; font-size:6pt; color:#555;">This is a computer-generated document. Printed on: {{ now()->format('m/d/Y') }} | Printed by: {{ auth()->user()?->full_name }}</div>
+
 </div>{{-- end page 1 --}}
 
 {{-- ======================== PAGE 2 ======================== --}}
@@ -334,6 +336,7 @@
     <div class="f ctr" style="top:12.24in; left:4.765in; width:3.225in; font-size:30px; line-height:30px; font-weight:bold;">
         {{ strtoupper(trim($application->applicant_first_name . ' ' . $mi . ' ' . $application->applicant_last_name)) }}
     </div>
+    <div class="f ctr" style="bottom:0.12in; left:0; width:8.5in; font-size:6pt; color:#555;">This is a computer-generated document. Printed on: {{ now()->format('m/d/Y') }} | Printed by: {{ auth()->user()?->full_name }}</div>
 </div>
 
 </body>

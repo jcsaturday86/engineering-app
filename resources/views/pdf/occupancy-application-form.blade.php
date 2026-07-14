@@ -349,6 +349,8 @@
             </table>
         </div>
     </div>
+
+    <div style="margin-top:6px; font-size:9px; text-align:center; color:#555;">This is a computer-generated document. Printed on: {{ now()->format('m/d/Y') }} | Printed by: {{ auth()->user()?->full_name }}</div>
 </div>
 </body>
 </html>

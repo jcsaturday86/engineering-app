@@ -156,6 +156,8 @@
     <div class="f clip" style="top:11.55in; left:5.43in; max-width:1.25in; font-size:8pt;">{{ $application->owner_id_date_issued?->format('m/d/Y') ?? '' }}</div>
     <div class="f clip" style="top:11.55in; left:6.77in; max-width:1.25in; font-size:8pt;">{{ $application->owner_id_place_issued ?? '' }}</div>
 
+    <div class="f ctr" style="bottom:0.12in; left:0; width:8.5in; font-size:6pt; color:#555;">This is a computer-generated document. Printed on: {{ now()->format('m/d/Y') }} | Printed by: {{ auth()->user()?->full_name }}</div>
+
 </div>{{-- end page 1 --}}
 
 {{-- ======================== PAGE 2 ======================== --}}
@@ -167,6 +169,7 @@
     <div class="f ctr" style="top:10.05in; left:0.7in; width:6.9in; font-weight:bold; font-size:10pt;">{{ strtoupper($boFullName) }}</div>
     <div class="f ctr" style="top:10.30in; left:0.7in; width:6.9in; font-size:9pt;">{{ strtoupper($boDesignation) }}</div>
     @endif
+    <div class="f ctr" style="bottom:0.12in; left:0; width:8.5in; font-size:6pt; color:#555;">This is a computer-generated document. Printed on: {{ now()->format('m/d/Y') }} | Printed by: {{ auth()->user()?->full_name }}</div>
 </div>
 
 </body>

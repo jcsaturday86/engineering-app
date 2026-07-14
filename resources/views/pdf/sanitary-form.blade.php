@@ -106,6 +106,8 @@
     <div class="f ctr sm" style="top:11.58in; left:5.94in; width:2.365in; font-weight:bold;">{{ strtoupper($boFullName) }}</div>
     <div class="f ctr sm" style="top:11.76in; left:5.94in; width:2.365in;">{{ strtoupper($boDesignation ?? '') }}</div>
 
+    <div class="f ctr" style="bottom:0.12in; left:0; width:8.5in; font-size:6pt; color:#555;">This is a computer-generated document. Printed on: {{ now()->format('m/d/Y') }} | Printed by: {{ auth()->user()?->full_name }}</div>
+
 </div>{{-- end page 1 --}}
 
 {{-- ======================== PAGE 2 ======================== --}}
@@ -121,6 +123,8 @@
     <div class="f clip" style="top:10.10in; left:0.20in; max-width:1.47in; font-size:7pt;">{{ $application->applicant_govt_id ?? '' }}</div>
     <div class="f clip" style="top:10.10in; left:1.57in; max-width:1.76in; font-size:7pt;">{{ $application->applicant_id_date_issued?->format('m/d/Y') ?? '' }}</div>
     <div class="f clip" style="top:10.10in; left:3.42in; max-width:1.35in; font-size:7pt;">{{ $application->applicant_id_place_issued ?? '' }}</div>
+
+    <div class="f ctr" style="bottom:0.12in; left:0; width:8.5in; font-size:6pt; color:#555;">This is a computer-generated document. Printed on: {{ now()->format('m/d/Y') }} | Printed by: {{ auth()->user()?->full_name }}</div>
 
 </div>
 
