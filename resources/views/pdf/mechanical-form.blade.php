@@ -54,12 +54,25 @@
         .ctr { text-align: center; }
         .sm { font-size: 7pt; }
         .clip { overflow: hidden; text-overflow: ellipsis; }
+        .hdr { position: absolute; top:0; left:0; width:8.5in; text-align:center; font: 8pt/1.1 Arial, sans-serif; }
     </style>
 </head>
 <body>
 
 {{-- ======================== PAGE 1 ======================== --}}
 <div class="print-page p1">
+
+    {{-- Letterhead: sits BELOW "NBC FORM NO. A-04" (y:0.31-0.41) and above
+         "OFFICE OF THE BUILDING OFFICIAL" (y:1.27-1.37). --}}
+    @if($sealImage ?? null)
+    <img src="{{ $sealImage }}" alt="Official Seal" style="display:block; position:absolute; top:0.45in; left:0.35in; width:0.50in; height:0.50in;">
+    @endif
+    @if($nationalGovtLogo ?? null)
+    <img src="{{ $nationalGovtLogo }}" alt="National Government Logo" style="display:block; position:absolute; top:0.45in; left:7.37in; width:0.50in; height:0.50in;">
+    @endif
+    <div class="hdr" style="top:0.44in;">Republic of the Philippines</div>
+    <div class="hdr" style="top:0.60in; font-weight:bold;">{{ $settings['general.city'] ?? 'City of San Fernando' }}</div>
+    <div class="hdr" style="top:0.76in;">Province of {{ $settings['general.province'] ?? 'La Union' }}</div>
 
     {{-- Top: Application No. / Building Permit No. (MP No. left blank — no such column exists).
          A white mask sits behind the value to hide the pre-printed per-digit cell dividers,
