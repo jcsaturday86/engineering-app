@@ -1,20 +1,28 @@
 @extends('layouts.app')
 
-@section('title', $type === 'building' ? 'Building Permits' : 'Occupancy Permits')
+@php
+    $typeLabel = match($type) {
+        'building' => 'Building Permits',
+        'demolition' => 'Demolition Permits',
+        default => 'Occupancy Permits',
+    };
+@endphp
+
+@section('title', $typeLabel)
 
 @section('breadcrumbs')
     <a href="{{ route('dashboard') }}" class="text-gray-500 hover:text-gray-700">Dashboard</a>
     <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
     <a href="#" class="text-gray-500 hover:text-gray-700">Permits</a>
     <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
-    <span class="text-gray-900 font-medium">{{ $type === 'building' ? 'Building Permits' : 'Occupancy Permits' }}</span>
+    <span class="text-gray-900 font-medium">{{ $typeLabel }}</span>
 @endsection
 
 @section('content')
 <div class="space-y-4">
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h2 class="text-xl font-bold text-gray-900">{{ $type === 'building' ? 'Building Permits' : 'Occupancy Permits' }}</h2>
+        <h2 class="text-xl font-bold text-gray-900">{{ $typeLabel }}</h2>
     </div>
 
     {{-- Filters --}}
@@ -46,7 +54,14 @@
                 <i class="fas fa-search mr-1"></i> Filter
             </button>
             @if(request()->hasAny(['search', 'status']) || $year != now()->year)
-                <a href="{{ $type === 'building' ? route('permits.building') : route('permits.occupancy') }}" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Clear</a>
+                @php
+                    $clearRoute = match($type) {
+                        'building' => route('permits.building'),
+                        'demolition' => route('permits.demolition'),
+                        default => route('permits.occupancy'),
+                    };
+                @endphp
+                <a href="{{ $clearRoute }}" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Clear</a>
             @endif
         </form>
     </div>
@@ -144,7 +159,14 @@
                                                 </div>
                                             @endif
 
-                                            <form action="{{ $type === 'building' ? route('permits.restorePermit', $app) : route('permits.restorePermit.op', $app) }}" method="POST" autocomplete="off">
+                                            @php
+                                                $restoreRoute = match($type) {
+                                                    'building' => route('permits.restorePermit', $app),
+                                                    'demolition' => route('permits.restorePermit.dp', $app),
+                                                    default => route('permits.restorePermit.op', $app),
+                                                };
+                                            @endphp
+                                            <form action="{{ $restoreRoute }}" method="POST" autocomplete="off">
                                                 @csrf
                                                 <div class="mb-4">
                                                     <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
@@ -168,7 +190,14 @@
                                 </div>
                                 @endcan
                             @elseif($app->permits->isEmpty())
-                                <form action="{{ $type === 'building' ? route('permits.generate', $app) : route('permits.generate.op', $app) }}" method="POST" class="inline" autocomplete="off">
+                                @php
+                                    $generateRoute = match($type) {
+                                        'building' => route('permits.generate', $app),
+                                        'demolition' => route('permits.generate.dp', $app),
+                                        default => route('permits.generate.op', $app),
+                                    };
+                                @endphp
+                                <form action="{{ $generateRoute }}" method="POST" class="inline" autocomplete="off">
                                     @csrf
                                     <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition">
                                         <i class="fas fa-file-alt"></i> Generate
@@ -207,7 +236,14 @@
                                                     </div>
                                                 @endif
 
-                                                <form action="{{ $type === 'building' ? route('permits.revertGenerate', $app) : route('permits.revertGenerate.op', $app) }}" method="POST" autocomplete="off">
+                                                @php
+                                                    $revertGenerateRoute = match($type) {
+                                                        'building' => route('permits.revertGenerate', $app),
+                                                        'demolition' => route('permits.revertGenerate.dp', $app),
+                                                        default => route('permits.revertGenerate.op', $app),
+                                                    };
+                                                @endphp
+                                                <form action="{{ $revertGenerateRoute }}" method="POST" autocomplete="off">
                                                     @csrf
                                                     <div class="mb-4">
                                                         <label class="block text-sm font-medium text-gray-700 mb-1">Reason for Revoking <span class="text-red-500">*</span></label>

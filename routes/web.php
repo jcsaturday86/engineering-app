@@ -10,6 +10,7 @@ use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DemolitionApplicationController;
 use App\Http\Controllers\GeoController;
 use App\Http\Controllers\OccupancyApplicationController;
 use App\Http\Controllers\PermitController;
@@ -26,6 +27,7 @@ use App\Http\Controllers\AccFeeController;
 use App\Http\Controllers\SurchargeFeeController;
 use App\Http\Controllers\ElectronicsFeeController;
 use App\Http\Controllers\PlumbingFeeController;
+use App\Http\Controllers\DemolitionFeeController;
 use App\Http\Controllers\VerifyController;
 use Illuminate\Support\Facades\Route;
 
@@ -104,6 +106,20 @@ Route::middleware('auth')->group(function () {
         Route::get('/{occupancyApplication}/print', [OccupancyApplicationController::class, 'printForm'])->name('print')->middleware('can:view-applications');
     });
 
+    // Demolition Permit Applications (DP)
+    Route::prefix('demolition-applications')->name('demolition-applications.')->group(function () {
+        Route::get('/', [DemolitionApplicationController::class, 'index'])->name('index')->middleware('can:view-applications');
+        Route::get('/create', [DemolitionApplicationController::class, 'create'])->name('create')->middleware('can:create-applications');
+        Route::post('/', [DemolitionApplicationController::class, 'store'])->name('store')->middleware('can:create-applications');
+        Route::get('/{demolitionApplication}', [DemolitionApplicationController::class, 'show'])->name('show')->middleware('can:view-applications');
+        Route::get('/{demolitionApplication}/edit', [DemolitionApplicationController::class, 'edit'])->name('edit')->middleware('can:edit-applications');
+        Route::put('/{demolitionApplication}', [DemolitionApplicationController::class, 'update'])->name('update')->middleware('can:edit-applications');
+        Route::post('/{demolitionApplication}/submit', [DemolitionApplicationController::class, 'submit'])->name('submit')->middleware('can:submit-applications');
+        Route::post('/{demolitionApplication}/cancel', [DemolitionApplicationController::class, 'cancel'])->name('cancel')->middleware('can:cancel-applications');
+        Route::post('/{demolitionApplication}/revert-submission', [DemolitionApplicationController::class, 'revertSubmission'])->name('revertSubmission')->middleware('can:revert-submission');
+        Route::get('/{demolitionApplication}/print', [DemolitionApplicationController::class, 'printForm'])->name('print')->middleware('can:view-applications');
+    });
+
     // Zoning Assessment (Planning Office) — BP only
     Route::prefix('zoning')->name('zoning.')->middleware('can:view-zoning')->group(function () {
         Route::get('/', [ZoningController::class, 'index'])->name('index');
@@ -123,6 +139,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('assessments')->name('assessments.')->middleware('can:view-assessments')->group(function () {
         Route::get('/', [AssessmentController::class, 'index'])->name('index');
         Route::get('/occupancy', [AssessmentController::class, 'occupancyIndex'])->name('occupancy');
+        Route::get('/demolition', [AssessmentController::class, 'demolitionIndex'])->name('demolition');
         // BP assessment
         Route::get('/{application}', [AssessmentController::class, 'assess'])->name('assess')->middleware('can:create-assessments');
         Route::post('/{application}/item', [AssessmentController::class, 'addItem'])->name('addItem')->middleware('can:create-assessments');
@@ -148,6 +165,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/op/{occupancyApplication}/revert-to-draft', [AssessmentController::class, 'revertToDraftOp'])->name('revertToDraft.op')->middleware('can:revert-submission');
         Route::get('/op/{occupancyApplication}/print', [AssessmentController::class, 'printOp'])->name('print.op');
         Route::post('/op/{occupancyApplication}/occupancy-fee', [AssessmentController::class, 'addOccupancyFeeItem'])->name('occupancyFeeItem')->middleware('can:create-assessments');
+        // DP assessment
+        Route::get('/dp/{demolitionApplication}', [AssessmentController::class, 'assessDp'])->name('assess.dp')->middleware('can:create-assessments');
+        Route::post('/dp/{demolitionApplication}/item', [AssessmentController::class, 'addItemDp'])->name('addItem.dp')->middleware('can:create-assessments');
+        Route::get('/dp/{demolitionApplication}/summary', [AssessmentController::class, 'summaryDp'])->name('summary.dp');
+        Route::post('/dp/{demolitionApplication}/finalize', [AssessmentController::class, 'finalizeDp'])->name('finalize.dp')->middleware('can:finalize-assessments');
+        Route::post('/dp/{demolitionApplication}/revert-finalize', [AssessmentController::class, 'revertEngineeringDp'])->name('revertFinalize.dp')->middleware('can:revert-assessments');
+        Route::post('/dp/{demolitionApplication}/revert-to-draft', [AssessmentController::class, 'revertToDraftDp'])->name('revertToDraft.dp')->middleware('can:revert-submission');
+        Route::get('/dp/{demolitionApplication}/print', [AssessmentController::class, 'printDp'])->name('print.dp');
         // Shared
         Route::delete('/item/{assessmentItem}', [AssessmentController::class, 'removeItem'])->name('removeItem')->middleware('can:edit-assessments');
     });
@@ -166,6 +191,9 @@ Route::middleware('auth')->group(function () {
         // OP payment
         Route::get('/op/{occupancyApplication}/pay', [CollectionController::class, 'createOp'])->name('create.op')->middleware('can:create-collections');
         Route::post('/op/{occupancyApplication}/pay', [CollectionController::class, 'storeOp'])->name('store.op')->middleware('can:create-collections');
+        // DP payment
+        Route::get('/dp/{demolitionApplication}/pay', [CollectionController::class, 'createDp'])->name('create.dp')->middleware('can:create-collections');
+        Route::post('/dp/{demolitionApplication}/pay', [CollectionController::class, 'storeDp'])->name('store.dp')->middleware('can:create-collections');
         // Shared
         Route::get('/{collection}/receipt', [CollectionController::class, 'receipt'])->name('receipt')->middleware('can:print-receipts');
         Route::get('/void', [CollectionController::class, 'voidForm'])->name('void')->middleware('can:void-collections');
@@ -176,6 +204,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('permits')->name('permits.')->middleware('can:view-permits')->group(function () {
         Route::get('/building', [PermitController::class, 'buildingIndex'])->name('building');
         Route::get('/occupancy', [PermitController::class, 'occupancyIndex'])->name('occupancy');
+        Route::get('/demolition', [PermitController::class, 'demolitionIndex'])->name('demolition');
         // BP permit
         Route::post('/{application}/generate', [PermitController::class, 'generate'])->name('generate')->middleware('can:generate-permits');
         Route::post('/{application}/revert-generate', [PermitController::class, 'revertGenerate'])->name('revertGenerate')->middleware('can:revert-permits');
@@ -184,6 +213,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/op/{occupancyApplication}/generate', [PermitController::class, 'generateOp'])->name('generate.op')->middleware('can:generate-permits');
         Route::post('/op/{occupancyApplication}/revert-generate', [PermitController::class, 'revertGenerateOp'])->name('revertGenerate.op')->middleware('can:revert-permits');
         Route::post('/op/{occupancyApplication}/restore-permit', [PermitController::class, 'restoreRevokeOp'])->name('restorePermit.op')->middleware('can:revert-permits');
+        // DP permit
+        Route::post('/dp/{demolitionApplication}/generate', [PermitController::class, 'generateDp'])->name('generate.dp')->middleware('can:generate-permits');
+        Route::post('/dp/{demolitionApplication}/revert-generate', [PermitController::class, 'revertGenerateDp'])->name('revertGenerate.dp')->middleware('can:revert-permits');
+        Route::post('/dp/{demolitionApplication}/restore-permit', [PermitController::class, 'restoreRevokeDp'])->name('restorePermit.dp')->middleware('can:revert-permits');
         // Shared
         Route::get('/{permit}/print', [PermitController::class, 'print'])->name('print')->middleware('can:print-permits');
         Route::get('/{application}/zoning-cert', [PermitController::class, 'zoningCertification'])->name('zoningCert');
@@ -241,6 +274,11 @@ Route::middleware('auth')->group(function () {
         Route::put('/electronics-fees/schedule/{feeSchedule}', [ElectronicsFeeController::class, 'updateSchedule'])->name('electronics-fees.schedule.update')->middleware('can:manage-fee-schedules');
         Route::post('/electronics-fees/type/{feeType}/schedule', [ElectronicsFeeController::class, 'storeSchedule'])->name('electronics-fees.schedule.store')->middleware('can:manage-fee-schedules');
         Route::delete('/electronics-fees/schedule/{feeSchedule}', [ElectronicsFeeController::class, 'destroySchedule'])->name('electronics-fees.schedule.destroy')->middleware('can:manage-fee-schedules');
+
+        Route::get('/demolition-fees', [DemolitionFeeController::class, 'index'])->name('demolition-fees')->middleware('can:manage-fee-schedules');
+        Route::put('/demolition-fees/schedule/{feeSchedule}', [DemolitionFeeController::class, 'updateSchedule'])->name('demolition-fees.schedule.update')->middleware('can:manage-fee-schedules');
+        Route::post('/demolition-fees/type/{feeType}/schedule', [DemolitionFeeController::class, 'storeSchedule'])->name('demolition-fees.schedule.store')->middleware('can:manage-fee-schedules');
+        Route::delete('/demolition-fees/schedule/{feeSchedule}', [DemolitionFeeController::class, 'destroySchedule'])->name('demolition-fees.schedule.destroy')->middleware('can:manage-fee-schedules');
 
         Route::get('/accessory-fees', [AccessoryFeeController::class, 'index'])->name('accessory-fees')->middleware('can:manage-fee-schedules');
         Route::put('/accessory-fees/schedule/{feeSchedule}', [AccessoryFeeController::class, 'updateSchedule'])->name('accessory-fees.schedule.update')->middleware('can:manage-fee-schedules');

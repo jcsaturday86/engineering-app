@@ -15,10 +15,13 @@ class FeeScheduleController extends Controller
      */
     public function index()
     {
+        // DP fee rates are managed exclusively via the dedicated Demolition Fees settings page.
         $permitTypes = PermitType::where('is_active', true)
+            ->where('code', '!=', 'DP')
             ->with(['feeCategories' => function ($q) {
                 $q->where('is_active', true)
                     ->where('code', '!=', 'MECH_INSP')
+                    ->where('code', '!=', 'DEMO_FEE')
                     ->orderBy('sort_order')
                     ->withCount('feeTypes');
             }])

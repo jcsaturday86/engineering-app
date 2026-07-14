@@ -70,7 +70,15 @@
                     <tr class="hover:bg-orange-50/30">
                         <td class="px-4 py-3 font-mono text-sm text-blue-600">{{ $app->application_number }}</td>
                         <td class="px-4 py-3">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $app->getPermitTypeCode() === 'BP' ? 'bg-blue-100 text-blue-700' : 'bg-indigo-100 text-indigo-700' }}">
+                            @php
+                                $typeBadge = match($app->getPermitTypeCode()) {
+                                    'BP' => 'bg-blue-100 text-blue-700',
+                                    'OP' => 'bg-indigo-100 text-indigo-700',
+                                    'DP' => 'bg-red-100 text-red-700',
+                                    default => 'bg-gray-100 text-gray-700',
+                                };
+                            @endphp
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $typeBadge }}">
                                 {{ $app->getPermitTypeCode() }}
                             </span>
                         </td>
@@ -79,7 +87,14 @@
                         <td class="px-4 py-3 text-gray-500">{{ $app->created_at->format('M d, Y') }}</td>
                         <td class="px-4 py-3 text-right">
                             @can('create-collections')
-                            <a href="{{ $app->getPermitTypeCode() === 'OP' ? route('collections.create.op', $app) : route('collections.create', $app) }}" class="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition">
+                            @php
+                                $payRoute = match($app->getPermitTypeCode()) {
+                                    'OP' => route('collections.create.op', $app),
+                                    'DP' => route('collections.create.dp', $app),
+                                    default => route('collections.create', $app),
+                                };
+                            @endphp
+                            <a href="{{ $payRoute }}" class="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition">
                                 <i class="fas fa-cash-register"></i> Collect Payment
                             </a>
                             @endcan

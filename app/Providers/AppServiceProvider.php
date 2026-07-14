@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Application;
+use App\Models\DemolitionApplication;
 use App\Models\OccupancyApplication;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
@@ -19,6 +20,7 @@ class AppServiceProvider extends ServiceProvider
         Relation::morphMap([
             'bp' => Application::class,
             'op' => OccupancyApplication::class,
+            'dp' => DemolitionApplication::class,
         ]);
     }
 }

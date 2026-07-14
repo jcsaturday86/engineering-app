@@ -32,7 +32,14 @@
                     <dl class="space-y-3 text-sm">
                         <div>
                             <dt class="text-xs font-medium text-gray-500 uppercase">Permit Type</dt>
-                            <dd class="text-gray-900 font-semibold">{{ $permit->permitType->code === 'OP' ? 'Certificate of Occupancy' : 'Building Permit' }}</dd>
+                            @php
+                                $permitTypeLabel = match($permit->permitType->code) {
+                                    'OP' => 'Certificate of Occupancy',
+                                    'DP' => 'Demolition Permit',
+                                    default => 'Building Permit',
+                                };
+                            @endphp
+                            <dd class="text-gray-900 font-semibold">{{ $permitTypeLabel }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs font-medium text-gray-500 uppercase">Permit No.</dt>

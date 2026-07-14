@@ -7,6 +7,7 @@ use App\Models\Application;
 use App\Models\Assessment;
 use App\Models\AssessmentItem;
 use App\Models\BuildingPart;
+use App\Models\DemolitionApplication;
 use App\Models\FeeCategory;
 use App\Models\FeeSchedule;
 use App\Models\FeeType;
@@ -80,6 +81,15 @@ class AssessmentController extends Controller
         return view('assessments.occupancy-index', compact('applications'));
     }
 
+    public function demolitionIndex()
+    {
+        $applications = DemolitionApplication::whereIn('status', ['submitted', 'engineering_assessed', 'billed'])
+            ->latest()
+            ->paginate(20);
+
+        return view('assessments.demolition-index', compact('applications'));
+    }
+
     // BP assessment
     public function assess(Application $application)
     {
@@ -92,11 +102,26 @@ class AssessmentController extends Controller
         return $this->doAssess($occupancyApplication, 'occupancy', 'OP');
     }
 
+    // DP assessment
+    public function assessDp(DemolitionApplication $demolitionApplication)
+    {
+        return $this->doAssess($demolitionApplication, 'demolition', 'DP');
+    }
+
+    private function morphTypeFor(string $permitCode): string
+    {
+        return match ($permitCode) {
+            'OP' => 'op',
+            'DP' => 'dp',
+            default => 'bp',
+        };
+    }
+
     private function doAssess(PermitApplicationContract $application, string $assessmentType, string $permitCode)
     {
         $assessment = Assessment::firstOrCreate(
             [
-                'applicationable_type' => $permitCode === 'OP' ? 'op' : 'bp',
+                'applicationable_type' => $this->morphTypeFor($permitCode),
                 'applicationable_id' => $application->id,
                 'assessment_type' => $assessmentType,
             ],
@@ -135,10 +160,11 @@ class AssessmentController extends Controller
             ->get();
 
         $isOp = $permitCode === 'OP';
+        $isDp = $permitCode === 'DP';
 
         return view('assessments.assess', compact(
             'application', 'assessment', 'feeCategories', 'tabCategories',
-            'totals', 'assessmentItems', 'itemsByCategory', 'activeTab', 'isOp',
+            'totals', 'assessmentItems', 'itemsByCategory', 'activeTab', 'isOp', 'isDp',
             'buildingParts', 'occupancyDivisions'
         ));
     }
@@ -146,10 +172,11 @@ class AssessmentController extends Controller
     private function redirectIfFinalized(Assessment $assessment, PermitApplicationContract $application): ?\Illuminate\Http\RedirectResponse
     {
         if ($assessment->status === 'finalized') {
-            $isOp = $assessment->applicationable_type === 'op';
-            $route = $isOp
-                ? route('assessments.assess.op', $application) . '?tab=SUMMARY'
-                : route('assessments.assess', $application) . '?tab=SUMMARY';
+            $route = match ($assessment->applicationable_type) {
+                'op' => route('assessments.assess.op', $application) . '?tab=SUMMARY',
+                'dp' => route('assessments.assess.dp', $application) . '?tab=SUMMARY',
+                default => route('assessments.assess', $application) . '?tab=SUMMARY',
+            };
             return redirect()->to($route)->with('error', 'This assessment has been finalized and cannot be modified.');
         }
         return null;
@@ -1190,6 +1217,12 @@ class AssessmentController extends Controller
         return $this->doAddItem($request, $occupancyApplication, 'occupancy', 'OP');
     }
 
+    // DP add item
+    public function addItemDp(Request $request, DemolitionApplication $demolitionApplication)
+    {
+        return $this->doAddItem($request, $demolitionApplication, 'demolition', 'DP');
+    }
+
     private function doAddItem(Request $request, PermitApplicationContract $application, string $assessmentType, string $permitCode)
     {
         $validated = $request->validate([
@@ -1202,7 +1235,7 @@ class AssessmentController extends Controller
 
         $assessment = Assessment::firstOrCreate(
             [
-                'applicationable_type' => $permitCode === 'OP' ? 'op' : 'bp',
+                'applicationable_type' => $this->morphTypeFor($permitCode),
                 'applicationable_id' => $application->id,
                 'assessment_type' => $assessmentType,
             ],
@@ -1232,9 +1265,11 @@ class AssessmentController extends Controller
         ]);
 
         $tabCode = $feeCategory->code;
-        $route = $permitCode === 'OP'
-            ? route('assessments.assess.op', ['occupancyApplication' => $application->id, 'tab' => $tabCode])
-            : route('assessments.assess', ['application' => $application->id, 'tab' => $tabCode]);
+        $route = match ($permitCode) {
+            'OP' => route('assessments.assess.op', ['occupancyApplication' => $application->id, 'tab' => $tabCode]),
+            'DP' => route('assessments.assess.dp', ['demolitionApplication' => $application->id, 'tab' => $tabCode]),
+            default => route('assessments.assess', ['application' => $application->id, 'tab' => $tabCode]),
+        };
 
         return redirect($route)->with('success', 'Fee item added.');
     }
@@ -1242,9 +1277,11 @@ class AssessmentController extends Controller
     public function removeItem(AssessmentItem $assessmentItem)
     {
         $assessment = $assessmentItem->assessment;
-        $application = $assessment->applicationable_type === 'op'
-            ? \App\Models\OccupancyApplication::find($assessment->applicationable_id)
-            : \App\Models\Application::find($assessment->applicationable_id);
+        $application = match ($assessment->applicationable_type) {
+            'op' => \App\Models\OccupancyApplication::find($assessment->applicationable_id),
+            'dp' => \App\Models\DemolitionApplication::find($assessment->applicationable_id),
+            default => \App\Models\Application::find($assessment->applicationable_id),
+        };
         if ($r = $this->redirectIfFinalized($assessment, $application)) return $r;
 
         $feeCategory = \App\Models\FeeCategory::find($assessmentItem->fee_category_id);
@@ -1255,6 +1292,11 @@ class AssessmentController extends Controller
 
         if ($assessment->applicationable_type === 'op') {
             return redirect()->route('assessments.assess.op', ['occupancyApplication' => $assessment->applicationable_id, 'tab' => $tab])
+                ->with('success', 'Fee item removed.');
+        }
+
+        if ($assessment->applicationable_type === 'dp') {
+            return redirect()->route('assessments.assess.dp', ['demolitionApplication' => $assessment->applicationable_id, 'tab' => $tab])
                 ->with('success', 'Fee item removed.');
         }
 
@@ -1271,10 +1313,16 @@ class AssessmentController extends Controller
     // OP summary
     public function summaryOp(OccupancyApplication $occupancyApplication)
     {
-        return $this->doSummary($occupancyApplication, true);
+        return $this->doSummary($occupancyApplication, 'OP');
     }
 
-    private function doSummary(PermitApplicationContract $application, bool $isOp = false)
+    // DP summary
+    public function summaryDp(DemolitionApplication $demolitionApplication)
+    {
+        return $this->doSummary($demolitionApplication, 'DP');
+    }
+
+    private function doSummary(PermitApplicationContract $application, string $permitCode = 'BP')
     {
         $assessments = $application->assessments()->with('assessmentItems')->get();
 
@@ -1295,7 +1343,10 @@ class AssessmentController extends Controller
             ];
         }
 
-        return view('assessments.summary', compact('application', 'summary', 'grandTotal', 'isOp'));
+        $isOp = $permitCode === 'OP';
+        $isDp = $permitCode === 'DP';
+
+        return view('assessments.summary', compact('application', 'summary', 'grandTotal', 'isOp', 'isDp'));
     }
 
     // BP finalize
@@ -1371,6 +1422,21 @@ class AssessmentController extends Controller
         $this->doFinalize($occupancyApplication);
         return redirect()
             ->to(route('assessments.assess.op', $occupancyApplication) . '?tab=SUMMARY')
+            ->with('success', 'Assessment finalized successfully.');
+    }
+
+    // DP finalize
+    public function finalizeDp(Request $request, DemolitionApplication $demolitionApplication)
+    {
+        $request->validate(['password' => 'required|string']);
+        if (!Hash::check($request->password, Auth::user()->password)) {
+            return redirect()
+                ->to(route('assessments.assess.dp', $demolitionApplication) . '?tab=SUMMARY')
+                ->with('error', 'Incorrect password. Assessment not finalized.');
+        }
+        $this->doFinalize($demolitionApplication);
+        return redirect()
+            ->to(route('assessments.assess.dp', $demolitionApplication) . '?tab=SUMMARY')
             ->with('success', 'Assessment finalized successfully.');
     }
 
@@ -1451,6 +1517,26 @@ class AssessmentController extends Controller
             ->with('success', 'Engineering assessment finalization reverted.');
     }
 
+    // DP revert engineering finalize
+    public function revertEngineeringDp(Request $request, DemolitionApplication $demolitionApplication)
+    {
+        $request->validate(['password' => 'required|string']);
+        if (! Hash::check($request->password, Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
+        $error = $this->guardRevertEngineering($demolitionApplication);
+        if ($error) {
+            return back()->with('error', $error);
+        }
+
+        $this->doRevertEngineering($demolitionApplication);
+
+        return redirect()
+            ->to(route('assessments.assess.dp', $demolitionApplication) . '?tab=SUMMARY')
+            ->with('success', 'Engineering assessment finalization reverted.');
+    }
+
     // OP only — revert an in-progress (not yet finalized) occupancy assessment all the way back to draft,
     // deleting all occupancy fee entries entered so far.
     public function revertToDraftOp(Request $request, OccupancyApplication $occupancyApplication)
@@ -1481,6 +1567,38 @@ class AssessmentController extends Controller
         activity()->causedBy(Auth::user())->performedOn($occupancyApplication)->log('Occupancy assessment reverted to draft — all fee entries deleted');
 
         return redirect()->route('assessments.occupancy')->with('success', 'Application reverted to draft. All occupancy fee entries were deleted.');
+    }
+
+    // DP only — revert an in-progress (not yet finalized) demolition assessment all the way back to draft,
+    // deleting all demolition fee entries entered so far.
+    public function revertToDraftDp(Request $request, DemolitionApplication $demolitionApplication)
+    {
+        $request->validate(['password' => 'required|string']);
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
+        if ($demolitionApplication->status !== 'submitted') {
+            return back()->with('error', 'Only applications awaiting demolition assessment can be reverted to draft.');
+        }
+
+        DB::transaction(function () use ($demolitionApplication) {
+            $assessment = Assessment::where('applicationable_type', 'dp')
+                ->where('applicationable_id', $demolitionApplication->id)
+                ->where('assessment_type', 'demolition')
+                ->first();
+
+            if ($assessment) {
+                $assessment->assessmentItems()->delete();
+                $assessment->delete();
+            }
+
+            $demolitionApplication->update(['status' => 'draft', 'submitted_at' => null]);
+        });
+
+        activity()->causedBy(Auth::user())->performedOn($demolitionApplication)->log('Demolition assessment reverted to draft — all fee entries deleted');
+
+        return redirect()->route('assessments.demolition')->with('success', 'Application reverted to draft. All demolition fee entries were deleted.');
     }
 
     private function guardRevertEngineering(PermitApplicationContract $application): ?string
@@ -1517,8 +1635,11 @@ class AssessmentController extends Controller
                 $assessment->update(['status' => 'draft', 'finalized_at' => null, 'assessed_by' => null]);
             });
 
+            // DP has no zoning stage — its pre-engineering-assessment status is 'submitted', not 'zoning_assessed'.
+            $revertStatus = $application->getPermitTypeCode() === 'DP' ? 'submitted' : 'zoning_assessed';
+
             $application->update([
-                'status' => 'zoning_assessed',
+                'status' => $revertStatus,
                 'assessed_by' => null,
                 'assessed_at' => null,
             ]);
@@ -1539,10 +1660,21 @@ class AssessmentController extends Controller
         return $this->doPrint($occupancyApplication);
     }
 
+    // DP print
+    public function printDp(DemolitionApplication $demolitionApplication)
+    {
+        return $this->doPrint($demolitionApplication);
+    }
+
     private function doPrint(PermitApplicationContract $application)
     {
         $settings = Setting::where('group', 'general')->pluck('value', 'key');
         $isOp = $application->getPermitTypeCode() === 'OP';
+        $isDp = $application->getPermitTypeCode() === 'DP';
+
+        if ($isDp) {
+            return $this->doPrintDp($application, $settings);
+        }
 
         if ($isOp) {
             return $this->doPrintOp($application, $settings);
@@ -1631,6 +1763,48 @@ class AssessmentController extends Controller
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary-op', compact(
             'application', 'settings', 'sealImage', 'occupancyAssessment',
+            'itemsByCategory', 'barangayName', 'preparedBy',
+            'buildingOfficial', 'barcodeImage'
+        ));
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->stream("assessment_{$application->application_number}.pdf");
+    }
+
+    private function doPrintDp(PermitApplicationContract $application, $settings)
+    {
+        $demolitionAssessment = $application->assessments()
+            ->where('assessment_type', 'demolition')
+            ->with(['assessmentItems' => fn($q) => $q->where('is_active', true)->with('feeCategory')])
+            ->first();
+
+        $itemsByCategory = $demolitionAssessment
+            ? $demolitionAssessment->assessmentItems->groupBy(fn($i) => $i->feeCategory?->code ?? 'OTHER')
+            : collect();
+
+        $barangayName = '';
+        if ($application->demolition_barangay_id) {
+            $barangay = \App\Models\Barangay::find($application->demolition_barangay_id);
+            $barangayName = $barangay?->name ?? '';
+        }
+
+        $preparedBy = $demolitionAssessment?->assessed_by
+            ? \App\Models\User::find($demolitionAssessment->assessed_by)
+            : null;
+
+        $buildingOfficial = Signatory::where('role', 'building_official')
+            ->where('is_active', true)
+            ->first();
+
+        $generator    = new BarcodeGeneratorPNG();
+        $barcodeImage = base64_encode(
+            $generator->getBarcode($application->application_number, $generator::TYPE_CODE_128, 2, 80)
+        );
+
+        $sealImage = Setting::imageDataUri($settings, 'general.logo');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary-dp', compact(
+            'application', 'settings', 'sealImage', 'demolitionAssessment',
             'itemsByCategory', 'barangayName', 'preparedBy',
             'buildingOfficial', 'barcodeImage'
         ));

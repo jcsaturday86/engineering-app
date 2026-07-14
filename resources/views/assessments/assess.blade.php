@@ -13,10 +13,11 @@
 @section('content')
 @php
     $isOp = $isOp ?? false;
-    $addItemRoute = $isOp ? route('assessments.addItem.op', $application) : route('assessments.addItem', $application);
-    $finalizeRoute = $isOp ? route('assessments.finalize.op', $application) : route('assessments.finalize', $application);
-    $revertRoute = $isOp ? route('assessments.revertFinalize.op', $application) : route('assessments.revertFinalize', $application);
-    $backRoute = $isOp ? route('assessments.occupancy') : route('assessments.index');
+    $isDp = $isDp ?? false;
+    $addItemRoute = $isDp ? route('assessments.addItem.dp', $application) : ($isOp ? route('assessments.addItem.op', $application) : route('assessments.addItem', $application));
+    $finalizeRoute = $isDp ? route('assessments.finalize.dp', $application) : ($isOp ? route('assessments.finalize.op', $application) : route('assessments.finalize', $application));
+    $revertRoute = $isDp ? route('assessments.revertFinalize.dp', $application) : ($isOp ? route('assessments.revertFinalize.op', $application) : route('assessments.revertFinalize', $application));
+    $backRoute = $isDp ? route('assessments.demolition') : ($isOp ? route('assessments.occupancy') : route('assessments.index'));
     $tabCategories = $tabCategories ?? $feeCategories;
     $activeTab = $activeTab ?? ($tabCategories->first()?->code ?? 'CONST');
     $itemsByCategory = $itemsByCategory ?? $assessmentItems->groupBy('fee_category_id');
@@ -80,9 +81,9 @@
             @endif
             @endcan
 
-            {{-- Revert to Draft Button + Password Modal (OP only, ongoing/not-yet-finalized assessment) --}}
+            {{-- Revert to Draft Button + Password Modal (OP/DP only, ongoing/not-yet-finalized assessment) --}}
             @can('revert-submission')
-            @if($isOp && $application->status === 'zoning_assessed')
+            @if(($isOp && $application->status === 'zoning_assessed') || ($isDp && $application->status === 'submitted'))
             <div x-data="{ open: false, pw: '' }" class="inline-block">
                 <button @click="open = true; pw = ''"
                     class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition">
@@ -100,12 +101,12 @@
                             <div>
                                 <h3 class="text-base font-semibold text-gray-900">Confirm Revert to Draft</h3>
                                 <p class="text-sm text-gray-500 mt-0.5">
-                                    This will send the application back to Draft and permanently delete all occupancy fee entries entered so far. Enter your password to proceed.
+                                    This will send the application back to Draft and permanently delete all fee entries entered so far. Enter your password to proceed.
                                 </p>
                             </div>
                         </div>
 
-                        <form action="{{ route('assessments.revertToDraft.op', $application) }}" method="POST" autocomplete="off">
+                        <form action="{{ $isDp ? route('assessments.revertToDraft.dp', $application) : route('assessments.revertToDraft.op', $application) }}" method="POST" autocomplete="off">
                             @csrf
                             <div class="mb-4">
                                 <label class="block text-xs font-medium text-gray-600 mb-1">
@@ -1230,7 +1231,7 @@
             {{-- Print Button (finalized only) --}}
             @if($assessment && $assessment->status === 'finalized')
             <div class="flex justify-end gap-2">
-                <a href="{{ $isOp ? route('assessments.print.op', $application) : route('assessments.print', $application) }}"
+                <a href="{{ $isDp ? route('assessments.print.dp', $application) : ($isOp ? route('assessments.print.op', $application) : route('assessments.print', $application)) }}"
                    target="_blank"
                    class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition shadow-sm">
                     <i class="fas fa-print"></i> Print Summary of Computation

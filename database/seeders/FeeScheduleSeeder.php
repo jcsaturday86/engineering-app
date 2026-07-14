@@ -26,6 +26,7 @@ class FeeScheduleSeeder extends Seeder
         $this->seedElectronicsFees();
         $this->seedAccessoryBuildingFees();
         $this->seedAccessoryFees();
+        $this->seedDemolitionFees();
         $this->seedSurcharges();
         $this->seedOccupancyFees();
         $this->seedZoningFees();
@@ -1093,6 +1094,36 @@ class FeeScheduleSeeder extends Seeder
         $this->syncSchedules($feeTypeId, [
             ['range_from' => 1, 'range_to' => 3, 'fixed_fee' => 50, 'excess_threshold' => 3, 'excess_fee' => 50],
         ]);
+    }
+
+    // =========================================================================
+    // 8B. DEMOLITION/MOVING OF BUILDING/STRUCTURES FEES
+    // =========================================================================
+
+    private function seedDemolitionFees(): void
+    {
+        $order = 0;
+
+        $items = [
+            ['DEMO_FLOOR_AREA', 'Demolition in all Groups, per sq.m floor area', 30],
+            ['DEMO_MECH_EQUIP', 'Demolition in all Groups with mechanical equipment, per vertical or horizontal dimension per lineal meter', 4],
+            ['DEMO_HAND_INCL_FLOORS', 'Demolition by hand, every meter or portion thereof height/dimensions, including floors', 80],
+            ['DEMO_HAND_EXCL_FLOORS', 'Demolition by hand, every meter or portion thereof height/dimensions, excluding floors', 50],
+            ['DEMO_MOVING', 'Moving Fee, per sq.m of area of building/structure to be moved', 30],
+        ];
+        foreach ($items as $i) {
+            $feeTypeId = $this->upsertFeeType(
+                'DEMO_FEE', $i[0], $i[1], 'per_unit', false, false, ++$order,
+            );
+            $this->syncSchedules($feeTypeId, [['fee_per_unit' => $i[2]]]);
+        }
+
+        // Appendage - flat fee up to 30.00 cu.m/unit in area or volume of structure
+        $feeTypeId = $this->upsertFeeType(
+            'DEMO_FEE', 'DEMO_APPENDAGE', 'Appendage up to 30.00 cu.m/unit in area or volume of structure',
+            'fixed', false, false, ++$order,
+        );
+        $this->syncSchedules($feeTypeId, [['fixed_fee' => 50]]);
     }
 
     // =========================================================================

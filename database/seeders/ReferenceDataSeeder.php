@@ -44,7 +44,7 @@ class ReferenceDataSeeder extends Seeder
             ['code' => 'OP',  'name' => 'Occupancy Permit',    'sort_order' => 2,  'is_active' => true],
             ['code' => 'FP',  'name' => 'Fencing Permit',      'sort_order' => 3,  'is_active' => false],
             ['code' => 'EP',  'name' => 'Excavation Permit',   'sort_order' => 4,  'is_active' => false],
-            ['code' => 'DP',  'name' => 'Demolition Permit',   'sort_order' => 5,  'is_active' => false],
+            ['code' => 'DP',  'name' => 'Demolition Permit',   'sort_order' => 5,  'is_active' => true],
             ['code' => 'SP',  'name' => 'Sign Permit',         'sort_order' => 6,  'is_active' => false],
             ['code' => 'ELP', 'name' => 'Electrical Permit',   'sort_order' => 7,  'is_active' => false],
             ['code' => 'MP',  'name' => 'Mechanical Permit',   'sort_order' => 8,  'is_active' => false],
@@ -117,7 +117,7 @@ class ReferenceDataSeeder extends Seeder
             ['name' => 'Repair',              'category' => 'construction', 'sort_order' => 6],
             ['name' => 'Raising',             'category' => 'other',        'sort_order' => 7],
             ['name' => 'Moving',              'category' => 'other',        'sort_order' => 8],
-            ['name' => 'Demolition',          'category' => 'other',        'sort_order' => 9],
+            ['name' => 'Demolition',          'category' => 'other',        'sort_order' => 9, 'is_active' => false],
             ['name' => 'Accessory Structure', 'category' => 'other',        'sort_order' => 10],
             ['name' => 'Erection',            'category' => 'other',        'sort_order' => 11],
             ['name' => 'Legalization',        'category' => 'other',        'sort_order' => 12],
@@ -436,6 +436,7 @@ class ReferenceDataSeeder extends Seeder
     {
         $bpPermitType = PermitType::where('code', 'BP')->first();
         $opPermitType = PermitType::where('code', 'OP')->first();
+        $dpPermitType = PermitType::where('code', 'DP')->first();
 
         if (! $bpPermitType || ! $opPermitType) {
             return;
@@ -471,6 +472,19 @@ class ReferenceDataSeeder extends Seeder
                 'sort_order' => 1,
             ]
         );
+
+        // Demolition Permit fee categories
+        if ($dpPermitType) {
+            FeeCategory::updateOrCreate(
+                ['code' => 'DEMO_FEE'],
+                [
+                    'code' => 'DEMO_FEE',
+                    'name' => 'Demolition/Moving of Building/Structures Fees',
+                    'permit_type_id' => $dpPermitType->id,
+                    'sort_order' => 1,
+                ]
+            );
+        }
 
         // Zoning fee categories (associated with Building Permit)
         $zoningCategories = [

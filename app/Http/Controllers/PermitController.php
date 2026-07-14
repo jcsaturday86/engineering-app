@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Contracts\PermitApplicationContract;
 use App\Models\Application;
+use App\Models\DemolitionApplication;
 use App\Models\OccupancyApplication;
 use App\Models\Permit;
 use App\Models\PermitType;
@@ -45,6 +46,22 @@ class PermitController extends Controller
         $applications = $query->latest()->paginate(20)->withQueryString();
 
         $type = 'occupancy';
+        return view('permits.index', compact('applications', 'type', 'year'));
+    }
+
+    public function demolitionIndex(Request $request)
+    {
+        $query = DemolitionApplication::with('permits')
+            ->whereIn('status', ['paid', 'permit_generated', 'released']);
+
+        $this->applyPermitFilters($query, $request);
+
+        $year = $request->filled('year') ? (int) $request->year : now()->year;
+        $query->whereYear('created_at', $year);
+
+        $applications = $query->latest()->paginate(20)->withQueryString();
+
+        $type = 'demolition';
         return view('permits.index', compact('applications', 'type', 'year'));
     }
 
@@ -135,6 +152,12 @@ class PermitController extends Controller
         return $this->doGenerate($occupancyApplication, 'OP');
     }
 
+    // DP permit generation
+    public function generateDp(DemolitionApplication $demolitionApplication)
+    {
+        return $this->doGenerate($demolitionApplication, 'DP');
+    }
+
     private function doGenerate(PermitApplicationContract $application, string $permitCode)
     {
         if ($application->status !== 'paid') {
@@ -146,7 +169,11 @@ class PermitController extends Controller
         }
 
         $permitType = PermitType::where('code', $permitCode)->firstOrFail();
-        $morphType = $permitCode === 'OP' ? 'op' : 'bp';
+        $morphType = match ($permitCode) {
+            'OP' => 'op',
+            'DP' => 'dp',
+            default => 'bp',
+        };
         $buildingOfficial = Signatory::where('role', 'building_official')->where('is_active', true)->first();
 
         DB::transaction(function () use ($application, $permitType, $permitCode, $morphType, $buildingOfficial) {
@@ -206,6 +233,12 @@ class PermitController extends Controller
         return $this->doRevertGenerate($request, $occupancyApplication);
     }
 
+    // DP revert permit generation
+    public function revertGenerateDp(Request $request, DemolitionApplication $demolitionApplication)
+    {
+        return $this->doRevertGenerate($request, $demolitionApplication);
+    }
+
     private function doRevertGenerate(Request $request, PermitApplicationContract $application)
     {
         $request->validate([
@@ -253,6 +286,12 @@ class PermitController extends Controller
     public function restoreRevokeOp(Request $request, OccupancyApplication $occupancyApplication)
     {
         return $this->doRestoreRevoke($request, $occupancyApplication);
+    }
+
+    // DP restore revoked permit
+    public function restoreRevokeDp(Request $request, DemolitionApplication $demolitionApplication)
+    {
+        return $this->doRestoreRevoke($request, $demolitionApplication);
     }
 
     private function doRestoreRevoke(Request $request, PermitApplicationContract $application)
@@ -333,7 +372,11 @@ class PermitController extends Controller
         );
         $qrImage = (new \Endroid\QrCode\Writer\PngWriter())->write($qrCode)->getDataUri();
 
-        $template = $permit->permitType->code === 'OP' ? 'pdf.occupancy-permit' : 'pdf.building-permit';
+        $template = match ($permit->permitType->code) {
+            'OP' => 'pdf.occupancy-permit',
+            'DP' => 'pdf.demolition-permit',
+            default => 'pdf.building-permit',
+        };
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($template, compact('permit', 'application', 'signatories', 'settings', 'sealImage', 'dpwhLogo', 'qrImage'));
         $pdf->setPaper('a4', 'landscape');

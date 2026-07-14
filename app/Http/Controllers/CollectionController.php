@@ -7,6 +7,7 @@ use App\Models\Application;
 use App\Models\Billing;
 use App\Models\Collection;
 use App\Models\CollectionDetail;
+use App\Models\DemolitionApplication;
 use App\Models\OccupancyApplication;
 use App\Models\VoidTransaction;
 use App\Notifications\PaymentPostedNotification;
@@ -37,6 +38,13 @@ class CollectionController extends Controller
             if ($opExact) {
                 return redirect()->route('collections.create.op', $opExact);
             }
+            $dpExact = DemolitionApplication::where('application_number', $search)
+                ->where('status', 'billed')
+                ->whereDoesntHave('collections', fn ($q) => $q->where('status', 'active'))
+                ->first();
+            if ($dpExact) {
+                return redirect()->route('collections.create.dp', $dpExact);
+            }
         }
 
         $bpForPayment = Application::with('permitType', 'billings')
@@ -59,7 +67,17 @@ class CollectionController extends Controller
             ->latest()
             ->get();
 
-        $forPayment = $bpForPayment->concat($opForPayment)->sortByDesc('created_at');
+        $dpForPayment = DemolitionApplication::with('billings')
+            ->where('status', 'billed')
+            ->whereDoesntHave('collections', fn ($q) => $q->where('status', 'active'))
+            ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
+                ->where('application_number', 'like', "%{$search}%")
+                ->orWhere('applicant_last_name', 'like', "%{$search}%")
+                ->orWhere('applicant_first_name', 'like', "%{$search}%")))
+            ->latest()
+            ->get();
+
+        $forPayment = $bpForPayment->concat($opForPayment)->concat($dpForPayment)->sortByDesc('created_at');
 
         $month = $request->get('month', now()->format('Y-m'));
         $monthStart = \Carbon\Carbon::createFromFormat('Y-m', $month)->startOfMonth();
@@ -86,6 +104,12 @@ class CollectionController extends Controller
     public function createOp(OccupancyApplication $occupancyApplication)
     {
         return $this->doCreate($occupancyApplication);
+    }
+
+    // DP payment
+    public function createDp(DemolitionApplication $demolitionApplication)
+    {
+        return $this->doCreate($demolitionApplication);
     }
 
     private function doCreate(PermitApplicationContract $application)
@@ -115,6 +139,12 @@ class CollectionController extends Controller
         return $this->doStore($request, $occupancyApplication);
     }
 
+    // DP store payment
+    public function storeDp(Request $request, DemolitionApplication $demolitionApplication)
+    {
+        return $this->doStore($request, $demolitionApplication);
+    }
+
     private function doStore(Request $request, PermitApplicationContract $application)
     {
         $validated = $request->validate([
@@ -138,7 +168,11 @@ class CollectionController extends Controller
             return back()->withInput()->with('error', 'Amount received is less than the amount due.');
         }
 
-        $morphType = $application->getPermitTypeCode() === 'OP' ? 'op' : 'bp';
+        $morphType = match ($application->getPermitTypeCode()) {
+            'OP' => 'op',
+            'DP' => 'dp',
+            default => 'bp',
+        };
 
         $existingCollection = Collection::where('applicationable_type', $morphType)
             ->where('applicationable_id', $application->id)

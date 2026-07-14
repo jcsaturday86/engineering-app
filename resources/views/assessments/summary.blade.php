@@ -13,8 +13,9 @@
 @section('content')
 @php
     $isOp = $isOp ?? false;
-    $printRoute = $isOp ? route('assessments.print.op', $application) : route('assessments.print', $application);
-    $backRoute = $isOp ? route('assessments.assess.op', $application) : route('assessments.assess', $application);
+    $isDp = $isDp ?? false;
+    $printRoute = $isDp ? route('assessments.print.dp', $application) : ($isOp ? route('assessments.print.op', $application) : route('assessments.print', $application));
+    $backRoute = $isDp ? route('assessments.assess.dp', $application) : ($isOp ? route('assessments.assess.op', $application) : route('assessments.assess', $application));
 @endphp
 <div class="space-y-6">
     {{-- Header --}}

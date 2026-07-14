@@ -23,7 +23,14 @@
         <div class="px-5 py-2.5 border-b border-gray-200 bg-gray-50">
             <h3 class="text-sm font-semibold text-gray-900">Payment Details</h3>
         </div>
-        <form method="POST" action="{{ $application->getPermitTypeCode() === 'OP' ? route('collections.store.op', $application) : route('collections.store', $application) }}" class="p-5 space-y-3" autocomplete="off">
+        @php
+            $storeRoute = match($application->getPermitTypeCode()) {
+                'OP' => route('collections.store.op', $application),
+                'DP' => route('collections.store.dp', $application),
+                default => route('collections.store', $application),
+            };
+        @endphp
+        <form method="POST" action="{{ $storeRoute }}" class="p-5 space-y-3" autocomplete="off">
             @csrf
             <input type="hidden" name="billing_id" value="{{ $billing->id }}">
 

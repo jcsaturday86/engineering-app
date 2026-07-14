@@ -44,7 +44,11 @@ class BillingService
 
             $billingNumber = sprintf('BL-%s-%s-%05d', now()->format('Y'), now()->format('m'), $counter);
 
-            $morphType = $application->getPermitTypeCode() === 'OP' ? 'op' : 'bp';
+            $morphType = match ($application->getPermitTypeCode()) {
+                'OP' => 'op',
+                'DP' => 'dp',
+                default => 'bp',
+            };
 
             $billing = Billing::create([
                 'applicationable_type' => $morphType,
