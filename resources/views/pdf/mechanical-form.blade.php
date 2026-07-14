@@ -50,6 +50,7 @@
             text-align: center;
             font: bold 8pt/1 'DejaVu Sans', Arial, sans-serif;
         }
+        .mask { position: absolute; background: #fff; }
         .ctr { text-align: center; }
         .sm { font-size: 7pt; }
         .clip { overflow: hidden; text-overflow: ellipsis; }
@@ -60,9 +61,13 @@
 {{-- ======================== PAGE 1 ======================== --}}
 <div class="print-page p1">
 
-    {{-- Top: Application No. / Building Permit No. (MP No. left blank — no such column exists) --}}
-    <div class="f ctr" style="top:2.13in; left:0.22in; width:2.05in;">{{ $application->application_number }}</div>
-    <div class="f ctr" style="top:2.13in; left:6.51in; width:1.75in;">{{ $buildingPermitNo }}</div>
+    {{-- Top: Application No. / Building Permit No. (MP No. left blank — no such column exists).
+         A white mask sits behind the value to hide the pre-printed per-digit cell dividers,
+         since the values don't align to individual digit boxes. --}}
+    <div class="mask" style="top:2.08in; left:0.22in; width:1.76in; height:0.20in;"></div>
+    <div class="f ctr" style="top:2.13in; left:0.22in; width:1.76in;">{{ $application->application_number }}</div>
+    <div class="mask" style="top:2.08in; left:6.51in; width:1.76in; height:0.20in;"></div>
+    <div class="f ctr" style="top:2.13in; left:6.51in; width:1.76in;">{{ $buildingPermitNo }}</div>
 
     {{-- BOX 1: Owner/Applicant --}}
     <div class="f clip" style="top:3.05in; left:2.0in; max-width:1.9in;">{{ $application->applicant_last_name }}</div>
