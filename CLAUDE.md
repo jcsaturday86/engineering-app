@@ -43,6 +43,9 @@ super-admin, administrator, engineering-officer, engineering-staff, planning-off
 ## Self-Healing
 SelfHealingServiceProvider auto-creates database, runs migrations, seeds roles/settings/admin if missing on every boot.
 
+## Print Forms
+All 6 discipline permit PDFs (Architectural, Structural, Electrical, Sanitary, Mechanical, Electronics) plus the BP/OP unified application forms, Building Permit, and Occupancy Permit are complete — background-image-overlay DomPDF templates in `resources/views/pdf/`, routed via `ApplicationController::printDiscipline()`. Every one prints a "computer-generated document / printed on / printed by" footer on each page.
+
 ## Testing
 ```bash
 php artisan test

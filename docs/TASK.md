@@ -321,6 +321,14 @@
 - Manual walkthrough of the complete Building Permit and Occupancy Permit lifecycles (application creation through permit generation), exercising every workflow/revert transition, all engineering fee categories, all payment modes, and every print output, using the staff-login curl + WinRT-rasterize + visual-read workflow established earlier in the project
 - Negative/security checks included: attempting revert/void/generate actions without the required permission (expect 403), duplicate OR number submission, double permit generation, and an IDOR check on print routes as a `client`-role user
 
+### "Computer-Generated Document" Footer — Extended to All Application/Permit Forms — COMPLETED
+
+- The "This is a computer-generated permit. Printed on: {date} | Printed by: {user}" note (previously only on `building-permit.blade.php`/`occupancy-permit.blade.php`, see "Printed Permit Footer Note" above) is now on every page of all 10 application/permit PDFs: BP Unified Application Form, OP Unified Application Form, and all 6 discipline forms (Architectural/Structural/Electrical/Sanitary/Mechanical/Electronics)
+- Wording normalized on the original 2 forms from "computer-generated permit" to "computer-generated document" to match the newly-added ones exactly
+- No controller changes needed anywhere — audited every route these 10 views are reachable from (`can:view-applications`/`can:print-permits` middleware, or the client-portal downloads' `Auth::id()`-matching `abort_if` guard) and confirmed `auth()->user()` is never null, so `auth()->user()?->full_name` is called directly from each Blade view, same as the original 2 forms already did
+- On the 7 `.print-page` background-overlay forms, positioned the footer with `bottom:0.12in` rather than `top:`, since `.print-page` is already `position:relative` — this anchors correctly to each page's actual bottom edge with no per-form height math, which mattered because Mechanical's page is 8.5×14in while the other 6 discipline forms are 8.5×13in
+- `occupancy-application-form.blade.php` (the one single-page, margin-based — not `.print-page` — template) got a normal-flow footer div appended after its last content block instead, matching how the original `building-permit`/`occupancy-permit` templates already do it (`.generated-note`, normal flow, not absolutely positioned)
+
 ---
 
 ## Upcoming Tasks

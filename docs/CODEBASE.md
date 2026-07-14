@@ -246,6 +246,8 @@ Every template above that carries an Official Seal / logo sources it dynamically
 
 **`discipline-form.blade.php` (DomPDF)** — no longer used by any discipline; all six (Architectural/Structural/Electrical/Sanitary/Mechanical/Electronics) now render dedicated background-image-overlay views. Retained only as the generic fallback for any future/unrecognized discipline key.
 
+**"Computer-generated document" footer** — `application-form.blade.php`, `occupancy-application-form.blade.php`, and all 6 discipline forms print "This is a computer-generated document. Printed on: {{ now()->format('m/d/Y') }} | Printed by: {{ auth()->user()?->full_name }}" on every page, matching the pattern already present on `building-permit.blade.php`/`occupancy-permit.blade.php` (wording normalized from "...generated permit..." to "...generated document..." for consistency). Every one of these views is only reachable through authenticated routes, so `auth()->user()` is called directly in the Blade template with no controller changes. On the 7 `.print-page`-based forms it's positioned with `bottom:0.12in` (not `top:`) so it anchors to each page's true bottom edge regardless of page height — needed since Mechanical is 8.5×14in while the other 6 are 8.5×13in.
+
 ### Public Views (no auth)
 `verify/permit.blade.php` — standalone permit verification page rendered by `VerifyController::show()`, styled independently of `layouts/app.blade.php` (no sidebar/auth chrome), similar in spirit to `layouts/guest.blade.php`.
 
