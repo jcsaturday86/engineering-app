@@ -61,6 +61,18 @@
 {{-- ======================== PAGE 1 ======================== --}}
 <div class="print-page p1">
 
+    {{-- Letterhead: sits BELOW "NBC FORM NO. A-07" (y:0.37-0.45) and above
+         "OFFICE OF THE BUILDING OFFICIAL" (y:1.24-1.38). --}}
+    @if($sealImage ?? null)
+    <img src="{{ $sealImage }}" alt="Official Seal" style="display:block; position:absolute; top:0.50in; left:0.35in; width:1.0in; height:1.0in;">
+    @endif
+    @if($nationalGovtLogo ?? null)
+    <img src="{{ $nationalGovtLogo }}" alt="National Government Logo" style="display:block; position:absolute; top:0.50in; left:7.15in; width:1.0in; height:1.0in;">
+    @endif
+    <div class="f ctr" style="top:0.58in; left:0; width:8.5in; font-size:11pt;">Republic of the Philippines</div>
+    <div class="f ctr" style="top:0.77in; left:0; width:8.5in; font-size:11pt; font-weight:bold;">{{ $settings['general.city'] ?? 'City of San Fernando' }}</div>
+    <div class="f ctr" style="top:0.96in; left:0; width:8.5in; font-size:11pt;">Province of {{ $settings['general.province'] ?? 'La Union' }}</div>
+
     {{-- Top: Application No. / Building Permit No. (ELP No. left blank — no such column exists) --}}
     <div class="f ctr" style="top:2.28in; left:0.16in; width:1.94in;">{{ $application->application_number }}</div>
     <div class="f ctr" style="top:2.28in; left:6.76in; width:1.56in;">{{ $buildingPermitNo }}</div>
