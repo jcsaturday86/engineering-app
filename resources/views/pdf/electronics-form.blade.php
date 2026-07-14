@@ -78,24 +78,24 @@
     <div class="f ctr" style="top:2.28in; left:6.76in; width:1.56in;">{{ $buildingPermitNo }}</div>
 
     {{-- BOX 1: Owner/Applicant --}}
-    <div class="f clip" style="top:3.10in; left:2.49in; max-width:2.15in;">{{ $application->applicant_last_name }}</div>
-    <div class="f clip" style="top:3.10in; left:4.72in; max-width:1.75in;">{{ $application->applicant_first_name }}</div>
-    <div class="f" style="top:3.10in; left:6.54in;">{{ $mi }}</div>
-    <div class="f clip" style="top:3.10in; left:6.98in; max-width:1.25in;">{{ $application->applicant_tin ?? '' }}</div>
+    <div class="f clip" style="top:3.08in; left:2.49in; max-width:2.15in; font-size:9.5pt;">{{ $application->applicant_last_name }}</div>
+    <div class="f clip" style="top:3.08in; left:4.72in; max-width:1.75in; font-size:9.5pt;">{{ $application->applicant_first_name }}</div>
+    <div class="f" style="top:3.08in; left:6.54in; font-size:9.5pt;">{{ $mi }}</div>
+    <div class="f clip" style="top:3.08in; left:6.98in; max-width:1.25in; font-size:9.5pt;">{{ $application->applicant_tin ?? '' }}</div>
 
     {{-- Form of Ownership / Use or Character of Occupancy --}}
-    <div class="f clip" style="top:3.52in; left:3.32in; max-width:1.4in;">{{ $application->formOfOwnership?->name }}</div>
-    <div class="f clip" style="top:3.52in; left:5.76in; max-width:1.25in;">{{ $application->occupancy_classified ?? '' }}</div>
+    <div class="f clip" style="top:3.50in; left:3.32in; max-width:1.4in; font-size:9.5pt;">{{ $application->formOfOwnership?->name }}</div>
+    <div class="f clip" style="top:3.50in; left:5.76in; max-width:1.25in; font-size:9.5pt;">{{ $application->occupancy_classified ?? '' }}</div>
 
     {{-- Address --}}
-    <div class="f clip sm" style="top:3.95in; left:0.85in; max-width:4.7in;">{{ $trunc($tc($application->applicant_street), 25) . ($application->applicantBarangay ? ', ' . $tc($application->applicantBarangay->name) : '') . ($application->applicantCity ? ', ' . $tc($application->applicantCity->name) : '') }}</div>
-    <div class="f clip sm" style="top:3.95in; left:5.75in; max-width:0.6in;">{{ $application->applicant_zip_code ?? '' }}</div>
-    <div class="f clip sm" style="top:3.95in; left:6.45in; max-width:1.7in;">{{ $application->applicant_contact_no ?? '' }}</div>
+    <div class="f clip" style="top:3.92in; left:0.85in; max-width:4.7in; font-size:8.5pt;">{{ $trunc($tc($application->applicant_street), 25) . ($application->applicantBarangay ? ', ' . $tc($application->applicantBarangay->name) : '') . ($application->applicantCity ? ', ' . $tc($application->applicantCity->name) : '') }}</div>
+    <div class="f clip" style="top:3.92in; left:5.75in; max-width:0.6in; font-size:8.5pt;">{{ $application->applicant_zip_code ?? '' }}</div>
+    <div class="f clip" style="top:3.92in; left:6.45in; max-width:1.7in; font-size:8.5pt;">{{ $application->applicant_contact_no ?? '' }}</div>
 
     {{-- Location of Construction: Street / Barangay (Lot/Blk/TCT/Tax Dec are not backed by dedicated columns) --}}
-    <div class="f clip sm" style="top:4.38in; left:0.75in; max-width:0.85in;">{{ $trunc($application->building_street, 12) }}</div>
-    <div class="f clip sm" style="top:4.38in; left:2.35in; max-width:2.8in;">{{ $tc($application->buildingBarangay?->name) }}</div>
-    <div class="f clip sm" style="top:4.38in; left:6.45in; max-width:1.75in;">{{ $settings['general.city'] ?? 'City of San Fernando' }}</div>
+    <div class="f clip" style="top:4.35in; left:0.75in; max-width:0.85in; font-size:8.5pt;">{{ $trunc($application->building_street, 12) }}</div>
+    <div class="f clip" style="top:4.35in; left:2.35in; max-width:2.8in; font-size:8.5pt;">{{ $tc($application->buildingBarangay?->name) }}</div>
+    <div class="f clip" style="top:4.35in; left:6.45in; max-width:1.75in; font-size:8.5pt;">{{ $settings['general.city'] ?? 'City of San Fernando' }}</div>
 
     {{-- Scope of Work — Annual Inspection has no scope_of_works equivalent, left unmapped. --}}
     @if($sk(1))<div class="c" style="top:4.80in; left:0.44in;">&#10004;</div>@endif  {{-- New Installation --}}
@@ -121,6 +121,8 @@
     <div class="f clip" style="top:11.95in; left:5.77in; max-width:1.15in;">{{ optional($application->owner_id_date_issued)->format('m/d/Y') }}</div>
     <div class="f clip" style="top:11.95in; left:7.0in; max-width:1.28in;">{{ $application->owner_id_place_issued ?? '' }}</div>
 
+    <div class="f ctr" style="bottom:0.12in; left:0; width:8.5in; font-size:6pt; color:#555;">This is a computer-generated document. Printed on: {{ now()->format('m/d/Y') }} | Printed by: {{ auth()->user()?->full_name }}</div>
+
 </div>{{-- end page 1 --}}
 
 {{-- ======================== PAGE 2 ======================== --}}
@@ -131,6 +133,8 @@
     {{-- BOX 9: Permit Issued By — Building Official --}}
     <div class="f ctr" style="top:10.25in; left:2.4in; width:3.6in; font-weight:bold;">{{ strtoupper($boFullName) }}</div>
     <div class="f ctr" style="top:10.45in; left:2.4in; width:3.6in;">{{ strtoupper($boDesignation ?? '') }}</div>
+
+    <div class="f ctr" style="bottom:0.12in; left:0; width:8.5in; font-size:6pt; color:#555;">This is a computer-generated document. Printed on: {{ now()->format('m/d/Y') }} | Printed by: {{ auth()->user()?->full_name }}</div>
 
 </div>
 
