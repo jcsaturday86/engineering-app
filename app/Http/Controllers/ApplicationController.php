@@ -323,6 +323,10 @@ class ApplicationController extends Controller
             return $this->printMechanicalForm($application);
         }
 
+        if ($discipline === 'electronics') {
+            return $this->printElectronicsForm($application);
+        }
+
         $formTitle = self::DISCIPLINE_FORMS[$discipline];
 
         $settings = \App\Models\Setting::general();
@@ -425,6 +429,23 @@ class ApplicationController extends Controller
         $pdf->setPaper([0, 0, 612, 1008]); // 8.5in x 14in, in points (72pt/in)
 
         return $pdf->stream("mechanical_{$application->application_number}.pdf");
+    }
+
+    private function printElectronicsForm(Application $application)
+    {
+        $application->load(['formOfOwnership', 'applicantBarangay', 'applicantCity', 'buildingBarangay', 'permits']);
+
+        $settings = \App\Models\Setting::general();
+        $sealImage = \App\Models\Setting::imageDataUri($settings, 'general.logo');
+        $nationalGovtLogo = \App\Models\Setting::imageDataUri($settings, 'general.national_govt_logo');
+        [$boTitle, $boName, $boDesignation] = $this->resolveBuildingOfficial($application);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.electronics-form', compact('application', 'settings', 'sealImage', 'nationalGovtLogo', 'boTitle', 'boName', 'boDesignation'));
+        $pdf->setOption('defaultMediaType', 'print');
+        $pdf->setOption('dpi', 200);
+        $pdf->setPaper([0, 0, 612, 936]); // 8.5in x 13in, in points (72pt/in)
+
+        return $pdf->stream("electronics_{$application->application_number}.pdf");
     }
 
     /**
