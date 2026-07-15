@@ -462,47 +462,6 @@
     @endif
 
     {{-- ================================================================== --}}
-    {{-- WORKFLOW ACTION BUTTONS --}}
-    {{-- ================================================================== --}}
-    @php $sectionNum++ @endphp
-    <div class="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">
-            <span class="inline-flex items-center justify-center w-7 h-7 bg-red-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Workflow Actions
-        </h3>
-        <div class="flex flex-wrap gap-2">
-            @if($application->status === 'submitted')
-                <a href="{{ route('assessments.assess.dp', $application) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition">
-                    <i class="fas fa-clipboard-check"></i> Assess
-                </a>
-            @endif
-            @if($application->status === 'billed')
-                <a href="{{ route('collections.create.dp', $application) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition">
-                    <i class="fas fa-money-bill-wave"></i> Record Payment
-                </a>
-            @endif
-            @if($application->status === 'paid')
-                <form method="POST" action="{{ route('permits.generate.dp', $application) }}" class="inline" autocomplete="off">
-                    @csrf
-                    <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition">
-                        <i class="fas fa-certificate"></i> Generate Permit
-                    </button>
-                </form>
-            @endif
-            @if(in_array($application->status, ['draft']))
-                <span class="text-sm text-gray-500 italic">Submit the application to begin the workflow.</span>
-            @endif
-            @if(in_array($application->status, ['permit_generated', 'released']))
-                <span class="text-sm text-green-600 font-medium"><i class="fas fa-check-circle mr-1"></i> Workflow complete.</span>
-                @if($application->permits->isNotEmpty())
-                <a href="{{ route('permits.print', $application->permits->first()) }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
-                    <i class="fas fa-print"></i> Print Permit
-                </a>
-                @endif
-            @endif
-        </div>
-    </div>
-
-    {{-- ================================================================== --}}
     {{-- ACTIVITY LOG --}}
     {{-- ================================================================== --}}
     @php $sectionNum++ @endphp
