@@ -181,7 +181,25 @@
       "Bash(curl -s -b clientcookies.txt http://localhost:8100/online/application/9/download -o onlineidor2.html -w \"GET /online/application/9/download as client: %{http_code}\\\\n\")",
       "Bash(curl -s -b cookies.txt http://localhost:8100/occupancy-applications/create -o opcreate.html -w \"page: %{http_code}\\\\n\")",
       "PowerShell(powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\\\Users\\\\JAYCAR~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--xampp-htdocs-engineering-app\\\\80b4d8b2-6a63-4704-9397-2303c3138762\\\\scratchpad\\\\rasterize-structural.ps1\")",
-      "PowerShell(powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\\\Users\\\\JAYCAR~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--xampp-htdocs-engineering-app\\\\80b4d8b2-6a63-4704-9397-2303c3138762\\\\scratchpad\\\\rasterize-sanitary.ps1\")"
+      "PowerShell(powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\\\Users\\\\JAYCAR~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--xampp-htdocs-engineering-app\\\\80b4d8b2-6a63-4704-9397-2303c3138762\\\\scratchpad\\\\rasterize-sanitary.ps1\")",
+      "PowerShell(powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\\\Users\\\\JAYCAR~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--xampp-htdocs-engineering-app\\\\80b4d8b2-6a63-4704-9397-2303c3138762\\\\scratchpad\\\\rasterize-san4.ps1\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:8100/ --max-time 5)",
+      "Bash(php -l app/Http/Controllers/AssessmentController.php)",
+      "Bash(php -l app/Http/Controllers/CollectionController.php)",
+      "Bash(php -l app/Models/DemolitionApplication.php)",
+      "Bash(php -l resources/views/permits/index.blade.php)",
+      "Bash(php -l resources/views/assessments/assess.blade.php)",
+      "Bash(php -l resources/views/assessments/summary.blade.php)",
+      "Bash(php -l resources/views/assessments/demolition-index.blade.php)",
+      "Bash(php -l resources/views/demolition-applications/form.blade.php)",
+      "Bash(php -l resources/views/demolition-applications/index.blade.php)",
+      "Bash(php -l resources/views/demolition-applications/show.blade.php)",
+      "Bash(php -l resources/views/pdf/demolition-application-form.blade.php)",
+      "Bash(php -l resources/views/pdf/assessment-summary-dp.blade.php)",
+      "Bash(php -l resources/views/pdf/demolition-permit.blade.php)",
+      "Bash(php -l resources/views/partials/sidebar-nav.blade.php)",
+      "Bash(php -l app/Http/Controllers/OnlineApplicationController.php)",
+      "Bash(php -l app/Http/Controllers/FeeScheduleController.php)"
     ]
   }
 }

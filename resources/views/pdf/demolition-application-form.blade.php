@@ -1,299 +1,150 @@
+@php
+    $mi = $application->applicant_middle_name ? mb_substr($application->applicant_middle_name, 0, 1) . '.' : '';
+    $applicantAddress = trim(collect([
+        $application->applicant_street,
+        $application->applicantBarangay?->name,
+        $application->applicantCity?->name,
+    ])->filter()->implode(', '), ', ');
+    $occupancy = $application->applicationOccupancyGroups->map(fn ($og) => $og->occupancySubGroup?->name ?? $og->occupancyGroup?->name)->filter()->unique()->implode(', ');
+    $trunc = fn (?string $s, int $len) => $s ? \Illuminate\Support\Str::limit($s, $len, '') : '';
+@endphp
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <title>Application for Demolition Permit - {{ $application->application_number }}</title>
     <style>
-        @page {
-            size: A4 portrait;
-            margin: 0.75in;
+        @media print {
+            @page { size: 8.5in 13in; margin: 0; }
         }
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; color: #000; }
+        .print-page {
+            position: relative;
+            width: 8.5in; height: 13in;
+            background-color: #fff;
+            background-size: 8.5in 13in;
+            background-repeat: no-repeat;
+            background-position: top left;
+            overflow: hidden;
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
         }
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 12px;
-            color: #000;
-            line-height: 1.2;
-        }
-        .content {
-            padding: 0.75in;
-        }
-        .header {
-            margin-bottom: 6px;
-        }
-        .header-table {
-            display: table;
-            width: 100%;
-        }
-        .header-cell {
-            display: table-cell;
-            vertical-align: middle;
-        }
-        .header-cell.logo-cell {
-            width: 100px;
-            text-align: center;
-        }
-        .header-cell.logo-cell img {
-            height: 90px;
-        }
-        .header-cell.text-cell {
-            text-align: center;
-        }
-        .header p {
-            margin: 0;
-            font-size: 14px;
-        }
-        .title {
-            text-align: center;
-            font-size: 15px;
-            font-weight: bold;
-            margin: 8px 0 12px;
-            line-height: 1.2;
-        }
-        table.info-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 8px;
-            font-size: 11.5px;
-        }
-        table.info-table td {
-            padding: 1.5px 4px;
-            vertical-align: top;
-        }
-        table.info-table .lbl {
-            font-weight: normal;
+        .p1 { background-image: url('{{ public_path('images/forms/demolition-p1.jpg') }}'); }
+        .p2 { background-image: url('{{ public_path('images/forms/demolition-p2.jpg') }}'); }
+
+        .f {
+            position: absolute;
+            font: 9pt/1.15 Arial, sans-serif;
             white-space: nowrap;
-            width: 150px;
         }
-        .fill {
-            border-bottom: 1px solid #000;
-            display: inline-block;
-            min-width: 60px;
-            padding: 0 3px;
-        }
-        .sec-title {
-            font-weight: bold;
-            font-size: 12px;
-            margin: 10px 0 4px;
-            text-decoration: underline;
-        }
-        .radio-row {
-            font-size: 11.5px;
-            margin-bottom: 4px;
-        }
-        .radio-row .box {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border: 1px solid #000;
+        .c {
+            position: absolute;
+            width: 0.17in;
+            height: 0.15in;
+            line-height: 0.15in;
             text-align: center;
-            line-height: 9px;
-            font-size: 9px;
-            font-weight: bold;
-            margin-right: 4px;
-            vertical-align: middle;
+            font: bold 10pt/1 'DejaVu Sans', Arial, sans-serif;
         }
-        .sig2-wrap .row {
-            font-size: 11px;
-            margin-bottom: 2px;
-        }
-        .sig2-wrap {
-            display: table;
-            width: 100%;
-            margin-top: 14px;
-        }
-        .sig2-col {
-            display: table-cell;
-            width: 50%;
-            vertical-align: top;
-        }
-        .sig2-col.left {
-            padding-right: 12px;
-        }
-        .sig2-col.right {
-            padding-left: 12px;
-        }
-        .sig2-col .sig-name-plain {
-            font-weight: bold;
-            margin-top: 2px;
-        }
-        .sig2-col .sig-caption {
-            font-size: 9.5px;
-            margin-top: 1px;
-            margin-bottom: 4px;
-        }
-        .sig2-col .role-label {
-            font-weight: bold;
-            font-size: 10.5px;
-            margin-top: 6px;
-        }
-        .sig2-col .blank-sig-line {
-            border-bottom: 1px solid #000;
-            margin-top: 30px;
-            margin-bottom: 0;
-            line-height: 1;
-            font-size: 1px;
-        }
-        table.prc-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 10px;
-            margin-top: 4px;
-        }
-        table.prc-table td {
-            border: 1px solid #000;
-            padding: 2px 5px;
-        }
+        .ctr { text-align: center; }
+        .sm { font-size: 8pt; }
+        .clip { overflow: hidden; text-overflow: ellipsis; }
+        .hdr { position: absolute; top:0; left:0; width:8.5in; text-align:center; font: 12pt/1.3 Arial, sans-serif; }
     </style>
 </head>
 <body>
-<div class="content">
-    {{-- Header --}}
-    <div class="header">
-        <div class="header-table">
-            <div class="header-cell logo-cell">
-                @if(!empty($sealImage))
-                    <img src="{{ $sealImage }}" alt="Official Seal">
-                @endif
-            </div>
-            <div class="header-cell text-cell">
-                <p>Republic of the Philippines</p>
-                <p>City of San Fernando</p>
-                <p>Province of La Union</p>
-            </div>
-            <div class="header-cell logo-cell">
-                @if(!empty($nationalGovtLogo))
-                    <img src="{{ $nationalGovtLogo }}" alt="National Government Logo">
-                @endif
-            </div>
-        </div>
-    </div>
 
-    {{-- Title --}}
-    <div class="title">APPLICATION FOR DEMOLITION PERMIT</div>
+{{-- ======================== PAGE 1 ======================== --}}
+<div class="print-page p1">
 
-    {{-- Applicant --}}
-    <div class="sec-title">Applicant Information</div>
-    <table class="info-table">
-        <tr>
-            <td class="lbl">Name of Applicant</td>
-            <td>: {{ $application->applicant_last_name }}, {{ $application->applicant_first_name }}{{ $application->applicant_middle_name ? ' ' . mb_substr($application->applicant_middle_name, 0, 1) . '.' : '' }}</td>
-        </tr>
-        <tr>
-            <td class="lbl">TIN</td>
-            <td>: <span class="fill">{{ $application->applicant_tin ?? '' }}</span> &nbsp;&nbsp; Telephone: <span class="fill">{{ $application->applicant_telephone ?? '' }}</span></td>
-        </tr>
-        <tr>
-            <td class="lbl">Owned By Enterprise</td>
-            <td>: {{ $application->owned_by_enterprise ? ($application->enterprise_name ?? 'Yes') : 'No' }} &nbsp;&nbsp; Form of Ownership: {{ $application->formOfOwnership?->name ?? '' }}</td>
-        </tr>
-        <tr>
-            <td class="lbl">Address</td>
-            <td>: {{ trim(collect([$application->applicant_street, $application->applicantBarangay?->name, $application->applicantCity?->name])->filter()->implode(', ')) }}</td>
-        </tr>
-        <tr>
-            <td class="lbl"></td>
-            <td>ZIP Code: <span class="fill">{{ $application->applicant_zip_code ?? '' }}</span></td>
-        </tr>
-        <tr>
-            <td class="lbl">CTC No.</td>
-            <td>: <span class="fill">{{ $application->applicant_ctc_no ?? '' }}</span> &nbsp;&nbsp; Date Issued: <span class="fill">{{ $application->applicant_ctc_date_issued?->format('F d, Y') ?? '' }}</span> &nbsp;&nbsp; Place Issued: <span class="fill">{{ $application->applicant_ctc_place_issued ?? '' }}</span></td>
-        </tr>
-    </table>
-
-    {{-- Character of Occupancy --}}
-    @if($application->applicationOccupancyGroups && $application->applicationOccupancyGroups->count())
-    <div class="sec-title">Character of Occupancy</div>
-    <table class="info-table">
-        @foreach($application->applicationOccupancyGroups as $occGroup)
-        <tr>
-            <td colspan="2">{{ $loop->iteration }}. {{ $occGroup->occupancyGroup?->name ?? '' }}{{ $occGroup->occupancySubGroup ? ' — ' . $occGroup->occupancySubGroup->name : '' }}</td>
-        </tr>
-        @endforeach
-    </table>
+    {{-- Letterhead: sits in the blank space BELOW "NBC FORM NO. B-08" (y:0.32-0.43in)
+         and ABOVE "OFFICE OF THE BUILDING OFFICIAL" (y:1.28-1.39in). --}}
+    @if($sealImage ?? null)
+    <img src="{{ $sealImage }}" alt="Official Seal" style="position:absolute; top:0.46in; left:0.35in; width:0.72in; height:0.72in;">
     @endif
+    @if($nationalGovtLogo ?? null)
+    <img src="{{ $nationalGovtLogo }}" alt="National Government Logo" style="position:absolute; top:0.46in; left:7.43in; width:0.72in; height:0.72in;">
+    @endif
+    <div class="hdr" style="top:0.46in;">Republic of the Philippines</div>
+    <div class="hdr" style="top:0.66in; font-weight:bold;">{{ $settings['general.city'] ?? 'City of San Fernando' }}</div>
+    <div class="hdr" style="top:0.86in;">Province of {{ $settings['general.province'] ?? 'La Union' }}</div>
+
+    {{-- Application No. box (top row: APPLICATION NO. / DP NO. / BUILDING PERMIT NO. — the latter two
+         are only assigned at permit-generation time, so they stay blank here). --}}
+    <div class="f ctr" style="top:2.14in; left:0.24in; width:2.4in;">{{ $application->application_number }}</div>
+
+    {{-- BOX 1: Owner/Applicant (values sit on the blank line BELOW the label row) --}}
+    <div class="f clip" style="top:3.00in; left:2.02in; max-width:1.5in;">{{ $application->applicant_last_name }}</div>
+    <div class="f clip" style="top:3.00in; left:3.58in; max-width:2.1in;">{{ $application->applicant_first_name }}</div>
+    <div class="f clip" style="top:3.00in; left:5.76in; max-width:0.65in;">{{ $mi }}</div>
+    <div class="f clip" style="top:3.00in; left:6.52in; max-width:1.55in;">{{ $application->applicant_tin ?? '' }}</div>
+
+    {{-- Enterprise / Form of Ownership / Use or Character of Occupancy --}}
+    <div class="f clip" style="top:3.50in; left:1.42in; max-width:1.85in; font-size:7pt;">{{ $application->owned_by_enterprise ? $application->enterprise_name : '' }}</div>
+    <div class="f clip" style="top:3.44in; left:3.40in; max-width:1.7in;">{{ $application->formOfOwnership?->name ?? '' }}</div>
+    <div class="f clip" style="top:3.44in; left:5.19in; max-width:2.9in;">{{ $trunc($occupancy, 40) }}</div>
+
+    {{-- Address: No./Street/Barangay, City/Municipality Of, Zip Code, Telephone No. --}}
+    <div class="f clip" style="top:3.86in; left:0.24in; max-width:3.3in;">{{ $trunc(trim(collect([$application->applicant_street, $application->applicantBarangay?->name])->filter()->implode(', ')), 40) }}</div>
+    <div class="f clip sm" style="top:3.86in; left:3.58in; max-width:1.55in;">{{ $application->applicantCity?->name ?? '' }}</div>
+    <div class="f clip" style="top:3.86in; left:5.19in; max-width:1.3in;">{{ $application->applicant_zip_code ?? '' }}</div>
+    <div class="f clip" style="top:3.86in; left:6.52in; max-width:1.6in;">{{ $application->applicant_telephone ?? '' }}</div>
 
     {{-- Location of Demolition Works --}}
-    <div class="sec-title">Location of Demolition Works</div>
-    <table class="info-table">
-        <tr>
-            <td class="lbl">Lot No. / Blk No.</td>
-            <td>: <span class="fill">{{ $application->lot_no ?? '' }}</span> / <span class="fill">{{ $application->block_no ?? '' }}</span></td>
-        </tr>
-        <tr>
-            <td class="lbl">TCT No. / Tax Dec. No.</td>
-            <td>: <span class="fill">{{ $application->tct_no ?? '' }}</span> / <span class="fill">{{ $application->tax_dec_no ?? '' }}</span></td>
-        </tr>
-        <tr>
-            <td class="lbl">Street / Barangay</td>
-            <td>: {{ trim(collect([$application->demolition_street, $application->demolitionBarangay?->name])->filter()->implode(', ')) }}</td>
-        </tr>
-    </table>
+    <div class="f clip sm" style="top:4.14in; left:2.90in; max-width:0.75in;">{{ $application->lot_no ?? '' }}</div>
+    <div class="f clip sm" style="top:4.14in; left:3.98in; max-width:0.75in;">{{ $application->block_no ?? '' }}</div>
+    <div class="f clip sm" style="top:4.14in; left:5.08in; max-width:1.25in;">{{ $application->tct_no ?? '' }}</div>
+    <div class="f clip sm" style="top:4.14in; left:6.70in; max-width:1.5in;">{{ $application->tax_dec_no ?? '' }}</div>
+    <div class="f clip sm" style="top:4.36in; left:0.77in; max-width:1.35in;">{{ $trunc($application->demolition_street, 22) }}</div>
+    <div class="f clip sm" style="top:4.36in; left:2.38in; max-width:2.35in;">{{ $application->demolitionBarangay?->name ?? '' }}</div>
+    <div class="f clip sm" style="top:4.36in; left:5.35in; max-width:2.85in;">{{ $settings['general.city'] ?? 'City of San Fernando' }}</div>
 
     {{-- Scope of Work --}}
-    <div class="sec-title">Scope of Work</div>
-    <div class="radio-row">
-        <span class="box">{{ $application->scope_of_work === 'demolition' ? 'X' : '' }}</span> Demolition
-        @if($application->scope_of_work === 'demolition' && $application->scope_of_work_detail)
-            &nbsp;&mdash;&nbsp;{{ $application->scope_of_work_detail }}
-        @endif
-    </div>
-    <div class="radio-row">
-        <span class="box">{{ $application->scope_of_work === 'others' ? 'X' : '' }}</span> Others (Specify)
-        @if($application->scope_of_work === 'others' && $application->scope_of_work_detail)
-            &nbsp;&mdash;&nbsp;{{ $application->scope_of_work_detail }}
-        @endif
-    </div>
+    @if($application->scope_of_work === 'demolition')<div class="c" style="top:4.735in; left:0.40in;">&#10004;</div>@endif
+    <div class="f" style="top:4.72in; left:1.4in; max-width:1.4in;">{{ $trunc($application->scope_of_work === 'demolition' ? $application->scope_of_work_detail : '', 30) }}</div>
+    @if($application->scope_of_work === 'others')<div class="c" style="top:4.74in; left:4.65in;">&#10004;</div>@endif
+    <div class="f" style="top:4.965in; left:4.60in; max-width:3.2in;">{{ $trunc($application->scope_of_work === 'others' ? $application->scope_of_work_detail : '', 55) }}</div>
 
-    {{-- Signatories: Full-time Inspector (left) / Lot Owner Consent (right) --}}
-    <div class="sig2-wrap">
-        <div class="sig2-col left">
-            <div class="role-label" style="margin-top:0;">Full-time Inspector and Supervisor of Demolition Works:</div>
-            <div class="blank-sig-line" style="margin-top:36px;">&nbsp;</div>
-            <div class="sig-name-plain" style="text-align:center;">{{ strtoupper($application->inspector_name ?? '') }}</div>
-            <div class="sig-caption" style="text-align:center;">Name of Architect or Civil Engineer</div>
-            <table class="prc-table">
-                <tr>
-                    <td>PRC No. {{ $application->inspector_prc_no ?? '' }}</td>
-                    <td>Validity: {{ $application->inspector_prc_validity?->format('m/d/Y') ?? '' }}</td>
-                </tr>
-                <tr>
-                    <td>PTR No. {{ $application->inspector_ptr_no ?? '' }}</td>
-                    <td>Date Issued: {{ $application->inspector_ptr_date_issued?->format('m/d/Y') ?? '' }}</td>
-                </tr>
-                <tr>
-                    <td>Issued at: {{ $application->inspector_ptr_issued_at ?? '' }}</td>
-                    <td>TIN: {{ $application->inspector_tin ?? '' }}</td>
-                </tr>
-                <tr>
-                    <td colspan="2">Address: {{ $application->inspector_address ?? '' }} &nbsp;&nbsp; Tel: {{ $application->inspector_telephone ?? '' }}</td>
-                </tr>
-            </table>
-        </div>
-        <div class="sig2-col right">
-            <div class="role-label" style="margin-top:0;">Lot Owner Consent:</div>
-            <div class="blank-sig-line" style="margin-top:36px;">&nbsp;</div>
-            <div class="sig-name-plain" style="text-align:center;">{{ strtoupper($application->owner_name ?? '') }}</div>
-            <div class="sig-caption" style="text-align:center;">Full Name of Lot Owner</div>
-            <div class="row" style="margin-top:8px;">CTC No. <span class="fill">{{ $application->owner_ctc_no ?? '' }}</span></div>
-            <div class="row">Date Issued: <span class="fill">{{ $application->owner_ctc_date_issued?->format('m/d/Y') ?? '' }}</span></div>
-            <div class="row">Place Issued: <span class="fill">{{ $application->owner_ctc_place_issued ?? '' }}</span></div>
-        </div>
-    </div>
+    {{-- BOX 2: Full-time Inspector and Supervisor of Demolition Works --}}
+    <div class="f ctr" style="top:5.78in; left:0.2in; width:4.23in; font-weight:bold;">{{ strtoupper($application->inspector_name ?? '') }}</div>
+    <div class="f clip" style="top:5.835in; left:4.5in; max-width:1.95in; font-size:6pt;">{{ $trunc($application->inspector_address, 55) }}</div>
+    <div class="f clip" style="top:5.835in; left:6.55in; max-width:1.6in;">{{ $application->inspector_telephone ?? '' }}</div>
+    <div class="f clip" style="top:6.10in; left:5.3in; max-width:1.1in;">{{ $application->inspector_prc_no ?? '' }}</div>
+    <div class="f clip" style="top:6.10in; left:7.3in; max-width:0.9in;">{{ $application->inspector_prc_validity?->format('m/d/Y') ?? '' }}</div>
+    <div class="f clip" style="top:6.32in; left:5.3in; max-width:1.1in;">{{ $application->inspector_ptr_no ?? '' }}</div>
+    <div class="f clip" style="top:6.32in; left:7.3in; max-width:0.9in;">{{ $application->inspector_ptr_date_issued?->format('m/d/Y') ?? '' }}</div>
+    <div class="f clip" style="top:6.54in; left:5.3in; max-width:1.1in;">{{ $application->inspector_ptr_issued_at ?? '' }}</div>
+    <div class="f clip" style="top:6.54in; left:7.3in; max-width:0.9in;">{{ $application->inspector_tin ?? '' }}</div>
 
-    @if(isset($signatories['building_official']))
-    <div style="margin-top:24px; text-align:center;">
-        <div class="blank-sig-line" style="border-bottom:1px solid #000; width:260px; margin:0 auto;">&nbsp;</div>
-        <div class="sig-name-plain">{{ strtoupper(trim(($signatories['building_official']->title ?? '') . ' ' . $signatories['building_official']->name)) }}</div>
-        <div class="sig-caption">{{ $signatories['building_official']->designation ?? 'Building Official' }}</div>
-    </div>
-    @endif
+    {{-- BOX 3: Applicant (left) / With My Consent — Lot Owner (right) --}}
+    <div class="f ctr" style="top:7.26in; left:0.2in; width:4.23in; font-weight:bold;">{{ strtoupper(trim($application->applicant_first_name . ' ' . $mi . ' ' . $application->applicant_last_name)) }}</div>
+    <div class="f ctr" style="top:7.26in; left:4.43in; width:3.85in; font-weight:bold;">{{ strtoupper($application->owner_name ?? '') }}</div>
+    <div class="f clip" style="top:8.03in; left:1.0in; max-width:3.3in;">{{ $trunc($applicantAddress, 45) }}</div>
+    {{-- CTC No. / Date Issued / Place Issued — Applicant (left) and Lot Owner (right) --}}
+    <div class="f clip" style="top:8.42in; left:0.3in; max-width:1.2in;">{{ $application->applicant_ctc_no ?? '' }}</div>
+    <div class="f clip" style="top:8.42in; left:1.7in; max-width:1.5in;">{{ $application->applicant_ctc_date_issued?->format('m/d/Y') ?? '' }}</div>
+    <div class="f clip sm" style="top:8.42in; left:3.45in; max-width:0.95in;">{{ $application->applicant_ctc_place_issued ?? '' }}</div>
+    <div class="f clip" style="top:8.42in; left:4.55in; max-width:0.85in;">{{ $application->owner_ctc_no ?? '' }}</div>
+    <div class="f clip" style="top:8.42in; left:5.55in; max-width:1.05in;">{{ $application->owner_ctc_date_issued?->format('m/d/Y') ?? '' }}</div>
+    <div class="f clip sm" style="top:8.42in; left:6.75in; max-width:1.45in;">{{ $application->owner_ctc_place_issued ?? '' }}</div>
 
-    <div style="margin-top:10px; font-size:9px; text-align:center; color:#555;">This is a computer-generated document. Printed on: {{ now()->format('m/d/Y') }} | Printed by: {{ auth()->user()?->full_name }}</div>
+    {{-- BOX 4 (Notarization) is left entirely blank — wholly manual/notarial, no corresponding data. --}}
+
+    <div class="f ctr" style="bottom:0.12in; left:0; width:8.5in; font-size:6pt; color:#555;">This is a computer-generated document. Printed on: {{ now()->format('m/d/Y') }} | Printed by: {{ auth()->user()?->full_name }}</div>
+
+</div>{{-- end page 1 --}}
+
+{{-- ======================== PAGE 2 ======================== --}}
+{{-- Box 5 (Processing/Evaluation fee) and Box 6 (Building Official action-taken) are staff-only
+     fields that only become meaningful after payment and permit generation — the application
+     print shouldn't show an unissued permit as "issued." Background only, no data overlay. --}}
+<div class="print-page p2 page-break">
+    {{-- Permit Issued By: Building Official, placed above "(Signature Over Printed Name)" --}}
+    <div class="f ctr" style="top:9.70in; left:0.7in; width:6.9in; font-weight:bold;">{{ strtoupper(trim(($boTitle ?? '') . ' ' . ($boName ?? ''))) }}</div>
+    <div class="f ctr" style="top:9.90in; left:0.7in; width:6.9in;">{{ strtoupper($boDesignation ?? '') }}</div>
+
+    <div class="f ctr" style="bottom:0.12in; left:0; width:8.5in; font-size:6pt; color:#555;">This is a computer-generated document. Printed on: {{ now()->format('m/d/Y') }} | Printed by: {{ auth()->user()?->full_name }}</div>
 </div>
+
 </body>
 </html>
