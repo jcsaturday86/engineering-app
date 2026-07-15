@@ -47,6 +47,7 @@ class BillingService
             $morphType = match ($application->getPermitTypeCode()) {
                 'OP' => 'op',
                 'DP' => 'dp',
+                'SGP' => 'sgp',
                 default => 'bp',
             };
 

@@ -68,6 +68,32 @@
                             <span class="text-xs text-gray-400">· {{ $feeType->feeSchedules->count() }} {{ Str::plural('row', $feeType->feeSchedules->count()) }}</span>
                         </div>
                     </div>
+                    <div x-data="{ editing: false }" class="shrink-0">
+                        <template x-if="!editing">
+                            <button @click="editing = true" type="button"
+                                class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-200 hover:border-gray-300 text-xs text-gray-600">
+                                <span class="text-gray-400">Unit:</span>
+                                <span class="font-medium {{ $feeType->unit_label ? 'text-gray-800' : 'text-gray-300 italic' }}">{{ $feeType->unit_label ?: 'not set' }}</span>
+                                <i class="fas fa-pencil-alt text-gray-400"></i>
+                            </button>
+                        </template>
+                        <template x-if="editing">
+                            <form action="{{ route('settings.demolition-fees.type.unit', $feeType) }}" method="POST"
+                                class="flex items-center gap-1.5" autocomplete="off">
+                                @csrf
+                                @method('PUT')
+                                <input type="text" name="unit_label" value="{{ $feeType->unit_label }}" maxlength="40"
+                                    placeholder="e.g. sq.m., lineal meter(s)"
+                                    class="w-44 px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500">
+                                <button type="submit" class="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button type="button" @click="editing = false" class="px-2 py-1 bg-gray-400 text-white text-xs rounded hover:bg-gray-500">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </form>
+                        </template>
+                    </div>
                 </div>
 
                 {{-- Schedule table --}}

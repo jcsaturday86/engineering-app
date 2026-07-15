@@ -36,6 +36,7 @@
                                 $permitTypeLabel = match($permit->permitType->code) {
                                     'OP' => 'Certificate of Occupancy',
                                     'DP' => 'Demolition Permit',
+                                    'SGP' => 'Signage Permit',
                                     default => 'Building Permit',
                                 };
                             @endphp

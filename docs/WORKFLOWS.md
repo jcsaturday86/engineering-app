@@ -75,6 +75,26 @@ OP skips `zoning_assessed` entirely. Parallel `*Op()` methods in Assessment/Bill
 
 ---
 
+## Demolition Permit (DP) Workflow
+
+```
+draft → submitted → engineering_assessed → billed → paid → permit_generated → released
+```
+
+Same shape as OP — no zoning stage. Parallel `*Dp()` methods in Assessment/Billing/Collection/Permit controllers, all delegating to the same generic private methods BP/OP already use. Assessment fees are looked up via the dedicated `DEMO_FEE` category (`addDemolitionItem()` — server-computed `amount = quantity × rate`, quantity labeled by the fee type's Settings-configured `unit_label`).
+
+---
+
+## Signage Permit (SGP) Workflow
+
+```
+draft → submitted → engineering_assessed → billed → paid → permit_generated → released
+```
+
+Same 5-step shape as DP/OP. Parallel `*Sgp()` methods, same delegation pattern. Assessment fees are **manual entry only** — the `SGP_FEE` category has no seeded `FeeType`/`FeeSchedule` rows, so the tab falls through to the generic "select category, type quantity + unit fee" fallback form. The application-form print route does not exist yet (no scanned official form supplied); the assessment-summary and final-permit-certificate prints are both complete.
+
+---
+
 ## State Machine
 
 ### ApplicationStatus Enum (`app/Enums/ApplicationStatus.php`)
@@ -218,20 +238,23 @@ Every forward step below has a corresponding backward action, each requiring pas
 | Send back to Engineering (from Planning) | `ZoningController::sendBackForEditing()` | `revert-submission` | BP zoning screen; sends application from Planning back to Engineering for edits |
 | Revert zoning finalize | `ZoningController::revertZoning()` | `revert-zoning` | Un-finalizes a zoning assessment |
 | Return to Zoning (from Engineering) | `AssessmentController::returnToZoning()` | `return-to-zoning` | BP assessment screen; deletes the BP engineering assessment items, sends application back to Planning |
-| Revert engineering finalize | `AssessmentController::revertEngineering()` / `revertEngineeringOp()` | `revert-assessments` | Un-finalizes a BP/OP engineering assessment |
+| Revert engineering finalize | `AssessmentController::revertEngineering()` / `revertEngineeringOp()` / `revertEngineeringDp()` / `revertEngineeringSgp()` | `revert-assessments` | Un-finalizes an engineering assessment; DP/SGP revert to `submitted` (no zoning stage) instead of `zoning_assessed` |
 | Revert OP assessment to draft | `AssessmentController::revertToDraftOp()` | `revert-submission` | OP-only; only while `status = zoning_assessed` (not yet finalized); deletes all occupancy fee entries and the occupancy Assessment, sets status back to `draft` |
-| Revoke generated permit | `PermitController::revertGenerate()` / `revertGenerateOp()` | `revert-permits` | Tags the `Permit` as `status = 'revoked'` (with a required reason) and soft-deletes it — the permit number is retained, never reused; rolls application status back to `paid`. `doGenerate()` refuses to create a new permit for an application with a revoked permit on file. |
-| Restore revoked permit | `PermitController::restoreRevoke()` / `restoreRevokeOp()` | `revert-permits` | Un-trashes the same `Permit` row, sets `status` back to `generated`, application back to `permit_generated`. Password-confirm only (no reason). |
+| Revert DP/SGP assessment to draft | `AssessmentController::revertToDraftDp()` / `revertToDraftSgp()` | `revert-submission` | Same shape as `revertToDraftOp()`, but the pre-assessment status is `submitted` (no zoning stage) rather than `zoning_assessed` |
+| Revoke generated permit | `PermitController::revertGenerate()` / `revertGenerateOp()` / `revertGenerateDp()` / `revertGenerateSgp()` | `revert-permits` | Tags the `Permit` as `status = 'revoked'` (with a required reason) and soft-deletes it — the permit number is retained, never reused; rolls application status back to `paid`. `doGenerate()` refuses to create a new permit for an application with a revoked permit on file. |
+| Restore revoked permit | `PermitController::restoreRevoke()` / `restoreRevokeOp()` / `restoreRevokeDp()` / `restoreRevokeSgp()` | `revert-permits` | Un-trashes the same `Permit` row, sets `status` back to `generated`, application back to `permit_generated`. Password-confirm only (no reason). |
 
 All "Return to Zoning" / "Revert to Draft" buttons live in the page **header** of `assessments/assess.blade.php`, not inside the Summary tab's content — a tab-gated location would leave them invisible on default page load (the assess screen lands on the first fee-entry tab, not Summary).
 
 ---
 
-## Permits List (`/permits/building`, `/permits/occupancy`)
+## Permits List (`/permits/building`, `/permits/occupancy`, `/permits/demolition`, `/permits/signage`)
 
-`PermitController::buildingIndex()` / `occupancyIndex()` list applications at `paid`, `permit_generated`, or `released`, with:
+`PermitController::buildingIndex()` / `occupancyIndex()` / `demolitionIndex()` / `signageIndex()` list applications at `paid`, `permit_generated`, or `released`, sharing the single `permits/index.blade.php` view keyed by a `$type` variable (`building`/`occupancy`/`demolition`/`signage`), with:
 - **Filters** — Search (app number/applicant/project title), Status (Paid, Permit generated, Released, **Revoked** — matched as `status = 'paid'` + a trashed permit tagged `revoked`), Year (defaults to current year).
-- **Permit No.** as the primary (first) column — links to the application Show page, red-strikethrough for a revoked permit's number, `-` if never generated.
+- **Permit No.** as the primary (first) column — links to the correct application Show route per type (`applications.show`/`occupancy-applications.show`/`demolition-applications.show`/`signage-applications.show`), red-strikethrough for a revoked permit's number, `-` if never generated.
+- **Project Title column** — hidden for `demolition` and `signage` (neither application table has a `project_title` field).
+- **Print button** — hidden for `demolition` only (the application-form print is a manual/physical process for DP); shown for `signage` (its final-permit-certificate print is complete, only the upstream application-form print is deferred).
 - **TTA column** beside Date, same day-count logic as the application indexes.
 - Actions: **Generate** (no permit yet), **Print** / **Revoke** (active permit), **Restore** (revoked permit — replaces Generate entirely, since a new permit cannot be created while a revoked one exists on file).
 
@@ -305,10 +328,15 @@ The `/collections` Payment History table is scoped to the **logged-in collector 
 | mechanical-form | ApplicationController::printDiscipline (discipline=mechanical) — NBC Form A-04, 8.5×14in (legal, unlike the other 5's 8.5×13in); no official source scan, background is a clean digitally-generated reference image; Scope of Work maps all 12 checkboxes against `scope_of_works` |
 | electronics-form | ApplicationController::printDiscipline (discipline=electronics) — NBC Form A-07 Electronics, same no-source-scan situation as Mechanical; Scope of Work maps New Installation/Others only |
 | discipline-form | ApplicationController::printDiscipline — generic blank-placeholder fallback, DomPDF A4, city seal header; no longer used by any of the 6 disciplines (all now render real forms), kept for any future/unrecognized discipline key |
+| demolition-application-form | DemolitionApplicationController::printForm (DP only) — DomPDF background-image overlay of the official 2-page NBC Form No. B-08 scan; letterhead (seal + national govt logo + Republic/City/Province) and a Building Official title/name/designation block on page 2 above the signature line |
 | building-permit | PermitController::print (BP) — NBC Form B-018 style, A4 landscape, city seal (left) + DPWH logo (right), QR verification code |
 | occupancy-permit | PermitController::print (OP) — DPWH Certificate of Occupancy style, A4 landscape, DPWH logo + city seal, QR verification code |
+| demolition-permit | PermitController::print (DP) — bordered-frame landscape A4 certificate style (same technique as building-permit/occupancy-permit), QR verification code |
+| signage-permit | PermitController::print (SGP) — same bordered-frame landscape A4 certificate style, cloned from demolition-permit; Scope of Work/Wordings/Premises-Of fields, QR verification code |
 | assessment-summary | AssessmentController::print (BP only) — city seal header; Code 128 barcode above BP number; Approved By = building_official signatory; no Fire Code Fees section |
 | assessment-summary-op | AssessmentController::printOp (OP only) — city seal header; titled "OCCUPANCY PERMIT ASSESSMENT"; only an Occupancy Fees section (no Zoning/Building/Electrical/Mechanical/Other Fees/Filing/Processing) |
+| assessment-summary-dp | AssessmentController::printDp (DP only) — city seal header; titled "DEMOLITION PERMIT ASSESSMENT"; only a Demolition/Moving Fees section |
+| assessment-summary-sgp | AssessmentController::printSgp (SGP only) — city seal header; titled "SIGNAGE PERMIT ASSESSMENT"; only a Signage Permit Fees section |
 | billing-statement | BillingController::print — city seal + city/province from settings |
 | official-receipt | CollectionController::receipt — city seal header |
 | zoning-certification | PermitController::zoningCertification |
@@ -329,7 +357,7 @@ qrImage   = QR PNG encoding verifyUrl (endroid/qr-code), embedded as base64 data
 ```
 
 `GET /verify/permit/{token}` (public, throttled `throttle:30,1`, no auth) → `VerifyController::show()` looks up the `Permit` by token:
-- **Found** → `verify/permit.blade.php` shows permit type (Building Permit / Certificate of Occupancy), permit number, date issued, **Issued By** (the snapshotted Building Official — title/name/designation, immutable per permit, see the Building Official Snapshot note in `docs/PROJECT_CONTEXT.md`), status, applicant name, project title, location
+- **Found** → `verify/permit.blade.php` shows permit type (Building Permit / Certificate of Occupancy / Demolition Permit / Signage Permit), permit number, date issued, **Issued By** (the snapshotted Building Official — title/name/designation, immutable per permit, see the Building Official Snapshot note in `docs/PROJECT_CONTEXT.md`), status, applicant name, project title, location
 - **Not found** → same view renders a "This permit could not be verified" message (still `200 OK` — doesn't leak token validity via status code)
 
 ---

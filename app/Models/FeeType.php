@@ -19,6 +19,7 @@ class FeeType extends Model
         'name',
         'description',
         'computation_method',
+        'unit_label',
         'has_excess',
         'has_minimum',
         'has_maximum',

@@ -17,6 +17,7 @@ use App\Http\Controllers\PermitController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\SignageApplicationController;
 use App\Http\Controllers\FeeScheduleController;
 use App\Http\Controllers\OnlineApplicationController;
 use App\Http\Controllers\ZoningController;
@@ -120,6 +121,19 @@ Route::middleware('auth')->group(function () {
         Route::get('/{demolitionApplication}/print', [DemolitionApplicationController::class, 'printForm'])->name('print')->middleware('can:view-applications');
     });
 
+    // Signage Permit Applications (SGP)
+    Route::prefix('signage-applications')->name('signage-applications.')->group(function () {
+        Route::get('/', [SignageApplicationController::class, 'index'])->name('index')->middleware('can:view-applications');
+        Route::get('/create', [SignageApplicationController::class, 'create'])->name('create')->middleware('can:create-applications');
+        Route::post('/', [SignageApplicationController::class, 'store'])->name('store')->middleware('can:create-applications');
+        Route::get('/{signageApplication}', [SignageApplicationController::class, 'show'])->name('show')->middleware('can:view-applications');
+        Route::get('/{signageApplication}/edit', [SignageApplicationController::class, 'edit'])->name('edit')->middleware('can:edit-applications');
+        Route::put('/{signageApplication}', [SignageApplicationController::class, 'update'])->name('update')->middleware('can:edit-applications');
+        Route::post('/{signageApplication}/submit', [SignageApplicationController::class, 'submit'])->name('submit')->middleware('can:submit-applications');
+        Route::post('/{signageApplication}/cancel', [SignageApplicationController::class, 'cancel'])->name('cancel')->middleware('can:cancel-applications');
+        Route::post('/{signageApplication}/revert-submission', [SignageApplicationController::class, 'revertSubmission'])->name('revertSubmission')->middleware('can:revert-submission');
+    });
+
     // Zoning Assessment (Planning Office) — BP only
     Route::prefix('zoning')->name('zoning.')->middleware('can:view-zoning')->group(function () {
         Route::get('/', [ZoningController::class, 'index'])->name('index');
@@ -140,6 +154,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [AssessmentController::class, 'index'])->name('index');
         Route::get('/occupancy', [AssessmentController::class, 'occupancyIndex'])->name('occupancy');
         Route::get('/demolition', [AssessmentController::class, 'demolitionIndex'])->name('demolition');
+        Route::get('/signage', [AssessmentController::class, 'signageIndex'])->name('signage');
         // BP assessment
         Route::get('/{application}', [AssessmentController::class, 'assess'])->name('assess')->middleware('can:create-assessments');
         Route::post('/{application}/item', [AssessmentController::class, 'addItem'])->name('addItem')->middleware('can:create-assessments');
@@ -168,11 +183,20 @@ Route::middleware('auth')->group(function () {
         // DP assessment
         Route::get('/dp/{demolitionApplication}', [AssessmentController::class, 'assessDp'])->name('assess.dp')->middleware('can:create-assessments');
         Route::post('/dp/{demolitionApplication}/item', [AssessmentController::class, 'addItemDp'])->name('addItem.dp')->middleware('can:create-assessments');
+        Route::post('/dp/{demolitionApplication}/demolition-item', [AssessmentController::class, 'addDemolitionItem'])->name('demolitionItem.dp')->middleware('can:create-assessments');
         Route::get('/dp/{demolitionApplication}/summary', [AssessmentController::class, 'summaryDp'])->name('summary.dp');
         Route::post('/dp/{demolitionApplication}/finalize', [AssessmentController::class, 'finalizeDp'])->name('finalize.dp')->middleware('can:finalize-assessments');
         Route::post('/dp/{demolitionApplication}/revert-finalize', [AssessmentController::class, 'revertEngineeringDp'])->name('revertFinalize.dp')->middleware('can:revert-assessments');
         Route::post('/dp/{demolitionApplication}/revert-to-draft', [AssessmentController::class, 'revertToDraftDp'])->name('revertToDraft.dp')->middleware('can:revert-submission');
         Route::get('/dp/{demolitionApplication}/print', [AssessmentController::class, 'printDp'])->name('print.dp');
+        // SGP assessment
+        Route::get('/sgp/{signageApplication}', [AssessmentController::class, 'assessSgp'])->name('assess.sgp')->middleware('can:create-assessments');
+        Route::post('/sgp/{signageApplication}/item', [AssessmentController::class, 'addItemSgp'])->name('addItem.sgp')->middleware('can:create-assessments');
+        Route::get('/sgp/{signageApplication}/summary', [AssessmentController::class, 'summarySgp'])->name('summary.sgp');
+        Route::post('/sgp/{signageApplication}/finalize', [AssessmentController::class, 'finalizeSgp'])->name('finalize.sgp')->middleware('can:finalize-assessments');
+        Route::post('/sgp/{signageApplication}/revert-finalize', [AssessmentController::class, 'revertEngineeringSgp'])->name('revertFinalize.sgp')->middleware('can:revert-assessments');
+        Route::post('/sgp/{signageApplication}/revert-to-draft', [AssessmentController::class, 'revertToDraftSgp'])->name('revertToDraft.sgp')->middleware('can:revert-submission');
+        Route::get('/sgp/{signageApplication}/print', [AssessmentController::class, 'printSgp'])->name('print.sgp');
         // Shared
         Route::delete('/item/{assessmentItem}', [AssessmentController::class, 'removeItem'])->name('removeItem')->middleware('can:edit-assessments');
     });
@@ -194,6 +218,9 @@ Route::middleware('auth')->group(function () {
         // DP payment
         Route::get('/dp/{demolitionApplication}/pay', [CollectionController::class, 'createDp'])->name('create.dp')->middleware('can:create-collections');
         Route::post('/dp/{demolitionApplication}/pay', [CollectionController::class, 'storeDp'])->name('store.dp')->middleware('can:create-collections');
+        // SGP payment
+        Route::get('/sgp/{signageApplication}/pay', [CollectionController::class, 'createSgp'])->name('create.sgp')->middleware('can:create-collections');
+        Route::post('/sgp/{signageApplication}/pay', [CollectionController::class, 'storeSgp'])->name('store.sgp')->middleware('can:create-collections');
         // Shared
         Route::get('/{collection}/receipt', [CollectionController::class, 'receipt'])->name('receipt')->middleware('can:print-receipts');
         Route::get('/void', [CollectionController::class, 'voidForm'])->name('void')->middleware('can:void-collections');
@@ -205,6 +232,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/building', [PermitController::class, 'buildingIndex'])->name('building');
         Route::get('/occupancy', [PermitController::class, 'occupancyIndex'])->name('occupancy');
         Route::get('/demolition', [PermitController::class, 'demolitionIndex'])->name('demolition');
+        Route::get('/signage', [PermitController::class, 'signageIndex'])->name('signage');
         // BP permit
         Route::post('/{application}/generate', [PermitController::class, 'generate'])->name('generate')->middleware('can:generate-permits');
         Route::post('/{application}/revert-generate', [PermitController::class, 'revertGenerate'])->name('revertGenerate')->middleware('can:revert-permits');
@@ -217,6 +245,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/dp/{demolitionApplication}/generate', [PermitController::class, 'generateDp'])->name('generate.dp')->middleware('can:generate-permits');
         Route::post('/dp/{demolitionApplication}/revert-generate', [PermitController::class, 'revertGenerateDp'])->name('revertGenerate.dp')->middleware('can:revert-permits');
         Route::post('/dp/{demolitionApplication}/restore-permit', [PermitController::class, 'restoreRevokeDp'])->name('restorePermit.dp')->middleware('can:revert-permits');
+        // SGP permit
+        Route::post('/sgp/{signageApplication}/generate', [PermitController::class, 'generateSgp'])->name('generate.sgp')->middleware('can:generate-permits');
+        Route::post('/sgp/{signageApplication}/revert-generate', [PermitController::class, 'revertGenerateSgp'])->name('revertGenerate.sgp')->middleware('can:revert-permits');
+        Route::post('/sgp/{signageApplication}/restore-permit', [PermitController::class, 'restoreRevokeSgp'])->name('restorePermit.sgp')->middleware('can:revert-permits');
         // Shared
         Route::get('/{permit}/print', [PermitController::class, 'print'])->name('print')->middleware('can:print-permits');
         Route::get('/{application}/zoning-cert', [PermitController::class, 'zoningCertification'])->name('zoningCert');
@@ -279,6 +311,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/demolition-fees/schedule/{feeSchedule}', [DemolitionFeeController::class, 'updateSchedule'])->name('demolition-fees.schedule.update')->middleware('can:manage-fee-schedules');
         Route::post('/demolition-fees/type/{feeType}/schedule', [DemolitionFeeController::class, 'storeSchedule'])->name('demolition-fees.schedule.store')->middleware('can:manage-fee-schedules');
         Route::delete('/demolition-fees/schedule/{feeSchedule}', [DemolitionFeeController::class, 'destroySchedule'])->name('demolition-fees.schedule.destroy')->middleware('can:manage-fee-schedules');
+        Route::put('/demolition-fees/type/{feeType}/unit', [DemolitionFeeController::class, 'updateUnitLabel'])->name('demolition-fees.type.unit')->middleware('can:manage-fee-schedules');
 
         Route::get('/accessory-fees', [AccessoryFeeController::class, 'index'])->name('accessory-fees')->middleware('can:manage-fee-schedules');
         Route::put('/accessory-fees/schedule/{feeSchedule}', [AccessoryFeeController::class, 'updateSchedule'])->name('accessory-fees.schedule.update')->middleware('can:manage-fee-schedules');

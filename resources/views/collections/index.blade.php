@@ -75,6 +75,7 @@
                                     'BP' => 'bg-blue-100 text-blue-700',
                                     'OP' => 'bg-indigo-100 text-indigo-700',
                                     'DP' => 'bg-red-100 text-red-700',
+                                    'SGP' => 'bg-purple-100 text-purple-700',
                                     default => 'bg-gray-100 text-gray-700',
                                 };
                             @endphp
@@ -91,6 +92,7 @@
                                 $payRoute = match($app->getPermitTypeCode()) {
                                     'OP' => route('collections.create.op', $app),
                                     'DP' => route('collections.create.dp', $app),
+                                    'SGP' => route('collections.create.sgp', $app),
                                     default => route('collections.create', $app),
                                 };
                             @endphp

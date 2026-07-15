@@ -14,8 +14,9 @@
 @php
     $isOp = $isOp ?? false;
     $isDp = $isDp ?? false;
-    $printRoute = $isDp ? route('assessments.print.dp', $application) : ($isOp ? route('assessments.print.op', $application) : route('assessments.print', $application));
-    $backRoute = $isDp ? route('assessments.assess.dp', $application) : ($isOp ? route('assessments.assess.op', $application) : route('assessments.assess', $application));
+    $isSgp = $isSgp ?? false;
+    $printRoute = $isDp ? route('assessments.print.dp', $application) : ($isSgp ? route('assessments.print.sgp', $application) : ($isOp ? route('assessments.print.op', $application) : route('assessments.print', $application)));
+    $backRoute = $isDp ? route('assessments.assess.dp', $application) : ($isSgp ? route('assessments.assess.sgp', $application) : ($isOp ? route('assessments.assess.op', $application) : route('assessments.assess', $application)));
 @endphp
 <div class="space-y-6">
     {{-- Header --}}

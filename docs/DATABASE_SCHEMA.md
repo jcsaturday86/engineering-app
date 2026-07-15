@@ -58,7 +58,7 @@ Standard hierarchical geo tables with `psgc_code`, `name`, `is_active`. ~42K bar
 ## Reference Tables
 
 ### `permit_types`
-`code` (BP, OP, FP, EP, DP, SP, ELP, MP, PP, ECP), `name`, `is_active`, `sort_order`
+`code` (BP, OP, FP, EP, DP, SGP, SP, ELP, MP, PP, ECP), `name`, `is_active`, `sort_order`. Active: BP, OP, DP, SGP. `SP` ("Sign Permit") is a separate, still-unbuilt placeholder — not to be confused with SGP (Signage Permit).
 
 ### `application_types`
 `permit_type_id`, `name` (New/Renewal/Amendatory for BP; Full/Partial for OP), `is_active`, `sort_order`
@@ -93,15 +93,18 @@ Standard hierarchical geo tables with `psgc_code`, `name`, `is_active`. ~42K bar
 
 > `MECH_INSP` is a hidden category (excluded from assessment tabs). It holds the NBC mechanical permit inspection fee rates (29 INSP_* fee types, 55 schedule rows) mirroring BOPMS `ann_inspection_f*` tables.
 
+> `DEMO_FEE` (Demolition Permit, `permit_type_id` scoped to DP) holds 6 real NBC demolition-fee types with seeded rates, each carrying a `unit_label`. `SGP_FEE` (Signage Permit, `permit_type_id` scoped to SGP) is a single empty category with no seeded `FeeType`/`FeeSchedule` rows — SGP assessment is manual-entry only via the generic fee-item fallback form.
+
 ### `fee_types`
 
 | Column | Type | Description |
 |--------|------|-------------|
 | id | bigint PK | |
 | fee_category_id | FK → fee_categories | |
-| code | string(50) | e.g., CONST_A1, ELEC_TCL, MECH_REFRIG, INSP_REFRIG |
+| code | string(50) | e.g., CONST_A1, ELEC_TCL, MECH_REFRIG, INSP_REFRIG, DEMO_FLOOR_AREA |
 | name | string | |
 | computation_method | enum | fixed, per_unit, range_based, cumulative_range, percentage, formula |
+| unit_label | string(40) | Yes | Physical unit the fee is measured in ("sq.m.", "lineal meter(s)", "unit(s)") — drives the assessment tab's dynamic quantity-field label. Added for DEMO_FEE; nullable, unused by other categories (they still hard-code unit labels as a per-view JS map) |
 | has_excess / has_minimum / has_maximum | boolean | Default: false |
 | is_active | boolean | Default: true |
 | sort_order | integer | |
@@ -192,8 +195,45 @@ Standard hierarchical geo tables with `psgc_code`, `name`, `is_active`. ~42K bar
 
 Same structure as `applications` minus BP-specific columns (no cost fields, no engineer/PEE/SEW, no electrical, no scope_of_work, no complexity). Adds OP-specific: `bp_number`, `bp_issued_date`, `fsec_no`, `fsec_issued_date`, `fsic_no` (reference only — no BFP workflow), `applies_for` (full/partial select on the OP form — currently informational only; the printed Certificate of Occupancy's FULL/PARTIAL checkbox is actually driven by `applicationType->name`, since Full/Partial is also modeled as the OP `application_types` options), `completion_date`, `project_title`.
 
+### `demolition_applications` (Demolition Permit only)
+
+| Column Group | Columns |
+|-------------|---------|
+| **Identity** | id, application_type_id (FK), app_year, app_month, app_counter, application_number (unique, DP-YYYY-MM-NNNNN) |
+| **Status** | status (default: 'draft'), source (walk_in/online) |
+| **Applicant** | applicant_first/middle/last_name, applicant_tin, applicant_telephone |
+| **Enterprise** | owned_by_enterprise, enterprise_name, form_of_ownership_id (FK) |
+| **Applicant Address** | applicant_province/city/barangay_id (FK), applicant_street, applicant_zip_code, applicant_ctc_no, applicant_ctc_date_issued, applicant_ctc_place_issued |
+| **Location of Demolition Works** | lot_no, block_no, tct_no, tax_dec_no, demolition_street, demolition_barangay_id (FK) — note: distinct from the applicant's own barangay; `DemolitionApplication::buildingBarangay()` is overridden to point here |
+| **Scope of Work** | scope_of_work (enum: demolition/others), scope_of_work_detail |
+| **Full-time Inspector/Supervisor** | inspector_name, inspector_address, inspector_telephone, inspector_prc_no, inspector_prc_validity, inspector_ptr_no, inspector_ptr_date_issued, inspector_ptr_issued_at, inspector_tin |
+| **Lot Owner Consent** | owner_name, owner_ctc_no, owner_ctc_date_issued, owner_ctc_place_issued |
+| **Processing** | entered_by, assessed_by, approved_by, client_user_id (all FK → users), submitted/assessed/approved/paid/released/cancelled_at, cancellation_reason, issued_date |
+| **System** | remarks, deleted_at |
+
+**Indexes:** [status], [app_year, app_month]
+
+### `signage_applications` (Signage Permit only)
+
+A much simpler table than `demolition_applications` — no enterprise, CTC, inspector, or lot-owner fields.
+
+| Column Group | Columns |
+|-------------|---------|
+| **Identity** | id, application_type_id (FK), app_year, app_month, app_counter, application_number (unique, SGP-YYYY-MM-NNNNN) |
+| **Status** | status (default: 'draft'), source (walk_in/online) |
+| **Applicant** | applicant_first/middle/last_name |
+| **Applicant Address** | applicant_province/city/barangay_id (FK), applicant_street, applicant_zip_code |
+| **Scope of Work** | install (boolean), install_detail (text), attach (boolean), attach_detail (text), paint (boolean), paint_detail (text) — three independent checkboxes, each with its own detail textbox; at least one required |
+| **Signage Details** | wordings (text), premises_of (string) |
+| **Processing** | entered_by, assessed_by, approved_by, client_user_id (all FK → users), submitted/assessed/approved/paid/released/cancelled_at, cancellation_reason, issued_date |
+| **System** | remarks, deleted_at |
+
+**Indexes:** [status], [app_year, app_month]
+
+> `SignageApplication::buildingBarangay()` is overridden to alias `applicantBarangay()` (not a separate `building_barangay_id` column — SGP has no site-location address distinct from the applicant's own).
+
 ### `application_occupancy_groups`
-Polymorphic (`applicationable_type` / `applicationable_id`), `occupancy_group_id`, `occupancy_sub_group_id`, `others_text`.
+Polymorphic (`applicationable_type` / `applicationable_id`), `occupancy_group_id`, `occupancy_sub_group_id`, `others_text`. BP and OP only — DP and SGP have no occupancy-group concept.
 
 ### `application_requirements`
 Polymorphic, `requirement_name`, `file_path`, `original_filename`, `status` (pending/approved/rejected), `reviewer_remarks`, `reviewed_by`, `reviewed_at`.
@@ -207,8 +247,8 @@ Polymorphic, `requirement_name`, `file_path`, `original_filename`, `status` (pen
 | Column | Type | Description |
 |--------|------|-------------|
 | id | bigint PK | |
-| applicationable_type / applicationable_id | varchar(10) / bigint | Polymorphic: 'bp' or 'op' |
-| assessment_type | string(30) | building, occupancy, zoning |
+| applicationable_type / applicationable_id | varchar(10) / bigint | Polymorphic: 'bp', 'op', 'dp', or 'sgp' |
+| assessment_type | string(30) | building, occupancy, demolition, signage, zoning |
 | filing_fee / processing_fee / total_amount | decimal(15,2) | Default: 0 |
 | status | enum | draft, finalized |
 | assessed_by | FK → users | Yes |
@@ -282,5 +322,9 @@ Registered in `AppServiceProvider`:
 |-------------|-------|
 | `bp` | `App\Models\Application` |
 | `op` | `App\Models\OccupancyApplication` |
+| `dp` | `App\Models\DemolitionApplication` |
+| `sgp` | `App\Models\SignageApplication` |
 
-The 7 downstream tables (assessments, billings, collections, permits, documents, application_occupancy_groups, application_requirements) use `applicationable_type` + `applicationable_id` to reference either BP or OP. Legacy `application_id` column is kept nullable for backward compatibility.
+The 7 downstream tables (assessments, billings, collections, permits, documents, application_occupancy_groups, application_requirements) use `applicationable_type` + `applicationable_id` to reference BP, OP, DP, or SGP (DP/SGP never populate `application_occupancy_groups`/`application_requirements` — no occupancy-group or document-upload concept on either). Legacy `application_id` column is kept nullable for backward compatibility.
+
+Every controller/service that branches on permit type by `match ($application->getPermitTypeCode()) { 'OP' => 'op', 'DP' => 'dp', 'SGP' => 'sgp', default => 'bp' }` (or the reverse) must include all 4 arms — several of these `match()` blocks were found missing an `SGP` arm (silently falling through to `'bp'`/the BP route) during the SGP build, including one that had already been missing a `DP` arm since DP was first built (`BillingService::generateFor()`, `collections/index.blade.php`, `permits/index.blade.php`, `verify/permit.blade.php`).

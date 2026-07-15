@@ -74,6 +74,48 @@
 
 ---
 
+## Demolition Permit Module
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Application CRUD (walk-in) | DONE | `demolition_applications` table + `DemolitionApplication` model/controller; morph map `dp` |
+| Application numbering | DONE | DP-YYYY-MM-NNNNN |
+| DP form fields | DONE | Applicant, enterprise, address, Location of Demolition Works, Scope of Work, Full-time Inspector/Supervisor, Lot Owner Consent |
+| Status workflow (skips zoning) | DONE | submitted → engineering_assessed → billed → paid → permit_generated → released |
+| City/Barangay edit-form selection bug | DONE (fixed) | Alpine `x-model` + `x-for`-rendered `<option>`s race condition — switched to `:value` + `@change` + `$nextTick`/`$watch` reapplication |
+| Workflow Actions section removed from Show page | DONE | Redundant with header action buttons |
+| DEMO_FEE fee category | DONE | 6 fee types (floor area, mech equip, hand demolition incl/excl floors, appendage, moving), own category scoped to the DP permit type — separate from BP's pre-existing `ASS_DEMO_*` under ACC_FEE |
+| Fee-schedule-driven assessment tab | DONE | `addDemolitionItem()` auto-computes `amount = quantity × rate` server-side; replaced the earlier manual "Unit Fee" text-entry fallback |
+| `fee_types.unit_label` + Demolition Fees settings page | DONE | `/settings/demolition-fees` — Settings-configurable physical unit ("sq.m.", "lineal meter(s)", etc.) per fee type, drives the assessment tab's dynamic Quantity label |
+| Application form PDF (NBC Form B-08) | DONE | Background-image overlay of the official 2-page scan; letterhead + Building Official block on page 2 |
+| Assessment summary PDF | DONE | `pdf/assessment-summary-dp.blade.php` |
+| Final permit certificate PDF | DONE | `pdf/demolition-permit.blade.php`, bordered-frame landscape style, QR verification code |
+| Sidebar entries | DONE | Main nav, Assessment flyout, Permits flyout |
+| Excluded from online self-service + generic fee-schedule listing | DONE | Has its own dedicated Demolition Fees settings page |
+| `/permits/demolition` Print button removed | DONE | Application-form printing for DP is a manual/physical process — underlying route/PDF untouched |
+| OR Number autofocus on payment form | DONE | `collections/create.blade.php` (shared by BP/OP/DP/SGP) |
+
+---
+
+## Signage Permit Module
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Application CRUD (walk-in) | DONE | `signage_applications` table + `SignageApplication` model/controller; morph map `sgp`; permit code `SGP` (not `SP`, already reserved for a future unbuilt permit type) |
+| Application numbering | DONE | SGP-YYYY-MM-NNNNN |
+| SGP form fields | DONE | Applicant name, applicant address, Scope of Work (Install/Attach/Paint checkboxes + detail textboxes), Wordings, Premises Of |
+| Status workflow (skips zoning) | DONE | Same 5-step shape as DP: submitted → engineering_assessed → billed → paid → permit_generated → released |
+| Assessment fees | DONE (manual entry) | Empty `SGP_FEE` category seeded (tab renders); no `FeeType`/`FeeSchedule` rows yet — generic "Add Fee Item" fallback form used, same as every category originally worked before a dedicated fee-schedule form was built |
+| Application form print | PENDING | No scanned official form supplied yet; deferred by explicit scope decision — every other print output is complete |
+| Assessment summary PDF | DONE | `pdf/assessment-summary-sgp.blade.php` |
+| Final permit certificate PDF | DONE | `pdf/signage-permit.blade.php`, bordered-frame landscape style, QR verification code |
+| Sidebar entries | DONE | Main nav, Assessment flyout, Permits flyout — positioned below Demolition Permit |
+| Excluded from online self-service | DONE | Not excluded from the generic `/settings/fees` listing (no dedicated settings page yet) |
+| `/permits/signage` Print button | DONE | Shown (unlike DP) — final permit certificate print is complete, only the application-form print is deferred |
+| Cross-cutting `match($permitCode)` bug sweep | DONE (fixed) | Found and fixed 4 places missing an `SGP` arm during end-to-end verification: `BillingService::generateFor()` (billing created with wrong morph type), `collections/index.blade.php` (pay-button route + type badge), `permits/index.blade.php` (permit-number link hardcoded to the BP show route — a pre-existing bug also affecting DP, now fixed for all 4 types), `verify/permit.blade.php` (type label) |
+
+---
+
 ## Zoning / Planning Module
 
 | Feature | Status | Notes |

@@ -9,6 +9,7 @@ use App\Models\OccupancyApplication;
 use App\Models\Permit;
 use App\Models\PermitType;
 use App\Models\Signatory;
+use App\Models\SignageApplication;
 use App\Notifications\ApplicationApprovedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -62,6 +63,22 @@ class PermitController extends Controller
         $applications = $query->latest()->paginate(20)->withQueryString();
 
         $type = 'demolition';
+        return view('permits.index', compact('applications', 'type', 'year'));
+    }
+
+    public function signageIndex(Request $request)
+    {
+        $query = SignageApplication::with('permits')
+            ->whereIn('status', ['paid', 'permit_generated', 'released']);
+
+        $this->applyPermitFilters($query, $request);
+
+        $year = $request->filled('year') ? (int) $request->year : now()->year;
+        $query->whereYear('created_at', $year);
+
+        $applications = $query->latest()->paginate(20)->withQueryString();
+
+        $type = 'signage';
         return view('permits.index', compact('applications', 'type', 'year'));
     }
 
@@ -158,6 +175,12 @@ class PermitController extends Controller
         return $this->doGenerate($demolitionApplication, 'DP');
     }
 
+    // SGP permit generation
+    public function generateSgp(SignageApplication $signageApplication)
+    {
+        return $this->doGenerate($signageApplication, 'SGP');
+    }
+
     private function doGenerate(PermitApplicationContract $application, string $permitCode)
     {
         if ($application->status !== 'paid') {
@@ -172,6 +195,7 @@ class PermitController extends Controller
         $morphType = match ($permitCode) {
             'OP' => 'op',
             'DP' => 'dp',
+            'SGP' => 'sgp',
             default => 'bp',
         };
         $buildingOfficial = Signatory::where('role', 'building_official')->where('is_active', true)->first();
@@ -239,6 +263,12 @@ class PermitController extends Controller
         return $this->doRevertGenerate($request, $demolitionApplication);
     }
 
+    // SGP revert permit generation
+    public function revertGenerateSgp(Request $request, SignageApplication $signageApplication)
+    {
+        return $this->doRevertGenerate($request, $signageApplication);
+    }
+
     private function doRevertGenerate(Request $request, PermitApplicationContract $application)
     {
         $request->validate([
@@ -292,6 +322,12 @@ class PermitController extends Controller
     public function restoreRevokeDp(Request $request, DemolitionApplication $demolitionApplication)
     {
         return $this->doRestoreRevoke($request, $demolitionApplication);
+    }
+
+    // SGP restore revoked permit
+    public function restoreRevokeSgp(Request $request, SignageApplication $signageApplication)
+    {
+        return $this->doRestoreRevoke($request, $signageApplication);
     }
 
     private function doRestoreRevoke(Request $request, PermitApplicationContract $application)
@@ -375,6 +411,7 @@ class PermitController extends Controller
         $template = match ($permit->permitType->code) {
             'OP' => 'pdf.occupancy-permit',
             'DP' => 'pdf.demolition-permit',
+            'SGP' => 'pdf.signage-permit',
             default => 'pdf.building-permit',
         };
 

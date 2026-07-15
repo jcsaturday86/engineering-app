@@ -82,8 +82,8 @@ class OnlineApplicationController extends Controller
 
     public function create()
     {
-        // DP is active for staff use but not yet offered for client online self-service.
-        $permitTypes = PermitType::where('is_active', true)->where('code', '!=', 'DP')->get();
+        // DP/SGP are active for staff use but not yet offered for client online self-service.
+        $permitTypes = PermitType::where('is_active', true)->whereNotIn('code', ['DP', 'SGP'])->get();
         $applicationTypes = ApplicationType::where('is_active', true)->orderBy('sort_order')->get()->groupBy('permit_type_id');
         $scopeOfWorks = ScopeOfWork::where('is_active', true)->orderBy('sort_order')->get();
         $formOfOwnerships = FormOfOwnership::where('is_active', true)->get();
@@ -104,8 +104,8 @@ class OnlineApplicationController extends Controller
         $permitTypeId = $request->input('permit_type_id');
         $permitType = PermitType::findOrFail($permitTypeId);
 
-        if ($permitType->code === 'DP') {
-            abort(403, 'Demolition Permit applications are not yet available for online submission.');
+        if (in_array($permitType->code, ['DP', 'SGP'])) {
+            abort(403, $permitType->name . ' applications are not yet available for online submission.');
         }
 
         if ($permitType->code === 'OP') {

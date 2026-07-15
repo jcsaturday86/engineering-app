@@ -45,11 +45,12 @@ class ReferenceDataSeeder extends Seeder
             ['code' => 'FP',  'name' => 'Fencing Permit',      'sort_order' => 3,  'is_active' => false],
             ['code' => 'EP',  'name' => 'Excavation Permit',   'sort_order' => 4,  'is_active' => false],
             ['code' => 'DP',  'name' => 'Demolition Permit',   'sort_order' => 5,  'is_active' => true],
-            ['code' => 'SP',  'name' => 'Sign Permit',         'sort_order' => 6,  'is_active' => false],
-            ['code' => 'ELP', 'name' => 'Electrical Permit',   'sort_order' => 7,  'is_active' => false],
-            ['code' => 'MP',  'name' => 'Mechanical Permit',   'sort_order' => 8,  'is_active' => false],
-            ['code' => 'PP',  'name' => 'Plumbing Permit',     'sort_order' => 9,  'is_active' => false],
-            ['code' => 'ECP', 'name' => 'Electronics Permit',  'sort_order' => 10, 'is_active' => false],
+            ['code' => 'SGP', 'name' => 'Signage Permit',      'sort_order' => 6,  'is_active' => true],
+            ['code' => 'SP',  'name' => 'Sign Permit',         'sort_order' => 7,  'is_active' => false],
+            ['code' => 'ELP', 'name' => 'Electrical Permit',   'sort_order' => 8,  'is_active' => false],
+            ['code' => 'MP',  'name' => 'Mechanical Permit',   'sort_order' => 9,  'is_active' => false],
+            ['code' => 'PP',  'name' => 'Plumbing Permit',     'sort_order' => 10, 'is_active' => false],
+            ['code' => 'ECP', 'name' => 'Electronics Permit',  'sort_order' => 11, 'is_active' => false],
         ];
 
         foreach ($types as $type) {
@@ -437,6 +438,7 @@ class ReferenceDataSeeder extends Seeder
         $bpPermitType = PermitType::where('code', 'BP')->first();
         $opPermitType = PermitType::where('code', 'OP')->first();
         $dpPermitType = PermitType::where('code', 'DP')->first();
+        $sgpPermitType = PermitType::where('code', 'SGP')->first();
 
         if (! $bpPermitType || ! $opPermitType) {
             return;
@@ -481,6 +483,19 @@ class ReferenceDataSeeder extends Seeder
                     'code' => 'DEMO_FEE',
                     'name' => 'Demolition/Moving of Building/Structures Fees',
                     'permit_type_id' => $dpPermitType->id,
+                    'sort_order' => 1,
+                ]
+            );
+        }
+
+        // Signage Permit fee categories
+        if ($sgpPermitType) {
+            FeeCategory::updateOrCreate(
+                ['code' => 'SGP_FEE'],
+                [
+                    'code' => 'SGP_FEE',
+                    'name' => 'Signage Permit Fees',
+                    'permit_type_id' => $sgpPermitType->id,
                     'sort_order' => 1,
                 ]
             );

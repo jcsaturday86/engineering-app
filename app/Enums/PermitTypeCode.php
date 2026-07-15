@@ -9,6 +9,7 @@ enum PermitTypeCode: string
     case FP = 'FP';
     case EP = 'EP';
     case DP = 'DP';
+    case SGP = 'SGP';
     case SP = 'SP';
     case ELP = 'ELP';
     case MP = 'MP';

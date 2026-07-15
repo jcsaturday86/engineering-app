@@ -71,4 +71,15 @@ class DemolitionFeeController extends Controller
         $feeSchedule->delete();
         return back()->with('success', 'Row deleted.');
     }
+
+    public function updateUnitLabel(Request $request, FeeType $feeType)
+    {
+        $data = $request->validate([
+            'unit_label' => 'nullable|string|max:40',
+        ]);
+
+        $feeType->update($data);
+
+        return back()->with('success', 'Unit updated.');
+    }
 }

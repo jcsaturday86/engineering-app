@@ -27,6 +27,7 @@
             $storeRoute = match($application->getPermitTypeCode()) {
                 'OP' => route('collections.store.op', $application),
                 'DP' => route('collections.store.dp', $application),
+                'SGP' => route('collections.store.sgp', $application),
                 default => route('collections.store', $application),
             };
         @endphp
@@ -50,7 +51,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                     <label for="or_number" class="block text-sm font-medium text-gray-700 mb-1">OR Number <span class="text-red-500">*</span></label>
-                    <input type="text" name="or_number" id="or_number" value="{{ old('or_number') }}" required
+                    <input type="text" name="or_number" id="or_number" value="{{ old('or_number') }}" required autofocus
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('or_number') border-red-300 @enderror"
                         placeholder="Enter OR number">
                     @error('or_number')

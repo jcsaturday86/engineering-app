@@ -9,6 +9,7 @@ use App\Models\Collection;
 use App\Models\CollectionDetail;
 use App\Models\DemolitionApplication;
 use App\Models\OccupancyApplication;
+use App\Models\SignageApplication;
 use App\Models\VoidTransaction;
 use App\Notifications\PaymentPostedNotification;
 use Illuminate\Http\Request;
@@ -112,6 +113,12 @@ class CollectionController extends Controller
         return $this->doCreate($demolitionApplication);
     }
 
+    // SGP payment
+    public function createSgp(SignageApplication $signageApplication)
+    {
+        return $this->doCreate($signageApplication);
+    }
+
     private function doCreate(PermitApplicationContract $application)
     {
         if ($application->status !== 'billed') {
@@ -145,6 +152,12 @@ class CollectionController extends Controller
         return $this->doStore($request, $demolitionApplication);
     }
 
+    // SGP store payment
+    public function storeSgp(Request $request, SignageApplication $signageApplication)
+    {
+        return $this->doStore($request, $signageApplication);
+    }
+
     private function doStore(Request $request, PermitApplicationContract $application)
     {
         $validated = $request->validate([
@@ -171,6 +184,7 @@ class CollectionController extends Controller
         $morphType = match ($application->getPermitTypeCode()) {
             'OP' => 'op',
             'DP' => 'dp',
+            'SGP' => 'sgp',
             default => 'bp',
         };
 

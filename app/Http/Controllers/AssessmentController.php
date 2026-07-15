@@ -15,6 +15,7 @@ use App\Models\OccupancyDivision;
 use App\Models\OccupancyApplication;
 use App\Models\Setting;
 use App\Models\Signatory;
+use App\Models\SignageApplication;
 use App\Models\User;
 use App\Notifications\AssessmentCompleteNotification;
 use Illuminate\Http\Request;
@@ -90,6 +91,15 @@ class AssessmentController extends Controller
         return view('assessments.demolition-index', compact('applications'));
     }
 
+    public function signageIndex()
+    {
+        $applications = SignageApplication::whereIn('status', ['submitted', 'engineering_assessed', 'billed'])
+            ->latest()
+            ->paginate(20);
+
+        return view('assessments.signage-index', compact('applications'));
+    }
+
     // BP assessment
     public function assess(Application $application)
     {
@@ -108,11 +118,18 @@ class AssessmentController extends Controller
         return $this->doAssess($demolitionApplication, 'demolition', 'DP');
     }
 
+    // SGP assessment
+    public function assessSgp(SignageApplication $signageApplication)
+    {
+        return $this->doAssess($signageApplication, 'signage', 'SGP');
+    }
+
     private function morphTypeFor(string $permitCode): string
     {
         return match ($permitCode) {
             'OP' => 'op',
             'DP' => 'dp',
+            'SGP' => 'sgp',
             default => 'bp',
         };
     }
@@ -161,10 +178,11 @@ class AssessmentController extends Controller
 
         $isOp = $permitCode === 'OP';
         $isDp = $permitCode === 'DP';
+        $isSgp = $permitCode === 'SGP';
 
         return view('assessments.assess', compact(
             'application', 'assessment', 'feeCategories', 'tabCategories',
-            'totals', 'assessmentItems', 'itemsByCategory', 'activeTab', 'isOp', 'isDp',
+            'totals', 'assessmentItems', 'itemsByCategory', 'activeTab', 'isOp', 'isDp', 'isSgp',
             'buildingParts', 'occupancyDivisions'
         ));
     }
@@ -175,6 +193,7 @@ class AssessmentController extends Controller
             $route = match ($assessment->applicationable_type) {
                 'op' => route('assessments.assess.op', $application) . '?tab=SUMMARY',
                 'dp' => route('assessments.assess.dp', $application) . '?tab=SUMMARY',
+                'sgp' => route('assessments.assess.sgp', $application) . '?tab=SUMMARY',
                 default => route('assessments.assess', $application) . '?tab=SUMMARY',
             };
             return redirect()->to($route)->with('error', 'This assessment has been finalized and cannot be modified.');
@@ -1223,6 +1242,78 @@ class AssessmentController extends Controller
         return $this->doAddItem($request, $demolitionApplication, 'demolition', 'DP');
     }
 
+    // SGP add item
+    public function addItemSgp(Request $request, SignageApplication $signageApplication)
+    {
+        return $this->doAddItem($request, $signageApplication, 'signage', 'SGP');
+    }
+
+    public function addDemolitionItem(Request $request, DemolitionApplication $demolitionApplication)
+    {
+        $allCodes = implode(',', [
+            'DEMO_FLOOR_AREA', 'DEMO_MECH_EQUIP', 'DEMO_HAND_INCL_FLOORS',
+            'DEMO_HAND_EXCL_FLOORS', 'DEMO_APPENDAGE', 'DEMO_MOVING',
+        ]);
+
+        $validated = $request->validate([
+            'demolition_fee_type' => 'required|string|in:' . $allCodes,
+            'quantity'             => 'required|numeric|min:0.01',
+        ]);
+
+        $assessment = Assessment::firstOrCreate(
+            [
+                'applicationable_type' => $this->morphTypeFor('DP'),
+                'applicationable_id'   => $demolitionApplication->id,
+                'assessment_type'      => 'demolition',
+            ],
+            ['status' => 'draft', 'assessed_by' => Auth::id()]
+        );
+
+        if ($r = $this->redirectIfFinalized($assessment, $demolitionApplication)) return $r;
+
+        $feeType = FeeType::where('code', $validated['demolition_fee_type'])->first();
+        if (!$feeType) {
+            return back()->with('error', 'Demolition fee type not found: ' . $validated['demolition_fee_type']);
+        }
+
+        $demoCategory = FeeCategory::where('code', 'DEMO_FEE')->first();
+        $schedule = FeeSchedule::where('fee_type_id', $feeType->id)->where('is_active', true)->orderBy('id')->first();
+
+        if (!$schedule) {
+            return back()->with('error', 'No fee schedule found for ' . $feeType->name . '.');
+        }
+
+        $quantity = (float) $validated['quantity'];
+        $unitFee  = $feeType->computation_method === 'fixed' ? (float) $schedule->fixed_fee : (float) $schedule->fee_per_unit;
+        $amount   = round($quantity * $unitFee, 2);
+
+        AssessmentItem::create([
+            'assessment_id'       => $assessment->id,
+            'fee_category_id'     => $demoCategory->id,
+            'fee_type_id'         => $feeType->id,
+            'fee_code'            => $feeType->code,
+            'description'         => $feeType->name,
+            'quantity'            => $quantity,
+            'unit_fee'            => $unitFee,
+            'excess_fee'          => 0,
+            'inspection_fee'      => 0,
+            'amount'              => $amount,
+            'computation_details' => [
+                'fee_type_code'      => $feeType->code,
+                'fee_schedule_id'    => $schedule->id,
+                'input_quantity'     => $quantity,
+                'computation_method' => $feeType->computation_method,
+                'fixed_fee'          => (float) $schedule->fixed_fee,
+                'fee_per_unit'       => (float) $schedule->fee_per_unit,
+                'unit_label'         => $feeType->unit_label,
+            ],
+            'is_active'           => true,
+        ]);
+
+        return redirect()->route('assessments.assess.dp', ['demolitionApplication' => $demolitionApplication->id, 'tab' => 'DEMO_FEE'])
+            ->with('success', 'Demolition fee item added.');
+    }
+
     private function doAddItem(Request $request, PermitApplicationContract $application, string $assessmentType, string $permitCode)
     {
         $validated = $request->validate([
@@ -1268,6 +1359,7 @@ class AssessmentController extends Controller
         $route = match ($permitCode) {
             'OP' => route('assessments.assess.op', ['occupancyApplication' => $application->id, 'tab' => $tabCode]),
             'DP' => route('assessments.assess.dp', ['demolitionApplication' => $application->id, 'tab' => $tabCode]),
+            'SGP' => route('assessments.assess.sgp', ['signageApplication' => $application->id, 'tab' => $tabCode]),
             default => route('assessments.assess', ['application' => $application->id, 'tab' => $tabCode]),
         };
 
@@ -1280,6 +1372,7 @@ class AssessmentController extends Controller
         $application = match ($assessment->applicationable_type) {
             'op' => \App\Models\OccupancyApplication::find($assessment->applicationable_id),
             'dp' => \App\Models\DemolitionApplication::find($assessment->applicationable_id),
+            'sgp' => \App\Models\SignageApplication::find($assessment->applicationable_id),
             default => \App\Models\Application::find($assessment->applicationable_id),
         };
         if ($r = $this->redirectIfFinalized($assessment, $application)) return $r;
@@ -1297,6 +1390,11 @@ class AssessmentController extends Controller
 
         if ($assessment->applicationable_type === 'dp') {
             return redirect()->route('assessments.assess.dp', ['demolitionApplication' => $assessment->applicationable_id, 'tab' => $tab])
+                ->with('success', 'Fee item removed.');
+        }
+
+        if ($assessment->applicationable_type === 'sgp') {
+            return redirect()->route('assessments.assess.sgp', ['signageApplication' => $assessment->applicationable_id, 'tab' => $tab])
                 ->with('success', 'Fee item removed.');
         }
 
@@ -1322,6 +1420,12 @@ class AssessmentController extends Controller
         return $this->doSummary($demolitionApplication, 'DP');
     }
 
+    // SGP summary
+    public function summarySgp(SignageApplication $signageApplication)
+    {
+        return $this->doSummary($signageApplication, 'SGP');
+    }
+
     private function doSummary(PermitApplicationContract $application, string $permitCode = 'BP')
     {
         $assessments = $application->assessments()->with('assessmentItems')->get();
@@ -1345,8 +1449,9 @@ class AssessmentController extends Controller
 
         $isOp = $permitCode === 'OP';
         $isDp = $permitCode === 'DP';
+        $isSgp = $permitCode === 'SGP';
 
-        return view('assessments.summary', compact('application', 'summary', 'grandTotal', 'isOp', 'isDp'));
+        return view('assessments.summary', compact('application', 'summary', 'grandTotal', 'isOp', 'isDp', 'isSgp'));
     }
 
     // BP finalize
@@ -1437,6 +1542,21 @@ class AssessmentController extends Controller
         $this->doFinalize($demolitionApplication);
         return redirect()
             ->to(route('assessments.assess.dp', $demolitionApplication) . '?tab=SUMMARY')
+            ->with('success', 'Assessment finalized successfully.');
+    }
+
+    // SGP finalize
+    public function finalizeSgp(Request $request, SignageApplication $signageApplication)
+    {
+        $request->validate(['password' => 'required|string']);
+        if (!Hash::check($request->password, Auth::user()->password)) {
+            return redirect()
+                ->to(route('assessments.assess.sgp', $signageApplication) . '?tab=SUMMARY')
+                ->with('error', 'Incorrect password. Assessment not finalized.');
+        }
+        $this->doFinalize($signageApplication);
+        return redirect()
+            ->to(route('assessments.assess.sgp', $signageApplication) . '?tab=SUMMARY')
             ->with('success', 'Assessment finalized successfully.');
     }
 
@@ -1537,6 +1657,26 @@ class AssessmentController extends Controller
             ->with('success', 'Engineering assessment finalization reverted.');
     }
 
+    // SGP revert engineering finalize
+    public function revertEngineeringSgp(Request $request, SignageApplication $signageApplication)
+    {
+        $request->validate(['password' => 'required|string']);
+        if (! Hash::check($request->password, Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
+        $error = $this->guardRevertEngineering($signageApplication);
+        if ($error) {
+            return back()->with('error', $error);
+        }
+
+        $this->doRevertEngineering($signageApplication);
+
+        return redirect()
+            ->to(route('assessments.assess.sgp', $signageApplication) . '?tab=SUMMARY')
+            ->with('success', 'Engineering assessment finalization reverted.');
+    }
+
     // OP only — revert an in-progress (not yet finalized) occupancy assessment all the way back to draft,
     // deleting all occupancy fee entries entered so far.
     public function revertToDraftOp(Request $request, OccupancyApplication $occupancyApplication)
@@ -1601,6 +1741,38 @@ class AssessmentController extends Controller
         return redirect()->route('assessments.demolition')->with('success', 'Application reverted to draft. All demolition fee entries were deleted.');
     }
 
+    // SGP only — revert an in-progress (not yet finalized) signage assessment all the way back to draft,
+    // deleting all signage fee entries entered so far.
+    public function revertToDraftSgp(Request $request, SignageApplication $signageApplication)
+    {
+        $request->validate(['password' => 'required|string']);
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
+        if ($signageApplication->status !== 'submitted') {
+            return back()->with('error', 'Only applications awaiting signage assessment can be reverted to draft.');
+        }
+
+        DB::transaction(function () use ($signageApplication) {
+            $assessment = Assessment::where('applicationable_type', 'sgp')
+                ->where('applicationable_id', $signageApplication->id)
+                ->where('assessment_type', 'signage')
+                ->first();
+
+            if ($assessment) {
+                $assessment->assessmentItems()->delete();
+                $assessment->delete();
+            }
+
+            $signageApplication->update(['status' => 'draft', 'submitted_at' => null]);
+        });
+
+        activity()->causedBy(Auth::user())->performedOn($signageApplication)->log('Signage assessment reverted to draft — all fee entries deleted');
+
+        return redirect()->route('assessments.signage')->with('success', 'Application reverted to draft. All signage fee entries were deleted.');
+    }
+
     private function guardRevertEngineering(PermitApplicationContract $application): ?string
     {
         if (! in_array($application->status, ['engineering_assessed', 'billed'])) {
@@ -1635,8 +1807,8 @@ class AssessmentController extends Controller
                 $assessment->update(['status' => 'draft', 'finalized_at' => null, 'assessed_by' => null]);
             });
 
-            // DP has no zoning stage — its pre-engineering-assessment status is 'submitted', not 'zoning_assessed'.
-            $revertStatus = $application->getPermitTypeCode() === 'DP' ? 'submitted' : 'zoning_assessed';
+            // DP/SGP have no zoning stage — their pre-engineering-assessment status is 'submitted', not 'zoning_assessed'.
+            $revertStatus = in_array($application->getPermitTypeCode(), ['DP', 'SGP']) ? 'submitted' : 'zoning_assessed';
 
             $application->update([
                 'status' => $revertStatus,
@@ -1666,14 +1838,25 @@ class AssessmentController extends Controller
         return $this->doPrint($demolitionApplication);
     }
 
+    // SGP print
+    public function printSgp(SignageApplication $signageApplication)
+    {
+        return $this->doPrint($signageApplication);
+    }
+
     private function doPrint(PermitApplicationContract $application)
     {
         $settings = Setting::where('group', 'general')->pluck('value', 'key');
         $isOp = $application->getPermitTypeCode() === 'OP';
         $isDp = $application->getPermitTypeCode() === 'DP';
+        $isSgp = $application->getPermitTypeCode() === 'SGP';
 
         if ($isDp) {
             return $this->doPrintDp($application, $settings);
+        }
+
+        if ($isSgp) {
+            return $this->doPrintSgp($application, $settings);
         }
 
         if ($isOp) {
@@ -1805,6 +1988,44 @@ class AssessmentController extends Controller
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary-dp', compact(
             'application', 'settings', 'sealImage', 'demolitionAssessment',
+            'itemsByCategory', 'barangayName', 'preparedBy',
+            'buildingOfficial', 'barcodeImage'
+        ));
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->stream("assessment_{$application->application_number}.pdf");
+    }
+
+    private function doPrintSgp(PermitApplicationContract $application, $settings)
+    {
+        $signageAssessment = $application->assessments()
+            ->where('assessment_type', 'signage')
+            ->with(['assessmentItems' => fn($q) => $q->where('is_active', true)->with('feeCategory')])
+            ->first();
+
+        $itemsByCategory = $signageAssessment
+            ? $signageAssessment->assessmentItems->groupBy(fn($i) => $i->feeCategory?->code ?? 'OTHER')
+            : collect();
+
+        $barangayName = $application->applicantBarangay?->name ?? '';
+
+        $preparedBy = $signageAssessment?->assessed_by
+            ? \App\Models\User::find($signageAssessment->assessed_by)
+            : null;
+
+        $buildingOfficial = Signatory::where('role', 'building_official')
+            ->where('is_active', true)
+            ->first();
+
+        $generator    = new BarcodeGeneratorPNG();
+        $barcodeImage = base64_encode(
+            $generator->getBarcode($application->application_number, $generator::TYPE_CODE_128, 2, 80)
+        );
+
+        $sealImage = Setting::imageDataUri($settings, 'general.logo');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary-sgp', compact(
+            'application', 'settings', 'sealImage', 'signageAssessment',
             'itemsByCategory', 'barangayName', 'preparedBy',
             'buildingOfficial', 'barcodeImage'
         ));

@@ -14,10 +14,11 @@
 @php
     $isOp = $isOp ?? false;
     $isDp = $isDp ?? false;
-    $addItemRoute = $isDp ? route('assessments.addItem.dp', $application) : ($isOp ? route('assessments.addItem.op', $application) : route('assessments.addItem', $application));
-    $finalizeRoute = $isDp ? route('assessments.finalize.dp', $application) : ($isOp ? route('assessments.finalize.op', $application) : route('assessments.finalize', $application));
-    $revertRoute = $isDp ? route('assessments.revertFinalize.dp', $application) : ($isOp ? route('assessments.revertFinalize.op', $application) : route('assessments.revertFinalize', $application));
-    $backRoute = $isDp ? route('assessments.demolition') : ($isOp ? route('assessments.occupancy') : route('assessments.index'));
+    $isSgp = $isSgp ?? false;
+    $addItemRoute = $isDp ? route('assessments.addItem.dp', $application) : ($isSgp ? route('assessments.addItem.sgp', $application) : ($isOp ? route('assessments.addItem.op', $application) : route('assessments.addItem', $application)));
+    $finalizeRoute = $isDp ? route('assessments.finalize.dp', $application) : ($isSgp ? route('assessments.finalize.sgp', $application) : ($isOp ? route('assessments.finalize.op', $application) : route('assessments.finalize', $application)));
+    $revertRoute = $isDp ? route('assessments.revertFinalize.dp', $application) : ($isSgp ? route('assessments.revertFinalize.sgp', $application) : ($isOp ? route('assessments.revertFinalize.op', $application) : route('assessments.revertFinalize', $application)));
+    $backRoute = $isDp ? route('assessments.demolition') : ($isSgp ? route('assessments.signage') : ($isOp ? route('assessments.occupancy') : route('assessments.index')));
     $tabCategories = $tabCategories ?? $feeCategories;
     $activeTab = $activeTab ?? ($tabCategories->first()?->code ?? 'CONST');
     $itemsByCategory = $itemsByCategory ?? $assessmentItems->groupBy('fee_category_id');
@@ -83,7 +84,7 @@
 
             {{-- Revert to Draft Button + Password Modal (OP/DP only, ongoing/not-yet-finalized assessment) --}}
             @can('revert-submission')
-            @if(($isOp && $application->status === 'zoning_assessed') || ($isDp && $application->status === 'submitted'))
+            @if(($isOp && $application->status === 'zoning_assessed') || (($isDp || $isSgp) && $application->status === 'submitted'))
             <div x-data="{ open: false, pw: '' }" class="inline-block">
                 <button @click="open = true; pw = ''"
                     class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition">
@@ -106,7 +107,7 @@
                             </div>
                         </div>
 
-                        <form action="{{ $isDp ? route('assessments.revertToDraft.dp', $application) : route('assessments.revertToDraft.op', $application) }}" method="POST" autocomplete="off">
+                        <form action="{{ $isDp ? route('assessments.revertToDraft.dp', $application) : ($isSgp ? route('assessments.revertToDraft.sgp', $application) : route('assessments.revertToDraft.op', $application)) }}" method="POST" autocomplete="off">
                             @csrf
                             <div class="mb-4">
                                 <label class="block text-xs font-medium text-gray-600 mb-1">
@@ -878,6 +879,53 @@
                 </form>
             </div>
             @endif
+            @elseif($cat->code === 'DEMO_FEE')
+            {{-- Demolition Fee Form (quantity is measured in the Unit configured in Demolition Fee Settings) --}}
+            @if(!$isFinalized)
+            <div x-data="{
+                feeCode: '',
+                unitLabels: {
+                    @foreach($catFeeTypes as $ft)
+                    {{ $ft->code }}: '{{ $ft->unit_label ?? 'unit' }}',
+                    @endforeach
+                },
+                get unitLabel() { return this.unitLabels[this.feeCode] || 'unit'; }
+            }">
+                <h4 class="text-sm font-semibold text-gray-700 mb-3">
+                    <i class="fas fa-plus-circle text-blue-500 mr-1"></i> Add Demolition Fee Item
+                </h4>
+                <form action="{{ route('assessments.demolitionItem.dp', $application) }}" method="POST" autocomplete="off">
+                    @csrf
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Demolition Fee <span class="text-red-500">*</span></label>
+                            <select name="demolition_fee_type" @change="feeCode = $event.target.value" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">-- Select --</option>
+                                @foreach($catFeeTypes as $ft)
+                                <option value="{{ $ft->code }}">{{ $ft->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">
+                                Quantity
+                                <span x-show="feeCode" x-cloak class="ml-1 text-blue-600 font-semibold" x-text="'(' + unitLabel + ')'"></span>
+                                <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number" name="quantity" step="0.01" min="0.01" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit" class="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">Fee and amount are auto-computed based on the Demolition Fee Settings schedule.</p>
+                </form>
+            </div>
+            @endif
             @else
             {{-- Generic Fee Item Form (other tabs) --}}
             @if(!$isFinalized)
@@ -987,6 +1035,11 @@
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Unit</th>
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Fee/Unit</th>
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Amount</th>
+                            @elseif($cat->code === 'DEMO_FEE')
+                            <th class="text-left px-4 py-3 font-medium text-gray-500">Demolition Fee</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Qty</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Fee/Unit</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Amount</th>
                             @elseif($cat->code === 'ELECT')
                             <th class="text-left px-4 py-3 font-medium text-gray-500">Electronics Fee</th>
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Unit</th>
@@ -1051,6 +1104,12 @@
                             @elseif($cat->code === 'PLUMB')
                             <td class="px-4 py-3 text-gray-900 text-xs">{{ $item->description }}</td>
                             <td class="px-4 py-3 text-right text-gray-700">{{ number_format($item->quantity, 2) }}</td>
+                            <td class="px-4 py-3 text-right text-gray-700">@if($item->unit_fee > 0)&#8369;{{ number_format($item->unit_fee, 2) }}@else-@endif</td>
+                            <td class="px-4 py-3 text-right font-medium text-gray-900">&#8369;{{ number_format($item->amount, 2) }}</td>
+                            @elseif($cat->code === 'DEMO_FEE')
+                            @php $compDetails = is_array($item->computation_details) ? $item->computation_details : json_decode($item->computation_details ?? '{}', true); @endphp
+                            <td class="px-4 py-3 text-gray-900 text-xs">{{ $item->description }}</td>
+                            <td class="px-4 py-3 text-right text-gray-700">{{ number_format($item->quantity, 2) }} {{ $compDetails['unit_label'] ?? '' }}</td>
                             <td class="px-4 py-3 text-right text-gray-700">@if($item->unit_fee > 0)&#8369;{{ number_format($item->unit_fee, 2) }}@else-@endif</td>
                             <td class="px-4 py-3 text-right font-medium text-gray-900">&#8369;{{ number_format($item->amount, 2) }}</td>
                             @elseif($cat->code === 'ELECT')
@@ -1231,7 +1290,7 @@
             {{-- Print Button (finalized only) --}}
             @if($assessment && $assessment->status === 'finalized')
             <div class="flex justify-end gap-2">
-                <a href="{{ $isDp ? route('assessments.print.dp', $application) : ($isOp ? route('assessments.print.op', $application) : route('assessments.print', $application)) }}"
+                <a href="{{ $isDp ? route('assessments.print.dp', $application) : ($isSgp ? route('assessments.print.sgp', $application) : ($isOp ? route('assessments.print.op', $application) : route('assessments.print', $application))) }}"
                    target="_blank"
                    class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition shadow-sm">
                     <i class="fas fa-print"></i> Print Summary of Computation

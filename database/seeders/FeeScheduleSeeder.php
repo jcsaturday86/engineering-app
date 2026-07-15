@@ -50,6 +50,7 @@ class FeeScheduleSeeder extends Seeder
         bool $hasMinimum = false,
         int $sortOrder = 0,
         ?string $description = null,
+        ?string $unitLabel = null,
     ): int {
         $category = FeeCategory::where('code', $categoryCode)->first();
 
@@ -66,6 +67,7 @@ class FeeScheduleSeeder extends Seeder
                 'name' => $name,
                 'description' => $description,
                 'computation_method' => $computationMethod,
+                'unit_label' => $unitLabel,
                 'has_excess' => $hasExcess,
                 'has_minimum' => $hasMinimum,
                 'is_active' => true,
@@ -1105,15 +1107,15 @@ class FeeScheduleSeeder extends Seeder
         $order = 0;
 
         $items = [
-            ['DEMO_FLOOR_AREA', 'Demolition in all Groups, per sq.m floor area', 30],
-            ['DEMO_MECH_EQUIP', 'Demolition in all Groups with mechanical equipment, per vertical or horizontal dimension per lineal meter', 4],
-            ['DEMO_HAND_INCL_FLOORS', 'Demolition by hand, every meter or portion thereof height/dimensions, including floors', 80],
-            ['DEMO_HAND_EXCL_FLOORS', 'Demolition by hand, every meter or portion thereof height/dimensions, excluding floors', 50],
-            ['DEMO_MOVING', 'Moving Fee, per sq.m of area of building/structure to be moved', 30],
+            ['DEMO_FLOOR_AREA', 'Demolition in all Groups, per sq.m floor area', 30, 'sq.m.'],
+            ['DEMO_MECH_EQUIP', 'Demolition in all Groups with mechanical equipment, per vertical or horizontal dimension per lineal meter', 4, 'lineal meter(s)'],
+            ['DEMO_HAND_INCL_FLOORS', 'Demolition by hand, every meter or portion thereof height/dimensions, including floors', 80, 'lineal meter(s)'],
+            ['DEMO_HAND_EXCL_FLOORS', 'Demolition by hand, every meter or portion thereof height/dimensions, excluding floors', 50, 'lineal meter(s)'],
+            ['DEMO_MOVING', 'Moving Fee, per sq.m of area of building/structure to be moved', 30, 'sq.m.'],
         ];
         foreach ($items as $i) {
             $feeTypeId = $this->upsertFeeType(
-                'DEMO_FEE', $i[0], $i[1], 'per_unit', false, false, ++$order,
+                'DEMO_FEE', $i[0], $i[1], 'per_unit', false, false, ++$order, null, $i[3],
             );
             $this->syncSchedules($feeTypeId, [['fee_per_unit' => $i[2]]]);
         }
@@ -1121,7 +1123,7 @@ class FeeScheduleSeeder extends Seeder
         // Appendage - flat fee up to 30.00 cu.m/unit in area or volume of structure
         $feeTypeId = $this->upsertFeeType(
             'DEMO_FEE', 'DEMO_APPENDAGE', 'Appendage up to 30.00 cu.m/unit in area or volume of structure',
-            'fixed', false, false, ++$order,
+            'fixed', false, false, ++$order, null, 'unit(s)',
         );
         $this->syncSchedules($feeTypeId, [['fixed_fee' => 50]]);
     }

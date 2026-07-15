@@ -13,24 +13,24 @@ engineering-app/
 │   ├── DTOs/              (4 data transfer objects)
 │   ├── Enums/             (5 enums)
 │   ├── Exports/           (3 Excel export classes)
-│   ├── Http/Controllers/  (15 + Auth controllers)
-│   ├── Models/            (32 Eloquent models)
+│   ├── Http/Controllers/  (18 + Auth controllers)
+│   ├── Models/            (34 Eloquent models)
 │   ├── Notifications/     (4 notification classes)
 │   ├── Providers/         (AppServiceProvider, SelfHealingServiceProvider)
 │   └── Services/          (8 service classes)
 ├── database/
-│   ├── migrations/        (22+ migration files)
+│   ├── migrations/        (24+ migration files)
 │   ├── seeders/           (9 seeders)
 │   └── factories/
 ├── resources/views/       (40+ Blade templates)
-├── routes/web.php         (100+ routes)
+├── routes/web.php         (140+ routes)
 ├── docs/                  (this documentation)
 └── CLAUDE.md
 ```
 
 ---
 
-## Models (32)
+## Models (34)
 
 ### Core Transaction Models
 
@@ -38,6 +38,8 @@ engineering-app/
 |-------|-------|-------|
 | Application | applications | BP only. Implements PermitApplicationContract + HasPermitApplicationBehavior. getPermitTypeCode() = 'BP' |
 | OccupancyApplication | occupancy_applications | OP only. Same contract/trait. getPermitTypeCode() = 'OP' |
+| DemolitionApplication | demolition_applications | DP only. Same contract/trait. getPermitTypeCode() = 'DP'. Overrides `buildingBarangay()` → `demolition_barangay_id` (aliased as `demolitionBarangay()`) |
+| SignageApplication | signage_applications | SGP only. Same contract/trait. getPermitTypeCode() = 'SGP'. Overrides `buildingBarangay()` → aliases `applicantBarangay()` (no separate site-location column) |
 | ApplicationOccupancyGroup | application_occupancy_groups | morphTo: applicationable |
 | ApplicationRequirement | application_requirements | morphTo: applicationable |
 | Assessment | assessments | morphTo: applicationable. hasMany: assessmentItems. SoftDeletes, LogsActivity |
@@ -96,6 +98,16 @@ index, create, store, show, edit, update, submit, cancel, revertSubmission, prin
 
 Same `search`/`status`/`year` filtering and `permits` eager-load as `ApplicationController::index()`.
 
+### DemolitionApplicationController (DP only)
+index, create, store, show, edit, update, submit, cancel, revertSubmission, printForm
+
+Same shape as `OccupancyApplicationController`, with DP-specific fields (enterprise, address CTC, Location of Demolition Works, Scope of Work, Full-time Inspector/Supervisor, Lot Owner Consent). `printForm()` streams the background-image-overlay NBC Form B-08 PDF, resolving the Building Official via a private `resolveBuildingOfficial(DemolitionApplication): array` helper (same shape as `ApplicationController`'s).
+
+### SignageApplicationController (SGP only)
+index, create, store, show, edit, update, submit, cancel, revertSubmission
+
+Same shape again, trimmed further (no enterprise/CTC/inspector/lot-owner sections, no occupancy-group selection). **No `printForm()`** — the application-form print is deferred pending a scanned official form.
+
 ### GeoController
 `barangaysForCity(City $city)` — `GET /geo/barangays/{city}`, returns active barangays for a city as JSON (`id`, `name`). Used by the BP/OP application form's cascading address dropdowns instead of shipping the full ~42K-row barangay dataset to the page.
 
@@ -113,6 +125,8 @@ index, update, store, updateCert, updateOther, destroy
 |--------|-------|---------|
 | index | GET /assessments | BP assessment list (submitted/zoning_assessed/engineering_assessed/billed) |
 | occupancyIndex | GET /assessments/occupancy | OP list (same statuses) |
+| demolitionIndex | GET /assessments/demolition | DP list (submitted/engineering_assessed/billed) |
+| signageIndex | GET /assessments/signage | SGP list (submitted/engineering_assessed/billed) |
 | assess | GET /assessments/{id} | Tabbed fee entry (Construction/Electrical/Mechanical/…) |
 | addConstructionItem | POST /assessments/{id}/construction-item | BOPMS-style: Part+Division+Area → auto fee lookup |
 | addElectricalItem | POST /assessments/{id}/electrical-item | BOPMS-style: 7 types, auto inspection % |
@@ -137,29 +151,47 @@ index, update, store, updateCert, updateOther, destroy
 | revertToDraftOp | POST /assessments/op/{op}/revert-to-draft | OP only; while `status = zoning_assessed`, deletes all occupancy fee entries + the Assessment, reverts application to `draft` |
 | summaryOp | GET /assessments/op/{op}/summary | OP summary |
 | printOp | GET /assessments/op/{op}/print | OP PDF (separate `assessment-summary-op` template) |
+| assessDp | GET /assessments/dp/{dp} | DP fee entry (DEMO_FEE tab) |
+| addItemDp | POST /assessments/dp/{dp}/item | DP generic item (legacy fallback, superseded by addDemolitionItem) |
+| addDemolitionItem | POST /assessments/dp/{dp}/demolition-item | Fee-schedule-driven: DEMO_FEE type + quantity → server-computed `amount = quantity × rate` |
+| finalizeDp | POST /assessments/dp/{dp}/finalize | DP → engineering_assessed → billed (auto) |
+| revertEngineeringDp | POST /assessments/dp/{dp}/revert-finalize | Un-finalize a DP engineering assessment |
+| revertToDraftDp | POST /assessments/dp/{dp}/revert-to-draft | DP only; while `status = submitted`, deletes fee entries + Assessment, reverts to `draft` |
+| summaryDp | GET /assessments/dp/{dp}/summary | DP summary |
+| printDp | GET /assessments/dp/{dp}/print | DP PDF (`assessment-summary-dp` template) |
+| assessSgp | GET /assessments/sgp/{sgp} | SGP fee entry (SGP_FEE tab, generic manual-entry form) |
+| addItemSgp | POST /assessments/sgp/{sgp}/item | SGP generic item (manual quantity + unit fee — no dedicated fee-schedule method exists yet) |
+| finalizeSgp | POST /assessments/sgp/{sgp}/finalize | SGP → engineering_assessed → billed (auto) |
+| revertEngineeringSgp | POST /assessments/sgp/{sgp}/revert-finalize | Un-finalize an SGP engineering assessment |
+| revertToDraftSgp | POST /assessments/sgp/{sgp}/revert-to-draft | SGP only; while `status = submitted`, deletes fee entries + Assessment, reverts to `draft` |
+| summarySgp | GET /assessments/sgp/{sgp}/summary | SGP summary |
+| printSgp | GET /assessments/sgp/{sgp}/print | SGP PDF (`assessment-summary-sgp` template) |
 
 **Private helpers:**
 - `resolveInspectionFee(string $code, float $unit): array` — maps MECH_* code → INSP_* fee type (MECH_INSP category), does range or first-row lookup, returns {fee, excess_threshold, excess_fee, every, method}. Three methods: flat (range-band fixed), per_unit (rate × unit), tiered (cumulative for elevators).
 - `calculateTotals(Assessment $assessment): array` — returns subtotal, inspection, filing, processing, total.
 - `redirectIfFinalized(Assessment, PermitApplicationContract): ?RedirectResponse` — called by every add/remove method; when assessment status = finalized, redirects to the assess page `?tab=SUMMARY` with an error flash.
-- `doPrint(PermitApplicationContract)` — dispatches by `getPermitTypeCode()`: BP renders `pdf.assessment-summary` (building + zoning sections); OP delegates to `doPrintOp()`, which renders `pdf.assessment-summary-op` with only the Occupancy Fees section (no Zoning/Building/Other Fees/Filing/Processing). Both generate a Code 128 barcode (picqer BarcodeGeneratorPNG, base64) and load the `building_official` signatory.
+- `doPrint(PermitApplicationContract)` — dispatches by `getPermitTypeCode()`: BP renders `pdf.assessment-summary` (building + zoning sections); OP/DP/SGP each delegate to their own `doPrintOp()`/`doPrintDp()`/`doPrintSgp()`, rendering `pdf.assessment-summary-op`/`-dp`/`-sgp` with only that permit type's single fee-category section (no Zoning/Building/Other Fees/Filing/Processing). All four generate a Code 128 barcode (picqer BarcodeGeneratorPNG, base64) and load the `building_official` signatory.
 
 ### BillingController
 print only. Billing is auto-generated on assessment finalize via `BillingService::generateFor(PermitApplicationContract)` (guards: status must be `engineering_assessed`, no existing unpaid billing). The Billing menu/index page and manual generate routes were removed.
 
 ### CollectionController
-- `index(Request $request)` — accepts `search`: exact match on a billed BP/OP `application_number` redirects straight to that payment form (barcode-scan UX); partial match filters the Awaiting Payment list by application number or applicant name. Also accepts `month` (`YYYY-MM`, defaults to current month) — the Payment History list is scoped to the logged-in collector's own transactions (`collected_by = Auth::id()`) within that month
-- `create`/`store` (BP), `createOp`/`storeOp` (OP) — `doStore()` rejects an insufficient cash payment (`amount_received < billing->total_amount` when `payment_mode = cash`) before recording
+- `index(Request $request)` — accepts `search`: exact match on a billed BP/OP/DP/SGP `application_number` redirects straight to that payment form (barcode-scan UX); partial match filters the Awaiting Payment list by application number or applicant name. Also accepts `month` (`YYYY-MM`, defaults to current month) — the Payment History list is scoped to the logged-in collector's own transactions (`collected_by = Auth::id()`) within that month
+- `create`/`store` (BP), `createOp`/`storeOp` (OP), `createDp`/`storeDp` (DP), `createSgp`/`storeSgp` (SGP) — `doStore()` rejects an insufficient cash payment (`amount_received < billing->total_amount` when `payment_mode = cash`) before recording. Its internal `$morphType = match($application->getPermitTypeCode()) {...}` must carry all 4 arms (`OP`/`DP`/`SGP` + `default => 'bp'`) or a payment silently records against the wrong polymorphic type
 - `receipt` (renders the Official Receipt PDF with the dynamic city seal), `voidForm`, `processVoid`
 
 ### PermitController
-buildingIndex, occupancyIndex, generate (BP), revertGenerate (BP), restoreRevoke (BP), generateOp (OP), revertGenerateOp (OP), restoreRevokeOp (OP), print, zoningCertification, locationalClearance, evaluationReport
+buildingIndex, occupancyIndex, demolitionIndex, signageIndex, generate (BP), revertGenerate (BP), restoreRevoke (BP), generateOp (OP), revertGenerateOp (OP), restoreRevokeOp (OP), generateDp (DP), revertGenerateDp (DP), restoreRevokeDp (DP), generateSgp (SGP), revertGenerateSgp (SGP), restoreRevokeSgp (SGP), print, zoningCertification, locationalClearance, evaluationReport
 
-`buildingIndex`/`occupancyIndex` accept `search`, `status` (including a `revoked` pseudo-status matched via `whereHas('permits', fn ($q) => $q->withTrashed()->where('status', 'revoked'))`), and `year` (defaults to current year) query params.
+`buildingIndex`/`occupancyIndex`/`demolitionIndex`/`signageIndex` accept `search`, `status` (including a `revoked` pseudo-status matched via `whereHas('permits', fn ($q) => $q->withTrashed()->where('status', 'revoked'))`), and `year` (defaults to current year) query params; all four share the same `permits/index.blade.php` view keyed by `$type`.
 
 `revertGenerate`/`revertGenerateOp` (`revert-permits` permission) tag the `Permit` `status = 'revoked'` (with a required `revoke_reason`) and soft-delete it, rolling the application status back to `paid`. `doGenerate()` refuses to create a new permit while a revoked permit exists for the application (`onlyTrashed()->where('status', 'revoked')->exists()`). `restoreRevoke`/`restoreRevokeOp` (same permission, password-confirm only) reverse this: `$permit->restore()`, `status` back to `generated`, application back to `permit_generated`.
 
-`generate`/`generateOp` (via `doGenerate()`) set a `verification_token` (UUID) on the new `Permit` row, and snapshot the currently-active `building_official` Signatory onto `building_official_name`/`_title`/`_designation`/`_license_no` — a one-time capture that survives Signatory edits, revoke, and restore. `print()` additionally builds a QR code (`endroid/qr-code`) encoding the public verification URL (`{general.domain setting|app.url}/verify/permit/{token}`) and passes it (plus `sealImage`, `dpwhLogo` — both sourced from `Setting`, each falling back to a static default) to the `pdf.building-permit` / `pdf.occupancy-permit` templates, which read the Building Official line from the permit's own snapshot columns, not the live Signatory.
+`generate`/`generateOp`/`generateDp`/`generateSgp` (via `doGenerate()`) set a `verification_token` (UUID) on the new `Permit` row, and snapshot the currently-active `building_official` Signatory onto `building_official_name`/`_title`/`_designation`/`_license_no` — a one-time capture that survives Signatory edits, revoke, and restore. `print()` additionally builds a QR code (`endroid/qr-code`) encoding the public verification URL (`{general.domain setting|app.url}/verify/permit/{token}`) and passes it (plus `sealImage`, `dpwhLogo` — both sourced from `Setting`, each falling back to a static default) to the template selected by `match ($permit->permitType->code) { 'OP' => 'pdf.occupancy-permit', 'DP' => 'pdf.demolition-permit', 'SGP' => 'pdf.signage-permit', default => 'pdf.building-permit' }`, which reads the Building Official line from the permit's own snapshot columns, not the live Signatory.
+
+### DemolitionFeeController (Settings, DP only)
+index, updateSchedule, storeSchedule, destroySchedule, updateUnitLabel — `/settings/demolition-fees`, the only dedicated fee-schedule settings page among the 4 permit types (BP has ~10 per-category settings pages, SGP has none yet — its `SGP_FEE` category is editable only via the generic `/settings/fees`). `updateUnitLabel()` is the newest method, editing a `FeeType`'s `unit_label` inline.
 
 ### VerifyController (public, no auth)
 `show(string $token)` — `GET /verify/permit/{token}`, throttled. Looks up `Permit::where('verification_token', $token)`; renders `verify/permit.blade.php` with the permit/applicant details if found, or a "could not be verified" state if not.
@@ -183,7 +215,7 @@ DashboardController, OnlineApplicationController, ReportController, SettingsCont
 | OccupancyApplicationService | OP CRUD, numbering, status transitions |
 | AssessmentService | finalize() — recalculate totals, mark finalized |
 | FeeComputationService | computeFee() — 6 methods with excess/min/max |
-| BillingService | generateFor() — auto-create billing on assessment finalize (BP + OP), set status to billed |
+| BillingService | generateFor() — auto-create billing on assessment finalize (BP/OP/DP/SGP), set status to billed. Internal `$morphType` match must carry all 4 permit-code arms — was found missing the `SGP` arm during the SGP build (silently created billings with `applicationable_type = 'bp'`) |
 | CollectionService | recordPayment() — create collection, update billing |
 | PermitService | generatePermit() — create permit with auto-numbering |
 | SettingService | get(), set() — system settings |
@@ -202,7 +234,7 @@ ApplicationDTO, OccupancyApplicationDTO, AssessmentItemDTO, CollectionDTO
 | AssessmentType | building, occupancy, zoning |
 | ComputationMethod | fixed, per_unit, range_based, cumulative_range, percentage, formula |
 | PaymentMode | cash, check, online |
-| PermitTypeCode | BP, OP, FP, EP, DP, SP, ELP, MP, PP, ECP |
+| PermitTypeCode | BP, OP, FP, EP, DP, SGP, SP, ELP, MP, PP, ECP |
 
 ---
 
@@ -214,9 +246,12 @@ ApplicationDTO, OccupancyApplicationDTO, AssessmentItemDTO, CollectionDTO
 ### Application Views
 BP: `applications/index`, `form`, `show`
 OP: `occupancy-applications/index`, `form`, `show`
+DP: `demolition-applications/index`, `form`, `show`
+SGP: `signage-applications/index`, `form`, `show`
 
 ### Assessment Views
-`assessments/assess.blade.php` — tabbed: Construction, Electrical, Mechanical, Plumbing, Electronics, Accessories, Accessory, Surcharges, Summary. Excluded from tabs: ZONING_LC, ZONING_CERT, ANN_INSP, VIOLATION, MECH_INSP.
+`assessments/assess.blade.php` — tabbed: Construction, Electrical, Mechanical, Plumbing, Electronics, Accessories, Accessory, Surcharges, DEMO_FEE (DP), SGP_FEE (SGP, generic fallback form), Summary. Excluded from tabs: ZONING_LC, ZONING_CERT, ANN_INSP, VIOLATION, MECH_INSP. `$isOp`/`$isDp`/`$isSgp` flags thread through every route/visibility ternary.
+`assessments/demolition-index.blade.php`, `assessments/signage-index.blade.php` — the DP/SGP equivalents of `occupancy-index.blade.php`.
 
 ### Other Views
 `zoning/`, `collections/`, `permits/`, `online/`, `dashboard/`, `settings/`, `reports/`, `auth/`. (`billing/` views removed — billing is print-only now, served via `pdf/billing-statement`.)
@@ -224,7 +259,9 @@ OP: `occupancy-applications/index`, `form`, `show`
 `collections/create.blade.php` — POS-style single-screen payment form: Application No./Applicant + OR Number/Paid By rows, a 3-column Amount Due/Amount Received/Change strip (Alpine-live), a Cash/Check/Online segmented control, and a sticky bottom action bar so the collector doesn't scroll mid-transaction.
 
 ### PDF Templates (`resources/views/pdf/`)
-application-form (BP Unified Application Form — background-image overlay, see below), occupancy-application-form (OP Unified Application Form for Certificate of Occupancy — DomPDF, see below), architectural-form (NBC Form A-01 Architectural Permit — background-image overlay, see below), structural-form (NBC Form A-07 Civil/Structural Permit — background-image overlay, see below), electrical-form (Form No. 77-001-S Electrical Permit — background-image overlay, see below), sanitary-form (Form No. 77-001-S Sanitary/Plumbing Permit — background-image overlay, see below), mechanical-form (NBC Form No. A-04 Mechanical Permit — background-image overlay, see below), electronics-form (NBC Form No. A-07 Electronics Permit — background-image overlay, see below), discipline-form (unused generic fallback), building-permit (NBC Form B-018 style, city seal + DPWH logo + QR code), occupancy-permit (DPWH Certificate of Occupancy style, DPWH logo + city seal + QR code), assessment-summary (BP), assessment-summary-op (OP), billing-statement, official-receipt, zoning-certification, locational-clearance, evaluation-report, report
+application-form (BP Unified Application Form — background-image overlay, see below), occupancy-application-form (OP Unified Application Form for Certificate of Occupancy — DomPDF, see below), demolition-application-form (DP application form, NBC Form No. B-08 — background-image overlay, see below), architectural-form (NBC Form A-01 Architectural Permit — background-image overlay, see below), structural-form (NBC Form A-07 Civil/Structural Permit — background-image overlay, see below), electrical-form (Form No. 77-001-S Electrical Permit — background-image overlay, see below), sanitary-form (Form No. 77-001-S Sanitary/Plumbing Permit — background-image overlay, see below), mechanical-form (NBC Form No. A-04 Mechanical Permit — background-image overlay, see below), electronics-form (NBC Form No. A-07 Electronics Permit — background-image overlay, see below), discipline-form (unused generic fallback), building-permit (NBC Form B-018 style, city seal + DPWH logo + QR code), occupancy-permit (DPWH Certificate of Occupancy style, DPWH logo + city seal + QR code), demolition-permit (bordered-frame landscape certificate style + QR code), signage-permit (same bordered-frame style, cloned from demolition-permit + QR code), assessment-summary (BP), assessment-summary-op (OP), assessment-summary-dp (DP), assessment-summary-sgp (SGP), billing-statement, official-receipt, zoning-certification, locational-clearance, evaluation-report, report
+
+**SGP has no `signage-application-form.blade.php`** — unlike every other permit type, the application-form print is deliberately deferred (no scanned official form supplied yet). `SignageApplicationController` has no `printForm()` method or `print` route.
 
 Every template above that carries an Official Seal / logo sources it dynamically from `Setting` via the `Setting::general()` + `Setting::imageDataUri()` static helpers (base64 data-URI embedding) — including official-receipt, billing-statement, both assessment summaries, and evaluation-report, which previously had no branding at all. `OnlineApplicationController::doDownloadPermit()` (client-portal permit download) passes the same full variable set (`settings`/`sealImage`/`dpwhLogo`/`qrImage`) as `PermitController::print()` — it previously passed none of them, so downloaded permits silently rendered without seal/logo/QR.
 
@@ -257,7 +294,7 @@ Every template above that carries an Official Seal / logo sources it dynamically
 
 | Provider | Purpose |
 |----------|---------|
-| AppServiceProvider | Morph map: bp → Application, op → OccupancyApplication |
+| AppServiceProvider | Morph map: bp → Application, op → OccupancyApplication, dp → DemolitionApplication, sgp → SignageApplication |
 | SelfHealingServiceProvider | Auto DB + migrations + seeds on boot |
 
 `bootstrap/app.php` — `withExceptions()` renders any 419 `HttpException` (CSRF/session expiry) as a redirect to `login`/`staff.login` with a flash message. `routes/web.php` ends with `Route::fallback()`, redirecting any unmatched URL to the role-appropriate home or `login`.
@@ -267,9 +304,9 @@ Every template above that carries an Official Seal / logo sources it dynamically
 | Seeder | Data |
 |--------|------|
 | RolePermissionSeeder | 9 roles, 30+ permissions |
-| ReferenceDataSeeder | Permit types, app types, scopes, ownerships, building parts, land classifications, signatories, fee categories (incl. MECH_INSP) |
+| ReferenceDataSeeder | Permit types (incl. DP, SGP), app types, scopes, ownerships, building parts, land classifications, signatories, fee categories (incl. MECH_INSP, DEMO_FEE, SGP_FEE) |
 | OccupancyGroupSeeder | 10 groups A–J, 40+ sub-groups |
-| FeeScheduleSeeder | Complete fee structure: CONST, ELEC, MECH, MECH_INSP (29 INSP_* types/55 schedules from BOPMS ann_inspection_f* tables), PLUMB, ELEC_INSP, OCC, SURCHARGE, ZONING fee tables |
+| FeeScheduleSeeder | Complete fee structure: CONST, ELEC, MECH, MECH_INSP (29 INSP_* types/55 schedules from BOPMS ann_inspection_f* tables), PLUMB, ELEC_INSP, OCC, SURCHARGE, DEMO_FEE (6 types w/ unit_label), ZONING fee tables. SGP_FEE is seeded empty (category only, no rates) |
 | GeoDataSeeder | ~42K barangays (Philippine PSA data, 2.5MB) |
 | SettingsSeeder | System settings (electrical_inspection_percentage, filing/processing defaults, general.logo, general.favicon, general.dpwh_logo, general.national_govt_logo, general.city, general.province, general.area_number, general.zip_code, general.domain) — file-type settings use `firstOrCreate` so re-seeding never clobbers an uploaded logo |
 | AdminUserSeeder | Default admin user |
