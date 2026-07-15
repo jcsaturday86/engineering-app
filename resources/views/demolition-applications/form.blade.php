@@ -163,7 +163,9 @@
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">City/Municipality <span class="text-red-500">*</span></label>
-                    <select name="applicant_city_id" x-model="selectedCity" @change="selectedBarangay=''; loadBarangays(selectedCity)" required
+                    <select name="applicant_city_id" :value="selectedCity"
+                        x-init="$nextTick(() => { $el.value = selectedCity })"
+                        @change="selectedCity=$event.target.value; selectedBarangay=''; loadBarangays(selectedCity)" required
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500">
                         <option value="">-- Select City --</option>
                         <template x-for="city in filteredCities" :key="city.id">
@@ -174,7 +176,9 @@
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Barangay <span class="text-red-500">*</span></label>
-                    <select name="applicant_barangay_id" x-model="selectedBarangay" required
+                    <select name="applicant_barangay_id" :value="selectedBarangay"
+                        x-init="$watch('barangayOptions', () => $nextTick(() => { $el.value = selectedBarangay }))"
+                        @change="selectedBarangay=$event.target.value" required
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500">
                         <option value="">-- Select --</option>
                         <template x-for="brgy in barangayOptions" :key="brgy.id">
