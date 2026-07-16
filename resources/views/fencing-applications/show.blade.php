@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
-@section('title', 'OP Application Details')
+@section('title', 'FP Application Details')
 
 @section('breadcrumbs')
     <a href="{{ route('dashboard') }}" class="text-gray-500 hover:text-gray-700">Dashboard</a>
     <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
-    <a href="{{ route('occupancy-applications.index') }}" class="text-gray-500 hover:text-gray-700">Occupancy Applications</a>
+    <a href="{{ route('fencing-applications.index') }}" class="text-gray-500 hover:text-gray-700">Fencing Applications</a>
     <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
     <span class="text-gray-900 font-medium">{{ $application->application_number }}</span>
 @endsection
@@ -22,7 +22,6 @@
         'released' => 'bg-emerald-100 text-emerald-700',
         'cancelled' => 'bg-red-100 text-red-700',
     ];
-    $isOP = true;
     $sectionNum = 0;
 @endphp
 
@@ -36,8 +35,8 @@
                 <div>
                     <h2 class="text-2xl font-bold text-gray-900 font-mono">{{ $application->application_number }}</h2>
                     <div class="flex items-center gap-2 mt-1">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">
-                            {{ $application->getPermitTypeCode() }} &mdash; Occupancy Permit
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-teal-100 text-teal-700">
+                            {{ $application->getPermitTypeCode() }} &mdash; Fencing Permit
                         </span>
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusColors[$application->status] ?? 'bg-gray-100 text-gray-600' }}">
                             {{ ucfirst(str_replace('_', ' ', $application->status)) }}
@@ -47,11 +46,11 @@
             </div>
             <div class="flex flex-wrap items-center gap-2" x-data="{ showRevertSubmitModal: false, revertSubmitPassword: '', showSubmitModal: false, submitPassword: '' }">
                 @if($application->status === 'draft')
-                    <a href="{{ route('occupancy-applications.edit', $application) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
+                    <a href="{{ route('fencing-applications.edit', $application) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
                         <i class="fas fa-edit"></i> Edit
                     </a>
                     <button type="button" @click="showSubmitModal = true; submitPassword = ''"
-                        class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition">
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition">
                         <i class="fas fa-paper-plane"></i> Submit
                     </button>
 
@@ -60,8 +59,8 @@
                         @keydown.escape.window="showSubmitModal = false">
                         <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6" @click.outside="showSubmitModal = false">
                             <div class="flex items-center gap-3 mb-4">
-                                <div class="inline-flex items-center justify-center w-10 h-10 bg-indigo-100 rounded-full">
-                                    <i class="fas fa-lock text-indigo-600"></i>
+                                <div class="inline-flex items-center justify-center w-10 h-10 bg-teal-100 rounded-full">
+                                    <i class="fas fa-lock text-teal-600"></i>
                                 </div>
                                 <div>
                                     <h3 class="text-lg font-semibold text-gray-900">Confirm Submission</h3>
@@ -75,12 +74,12 @@
                                 </div>
                             @endif
 
-                            <form method="POST" action="{{ route('occupancy-applications.submit', $application) }}" autocomplete="off">
+                            <form method="POST" action="{{ route('fencing-applications.submit', $application) }}" autocomplete="off">
                                 @csrf
                                 <div class="mb-4">
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
                                     <input type="password" name="password" x-model="submitPassword" required
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                                         placeholder="Enter your account password">
                                 </div>
                                 <div class="flex items-center justify-end gap-3">
@@ -89,7 +88,7 @@
                                         Cancel
                                     </button>
                                     <button type="submit" :disabled="!submitPassword"
-                                        class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                        class="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
                                         <i class="fas fa-paper-plane"></i> Confirm & Submit
                                     </button>
                                 </div>
@@ -98,7 +97,7 @@
                     </div>
                 @endif
                 @if(!in_array($application->status, ['cancelled', 'paid', 'released', 'permit_generated']))
-                    <form method="POST" action="{{ route('occupancy-applications.cancel', $application) }}" class="inline" onsubmit="return confirm('Are you sure you want to cancel this application? This action cannot be undone.')" autocomplete="off">
+                    <form method="POST" action="{{ route('fencing-applications.cancel', $application) }}" class="inline" onsubmit="return confirm('Are you sure you want to cancel this application? This action cannot be undone.')" autocomplete="off">
                         @csrf
                         <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition">
                             <i class="fas fa-times-circle"></i> Cancel
@@ -106,7 +105,7 @@
                     </form>
                 @endif
                 @can('revert-submission')
-                @if($application->status === 'zoning_assessed' && !$application->assessments()->where('status', 'finalized')->exists())
+                @if($application->status === 'submitted' && !$application->assessments()->where('status', 'finalized')->exists())
                     <button type="button" @click="showRevertSubmitModal = true; revertSubmitPassword = ''"
                         class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-amber-300 text-amber-700 text-sm font-medium rounded-lg hover:bg-amber-50 transition">
                         <i class="fas fa-undo"></i> Revert Submission
@@ -132,7 +131,7 @@
                                 </div>
                             @endif
 
-                            <form action="{{ route('occupancy-applications.revertSubmission', $application) }}" method="POST" autocomplete="off">
+                            <form action="{{ route('fencing-applications.revertSubmission', $application) }}" method="POST" autocomplete="off">
                                 @csrf
                                 <div class="mb-4">
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
@@ -155,44 +154,17 @@
                     </div>
                 @endif
                 @endcan
-                <a href="{{ route('occupancy-applications.print', $application) }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
-                    <i class="fas fa-print"></i> Print
-                </a>
             </div>
         </div>
     </div>
 
     {{-- ================================================================== --}}
-    {{-- 1. APPLICATION DETAILS --}}
+    {{-- 1. APPLICANT INFORMATION --}}
     {{-- ================================================================== --}}
     @php $sectionNum++ @endphp
     <div class="bg-white rounded-xl border border-gray-200 p-5">
         <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">
-            <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Application Details
-        </h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="sm:col-span-2">
-                <p class="text-xs text-gray-500">Project Title</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->project_title ?? '---' }}</p>
-            </div>
-            <div>
-                <p class="text-xs text-gray-500">Application Type</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->applicationType?->name ?? '---' }}</p>
-            </div>
-            <div>
-                <p class="text-xs text-gray-500">Date of Completion</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->completion_date ? $application->completion_date->format('M d, Y') : '---' }}</p>
-            </div>
-        </div>
-    </div>
-
-    {{-- ================================================================== --}}
-    {{-- 2. APPLICANT INFORMATION --}}
-    {{-- ================================================================== --}}
-    @php $sectionNum++ @endphp
-    <div class="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">
-            <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Applicant Information
+            <span class="inline-flex items-center justify-center w-7 h-7 bg-teal-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Applicant Information
         </h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
@@ -208,27 +180,31 @@
                 <p class="text-sm text-gray-900 mt-0.5">{{ $application->applicant_last_name ?? '---' }}</p>
             </div>
             <div>
-                <p class="text-xs text-gray-500">Suffix</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->applicant_suffix ?? '---' }}</p>
+                <p class="text-xs text-gray-500">TIN</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->applicant_tin ?? '---' }}</p>
             </div>
             <div>
-                <p class="text-xs text-gray-500">Contact No.</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->applicant_contact_no ?? '---' }}</p>
+                <p class="text-xs text-gray-500">Telephone</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->applicant_telephone ?? '---' }}</p>
             </div>
             <div>
-                <p class="text-xs text-gray-500">Email</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->applicant_email ?? '---' }}</p>
+                <p class="text-xs text-gray-500">Owned By Enterprise</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->owned_by_enterprise ? ($application->enterprise_name ?? 'Yes') : 'No' }}</p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500">Form of Ownership</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->formOfOwnership?->name ?? '---' }}</p>
             </div>
         </div>
     </div>
 
     {{-- ================================================================== --}}
-    {{-- 3. APPLICANT ADDRESS --}}
+    {{-- 2. APPLICANT ADDRESS --}}
     {{-- ================================================================== --}}
     @php $sectionNum++ @endphp
     <div class="bg-white rounded-xl border border-gray-200 p-5">
         <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">
-            <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Applicant Address
+            <span class="inline-flex items-center justify-center w-7 h-7 bg-teal-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Applicant Address
         </h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
@@ -255,125 +231,165 @@
     </div>
 
     {{-- ================================================================== --}}
-    {{-- 4. BUILDING LOCATION --}}
+    {{-- 3. LOCATION OF CONSTRUCTION --}}
     {{-- ================================================================== --}}
     @php $sectionNum++ @endphp
     <div class="bg-white rounded-xl border border-gray-200 p-5">
         <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">
-            <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Building Location
+            <span class="inline-flex items-center justify-center w-7 h-7 bg-teal-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Location of Construction
         </h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
+                <p class="text-xs text-gray-500">Lot No.</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->lot_no ?? '---' }}</p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500">Blk No.</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->block_no ?? '---' }}</p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500">TCT No.</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->tct_no ?? '---' }}</p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500">Tax Dec. No.</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->tax_dec_no ?? '---' }}</p>
+            </div>
+            <div>
                 <p class="text-xs text-gray-500">Street</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->building_street ?? '---' }}</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->construction_street ?? '---' }}</p>
             </div>
             <div>
                 <p class="text-xs text-gray-500">Barangay</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->buildingBarangay?->name ?? '---' }}</p>
-            </div>
-            <div>
-                <p class="text-xs text-gray-500">City/Municipality</p>
-                <p class="text-sm text-gray-900 mt-0.5">City of San Fernando, La Union</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->constructionBarangay?->name ?? '---' }}</p>
             </div>
         </div>
     </div>
 
     {{-- ================================================================== --}}
-    {{-- 5. BUILDING SPECS --}}
+    {{-- 4. SCOPE OF WORK --}}
     {{-- ================================================================== --}}
     @php $sectionNum++ @endphp
     <div class="bg-white rounded-xl border border-gray-200 p-5">
         <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">
-            <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Building Specs
+            <span class="inline-flex items-center justify-center w-7 h-7 bg-teal-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Scope of Work
+        </h3>
+        @php
+            $scopeLabels = [
+                'new_construction' => 'New Construction',
+                'erection' => 'Erection',
+                'addition' => 'Addition',
+                'repair' => 'Repair',
+                'others' => 'Others',
+            ];
+        @endphp
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <p class="text-xs text-gray-500">Scope</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $scopeLabels[$application->scope_of_work] ?? '---' }}</p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500">Details</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->scope_of_work_detail ?? '---' }}</p>
+            </div>
+        </div>
+    </div>
+
+    {{-- ================================================================== --}}
+    {{-- 5. DESIGN PROFESSIONAL, PLANS AND SPECIFICATIONS --}}
+    {{-- ================================================================== --}}
+    @php $sectionNum++ @endphp
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+        <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">
+            <span class="inline-flex items-center justify-center w-7 h-7 bg-teal-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Design Professional, Plans and Specifications
         </h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-                <p class="text-xs text-gray-500">No. of Storey/s</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->no_of_storeys ?? '---' }}</p>
+                <p class="text-xs text-gray-500">Name</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->design_professional_name ?? '---' }}</p>
             </div>
             <div>
-                <p class="text-xs text-gray-500">No. of Units</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->no_of_units ?? '---' }}</p>
+                <p class="text-xs text-gray-500">Address</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->design_professional_address ?? '---' }}</p>
             </div>
             <div>
-                <p class="text-xs text-gray-500">Total Gross Floor Area</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->total_floor_area ? number_format($application->total_floor_area, 2) . ' sqm' : '---' }}</p>
+                <p class="text-xs text-gray-500">PRC No.</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->design_professional_prc_no ?? '---' }}</p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500">Validity</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->design_professional_prc_validity ? $application->design_professional_prc_validity->format('M d, Y') : '---' }}</p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500">PTR No.</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->design_professional_ptr_no ?? '---' }}</p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500">PTR Date Issued</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->design_professional_ptr_date_issued ? $application->design_professional_ptr_date_issued->format('M d, Y') : '---' }}</p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500">Issued At</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->design_professional_ptr_issued_at ?? '---' }}</p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500">TIN</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->design_professional_tin ?? '---' }}</p>
             </div>
         </div>
     </div>
 
     {{-- ================================================================== --}}
-    {{-- 6. CHARACTER OF OCCUPANCY --}}
+    {{-- 6. FULL-TIME INSPECTOR OR SUPERVISOR --}}
     {{-- ================================================================== --}}
     @php $sectionNum++ @endphp
     <div class="bg-white rounded-xl border border-gray-200 p-5">
         <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">
-            <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Use or Character of Occupancy
-        </h3>
-        @if($application->applicationOccupancyGroups && $application->applicationOccupancyGroups->count())
-            <div class="space-y-2">
-                @foreach($application->applicationOccupancyGroups as $occGroup)
-                    <div class="flex items-start gap-2 text-sm">
-                        <span class="inline-flex items-center justify-center w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium shrink-0 mt-0.5">
-                            {{ $loop->iteration }}
-                        </span>
-                        <div>
-                            <span class="text-gray-900 font-medium">{{ $occGroup->occupancyGroup?->name ?? '---' }}</span>
-                            @if($occGroup->occupancySubGroup)
-                                <span class="text-gray-400 mx-1">&rarr;</span>
-                                <span class="text-gray-600">{{ $occGroup->occupancySubGroup->name }}</span>
-                            @endif
-                            @if($occGroup->others_text)
-                                <span class="text-gray-500 italic ml-1">({{ $occGroup->others_text }})</span>
-                            @endif
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-        @else
-            <p class="text-sm text-gray-500">No occupancy groups selected.</p>
-        @endif
-    </div>
-
-    {{-- ================================================================== --}}
-    {{-- 7. OCCUPANCY PERMIT DETAILS --}}
-    {{-- ================================================================== --}}
-    @php $sectionNum++ @endphp
-    <div class="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">
-            <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Occupancy Permit Details
+            <span class="inline-flex items-center justify-center w-7 h-7 bg-teal-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Full-Time Inspector or Supervisor
         </h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-                <p class="text-xs text-gray-500">Building Permit No.</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->bp_number ?? '---' }}</p>
+                <p class="text-xs text-gray-500">Name</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->inspector_name ?? '---' }}</p>
             </div>
             <div>
-                <p class="text-xs text-gray-500">BP Date Issued</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->bp_issued_date ? $application->bp_issued_date->format('M d, Y') : '---' }}</p>
+                <p class="text-xs text-gray-500">Address</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->inspector_address ?? '---' }}</p>
             </div>
             <div>
-                <p class="text-xs text-gray-500">FSEC No.</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->fsec_no ?? '---' }}</p>
+                <p class="text-xs text-gray-500">PRC No.</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->inspector_prc_no ?? '---' }}</p>
             </div>
             <div>
-                <p class="text-xs text-gray-500">FSEC Date Issued</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->fsec_issued_date ? $application->fsec_issued_date->format('M d, Y') : '---' }}</p>
+                <p class="text-xs text-gray-500">Validity</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->inspector_prc_validity ? $application->inspector_prc_validity->format('M d, Y') : '---' }}</p>
             </div>
             <div>
-                <p class="text-xs text-gray-500">Date of Completion</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->completion_date ? $application->completion_date->format('M d, Y') : '---' }}</p>
+                <p class="text-xs text-gray-500">PTR No.</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->inspector_ptr_no ?? '---' }}</p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500">PTR Date Issued</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->inspector_ptr_date_issued ? $application->inspector_ptr_date_issued->format('M d, Y') : '---' }}</p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500">Issued At</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->inspector_ptr_issued_at ?? '---' }}</p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500">TIN</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->inspector_tin ?? '---' }}</p>
             </div>
         </div>
     </div>
 
     {{-- ================================================================== --}}
-    {{-- 8. OWNER INFORMATION --}}
+    {{-- 7. CONSENT OF LOT OWNER --}}
     {{-- ================================================================== --}}
     @php $sectionNum++ @endphp
     <div class="bg-white rounded-xl border border-gray-200 p-5">
         <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">
-            <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Owner Information
+            <span class="inline-flex items-center justify-center w-7 h-7 bg-teal-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Consent of Lot Owner
         </h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
@@ -385,36 +401,19 @@
                 <p class="text-sm text-gray-900 mt-0.5">{{ $application->owner_address ?? '---' }}</p>
             </div>
             <div>
-                <p class="text-xs text-gray-500">Date Signed</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->owner_date_signed ? $application->owner_date_signed->format('M d, Y') : '---' }}</p>
+                <p class="text-xs text-gray-500">CTC No.</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->owner_ctc_no ?? '---' }}</p>
             </div>
             <div>
-                <p class="text-xs text-gray-500">Gov't ID No.</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->owner_govt_id ?? '---' }}</p>
+                <p class="text-xs text-gray-500">CTC Date Issued</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->owner_ctc_date_issued ? $application->owner_ctc_date_issued->format('M d, Y') : '---' }}</p>
             </div>
             <div>
-                <p class="text-xs text-gray-500">ID Date Issued</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->owner_id_date_issued ? $application->owner_id_date_issued->format('M d, Y') : '---' }}</p>
-            </div>
-            <div>
-                <p class="text-xs text-gray-500">Place Issued</p>
-                <p class="text-sm text-gray-900 mt-0.5">{{ $application->owner_id_place_issued ?? '---' }}</p>
+                <p class="text-xs text-gray-500">Issued At</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->owner_ctc_issued_at ?? '---' }}</p>
             </div>
         </div>
     </div>
-
-    {{-- ================================================================== --}}
-    {{-- 9. REMARKS --}}
-    {{-- ================================================================== --}}
-    @if($application->remarks)
-    @php $sectionNum++ @endphp
-    <div class="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">
-            <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Remarks
-        </h3>
-        <p class="text-sm text-gray-900 whitespace-pre-line">{{ $application->remarks }}</p>
-    </div>
-    @endif
 
     {{-- ================================================================== --}}
     {{-- ASSESSMENT SUMMARY --}}
@@ -423,7 +422,7 @@
     @php $sectionNum++ @endphp
     <div class="bg-white rounded-xl border border-gray-200 p-5">
         <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">
-            <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Assessment Summary
+            <span class="inline-flex items-center justify-center w-7 h-7 bg-teal-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Assessment Summary
         </h3>
         <div class="space-y-4">
             @php $grandTotal = 0; @endphp
@@ -451,44 +450,11 @@
             @endforeach
             <div class="flex items-center justify-between pt-3 border-t border-gray-200">
                 <span class="text-sm font-semibold text-gray-900">Grand Total</span>
-                <span class="text-lg font-bold text-indigo-700">&#8369;{{ number_format($grandTotal, 2) }}</span>
+                <span class="text-lg font-bold text-teal-700">&#8369;{{ number_format($grandTotal, 2) }}</span>
             </div>
         </div>
     </div>
     @endif
-
-    {{-- ================================================================== --}}
-    {{-- WORKFLOW ACTION BUTTONS --}}
-    {{-- ================================================================== --}}
-    @php $sectionNum++ @endphp
-    <div class="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">
-            <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Workflow Actions
-        </h3>
-        <div class="flex flex-wrap gap-2">
-            @if($application->status === 'submitted')
-                <a href="{{ route('assessments.assess.op', $application) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition">
-                    <i class="fas fa-clipboard-check"></i> Assess
-                </a>
-            @endif
-            @if($application->status === 'billed')
-                <a href="{{ route('collections.create.op', $application) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition">
-                    <i class="fas fa-money-bill-wave"></i> Record Payment
-                </a>
-            @endif
-            @if($application->status === 'paid')
-                <a href="{{ route('permits.generate.op', $application) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition">
-                    <i class="fas fa-certificate"></i> Generate Permit
-                </a>
-            @endif
-            @if(in_array($application->status, ['draft']))
-                <span class="text-sm text-gray-500 italic">Submit the application to begin the workflow.</span>
-            @endif
-            @if(in_array($application->status, ['permit_generated', 'released']))
-                <span class="text-sm text-green-600 font-medium"><i class="fas fa-check-circle mr-1"></i> Workflow complete.</span>
-            @endif
-        </div>
-    </div>
 
     {{-- ================================================================== --}}
     {{-- ACTIVITY LOG --}}
@@ -496,7 +462,7 @@
     @php $sectionNum++ @endphp
     <div class="bg-white rounded-xl border border-gray-200 p-5">
         <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">
-            <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Activity Log
+            <span class="inline-flex items-center justify-center w-7 h-7 bg-teal-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Activity Log
         </h3>
         @php
             $activities = \Spatie\Activitylog\Models\Activity::where('subject_type', $application->getMorphClass())

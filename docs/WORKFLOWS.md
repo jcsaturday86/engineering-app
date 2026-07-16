@@ -95,6 +95,30 @@ Same 5-step shape as DP/OP. Parallel `*Sgp()` methods, same delegation pattern. 
 
 ---
 
+## Fencing Permit (FP) Workflow
+
+```
+draft → submitted → engineering_assessed → billed → paid → permit_generated → released
+```
+
+Same 5-step shape as DP/SGP/OP — no zoning stage. `FencingApplicationController` (create/store/show/edit/update/submit/revertSubmission/cancel) plus parallel `*Fp()` methods in `AssessmentController`/`CollectionController`/`PermitController`, all delegating to the same generic private methods BP/OP/DP/SGP already use.
+
+**Application Form** (`fencing-applications/form.blade.php`): Applicant Information, Applicant Address (cascading province/city/barangay), Location of Construction, Scope of Work (single-choice: new_construction/erection/addition/repair/others), Design Professional, Plans and Specifications, Full-Time Inspector or Supervisor (identical field shape to Design Professional, with a "Same as Design Professional" toggle that copies all 8 fields via JS), Consent of Lot Owner.
+
+**Assessment** (`AssessmentController::assessFp()` / `addFenceItem()`, `assess.blade.php`'s `FP_FEE` tab): fee items are added via a dedicated "Add Fencing Fee Item" form with a grouped `<select>` offering 3 optgroups — Line & Grade (`ASS_LINE_GRADE`), Ground Preparation & Excavation (`ASS_GP_INSPECT`, `ASS_GP_EXCAV`, `ASS_GP_ISSUANCE`, `ASS_GP_FOUND`, `ASS_GP_OTHER`, `ASS_GP_ENCROACH`), and Fencing (`ASS_FENCE_MASONRY`, `ASS_FENCE_INDIG`) — all 9 codes reuse existing rate schedules already seeded under the Building Permit's `ACC_FEE` Accessory category; no separate rate configuration exists for FP. Supports all 3 computation methods (`range_based`, `per_unit`, `fixed`). A legacy `addItemFp()` generic-fallback method also exists on the route table but is unused now that `addFenceItem()` covers the only `FP_FEE` fee types.
+
+**Print Assessment**: `pdf/assessment-summary-fp.blade.php`, titled "FENCING PERMIT ASSESSMENT", route `assessments.print.fp`.
+
+**Collection of Payment**: standard generic collection flow (`CollectionController::createFp`/`storeFp`, thin wrappers around the generic `doCreate`/`doStore`), route prefix `collections/fp/*`.
+
+**Release Permit**: `PermitController::generateFp()` produces a `Permit` row with number format `FP-YYYY-MM-NNNNN`, prints `pdf/fencing-permit.blade.php` — a 2-page reproduction of NBC Form B-03. Page 1 = Boxes 1-5 (Owner/Applicant info + Scope of Work checkboxes, Design Professional + Full-Time Inspector shown side by side, Applicant + Lot Owner Consent signature blocks, blank Notarization). Page 2 = Boxes 6-8 (blank Measurements/Type-of-Fencing filled by the Design Professional rather than the system, blank Progress-Flow tracking half, auto-filled Assessed-Fees half summing all active `FP_FEE` assessment items with OR number/date paid from the Collection record, Building-Official-signed Action-Taken conditions text).
+
+No online self-service application for FP — `OnlineApplicationController` explicitly excludes `DP`/`SGP`/`FP` from the client-facing permit type list and from `store()` (`abort(403, ...)`), same as DP and SGP: walk-in / staff-entered only for now.
+
+**Sidebar navigation**: FP's own Applications section sits between Occupancy Permit and Demolition Permit in the main collapsible nav. In the Assessment and Permits flyout submenus, however, Fencing Permit is listed last (after Demolition and Signage), not between Occupancy and Demolition.
+
+---
+
 ## State Machine
 
 ### ApplicationStatus Enum (`app/Enums/ApplicationStatus.php`)

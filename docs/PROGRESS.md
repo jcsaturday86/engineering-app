@@ -116,6 +116,26 @@
 
 ---
 
+## Fencing Permit Module
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Application CRUD (walk-in) | DONE | `fencing_applications` table + `FencingApplication` model/controller; permit code `FP` (pre-existing inactive PermitType flipped to active) |
+| Application numbering | DONE | FP-YYYY-MM-NNNNN |
+| FP form fields | DONE | Applicant/enterprise/address, Location of Construction, Scope of Work, Design Professional block, Inspector/Supervisor block, Consent of Lot Owner |
+| Status workflow (skips zoning) | DONE | Same 5-step shape as DP/SGP: submitted → engineering_assessed → billed → paid → permit_generated → released |
+| Inspector section design iteration | DONE | Originally a repeatable "Add Inspector" Alpine.js UI backed by a `fencing_inspectors` child table (`is_primary` flag) — first repeatable-child-record UI in this codebase. Simplified per user request to a second FIXED single block (8 flat `inspector_*` columns on `fencing_applications`, mirroring `design_professional_*`); migration drops `fencing_inspectors`, `FencingInspector` model deleted, controller/views/PDF read the flat columns directly |
+| "Same as Design Professional" toggle | DONE | Pill-style toggle on the Inspector section copies all 8 Design Professional field values via client-side JS, reusing the existing "Same as PEE" pattern from the BP form |
+| FP_FEE fee category | DONE | Reuses existing `ACC_FEE`-scoped fee schedule data (`ASS_FENCE_MASONRY`/`ASS_FENCE_INDIG`) under a new dedicated `FP_FEE` category rather than duplicating rate data |
+| Line & Grade / Ground Preparation fee codes | DONE | 7 more codes added to the FP assessment fee dropdown (`ASS_LINE_GRADE`, `ASS_GP_INSPECT`, `ASS_GP_EXCAV`, `ASS_GP_ISSUANCE`, `ASS_GP_FOUND`, `ASS_GP_OTHER`, `ASS_GP_ENCROACH`), reusing existing `ACC_FEE` rate data; required adding a `case 'fixed':` branch to the fee-computation logic (3 of the 7 use fixed-fee computation, not needed by the original 2-code implementation). Note: these were first mistakenly wired into the Zoning assessment's fee dropdown, then fully reverted before being correctly added here — Zoning's dropdown is unchanged from before this session |
+| Assessed Fees summing bug | DONE (fixed) | Certificate's Assessed Fees table only showed the first active fee item's amount instead of summing all active items — missed a second fee type when both Masonry and Indigenous fencing fees were assessed together |
+| Final permit certificate PDF | DONE | `pdf/fencing-permit.blade.php`, 2-page plain-HTML/CSS reproduction of NBC Form B-03 |
+| DomPDF 3-page pagination bug | DONE (fixed) | Certificate rendered 3 pages instead of 2 — root cause: insufficient CSS vertical-spacing headroom combined with a `display:table`-based two-column layout (`.box-half`) DomPDF mis-paginated; fixed by tightening spacing and switching to CSS `float`-based columns |
+| Sidebar entries | DONE | Main nav, Assessment flyout, Permits flyout — positioned between Occupancy Permit and Demolition Permit |
+| End-to-end verification | DONE | Full lifecycle verified in browser: create → submit → assess → finalize → pay → generate permit → print |
+
+---
+
 ## Zoning / Planning Module
 
 | Feature | Status | Notes |

@@ -15,6 +15,7 @@ use App\Models\OccupancyDivision;
 use App\Models\OccupancyApplication;
 use App\Models\Setting;
 use App\Models\Signatory;
+use App\Models\FencingApplication;
 use App\Models\SignageApplication;
 use App\Models\User;
 use App\Notifications\AssessmentCompleteNotification;
@@ -100,6 +101,15 @@ class AssessmentController extends Controller
         return view('assessments.signage-index', compact('applications'));
     }
 
+    public function fencingIndex()
+    {
+        $applications = FencingApplication::whereIn('status', ['submitted', 'engineering_assessed', 'billed'])
+            ->latest()
+            ->paginate(20);
+
+        return view('assessments.fencing-index', compact('applications'));
+    }
+
     // BP assessment
     public function assess(Application $application)
     {
@@ -124,12 +134,19 @@ class AssessmentController extends Controller
         return $this->doAssess($signageApplication, 'signage', 'SGP');
     }
 
+    // FP assessment
+    public function assessFp(FencingApplication $fencingApplication)
+    {
+        return $this->doAssess($fencingApplication, 'fencing', 'FP');
+    }
+
     private function morphTypeFor(string $permitCode): string
     {
         return match ($permitCode) {
             'OP' => 'op',
             'DP' => 'dp',
             'SGP' => 'sgp',
+            'FP' => 'fp',
             default => 'bp',
         };
     }
@@ -179,10 +196,11 @@ class AssessmentController extends Controller
         $isOp = $permitCode === 'OP';
         $isDp = $permitCode === 'DP';
         $isSgp = $permitCode === 'SGP';
+        $isFp = $permitCode === 'FP';
 
         return view('assessments.assess', compact(
             'application', 'assessment', 'feeCategories', 'tabCategories',
-            'totals', 'assessmentItems', 'itemsByCategory', 'activeTab', 'isOp', 'isDp', 'isSgp',
+            'totals', 'assessmentItems', 'itemsByCategory', 'activeTab', 'isOp', 'isDp', 'isSgp', 'isFp',
             'buildingParts', 'occupancyDivisions'
         ));
     }
@@ -194,6 +212,7 @@ class AssessmentController extends Controller
                 'op' => route('assessments.assess.op', $application) . '?tab=SUMMARY',
                 'dp' => route('assessments.assess.dp', $application) . '?tab=SUMMARY',
                 'sgp' => route('assessments.assess.sgp', $application) . '?tab=SUMMARY',
+                'fp' => route('assessments.assess.fp', $application) . '?tab=SUMMARY',
                 default => route('assessments.assess', $application) . '?tab=SUMMARY',
             };
             return redirect()->to($route)->with('error', 'This assessment has been finalized and cannot be modified.');
@@ -1248,6 +1267,129 @@ class AssessmentController extends Controller
         return $this->doAddItem($request, $signageApplication, 'signage', 'SGP');
     }
 
+    // FP add item (generic fallback, unused now that addFenceItem() covers the only FP_FEE fee types)
+    public function addItemFp(Request $request, FencingApplication $fencingApplication)
+    {
+        return $this->doAddItem($request, $fencingApplication, 'fencing', 'FP');
+    }
+
+    // FP fencing fee item — reuses the same ASS_FENCE_MASONRY/ASS_FENCE_INDIG FeeType/FeeSchedule
+    // rows and computation logic as addAccFeeItem() (Settings → Fee Schedules → Accessory), but
+    // scoped to Fencing Permit applications and stored under the FP_FEE category, not ACC_FEE.
+    public function addFenceItem(Request $request, FencingApplication $fencingApplication)
+    {
+        $validated = $request->validate([
+            'fence_fee_type' => ['required', 'string', Rule::in([
+                'ASS_FENCE_MASONRY', 'ASS_FENCE_INDIG',
+                'ASS_LINE_GRADE',
+                'ASS_GP_INSPECT', 'ASS_GP_EXCAV', 'ASS_GP_ISSUANCE',
+                'ASS_GP_FOUND', 'ASS_GP_OTHER', 'ASS_GP_ENCROACH',
+            ])],
+            'unit' => 'required|numeric|min:0.01',
+        ]);
+
+        $assessment = Assessment::firstOrCreate(
+            [
+                'applicationable_type' => 'fp',
+                'applicationable_id' => $fencingApplication->id,
+                'assessment_type' => 'fencing',
+            ],
+            ['status' => 'draft', 'assessed_by' => Auth::id()]
+        );
+
+        if ($r = $this->redirectIfFinalized($assessment, $fencingApplication)) return $r;
+
+        $feeTypeCode = $validated['fence_fee_type'];
+        $unit = (float) $validated['unit'];
+
+        $feeType = FeeType::where('code', $feeTypeCode)->first();
+        if (! $feeType) {
+            return back()->with('error', 'Fee type not found: ' . $feeTypeCode);
+        }
+
+        $fpFeeCategory = FeeCategory::where('code', 'FP_FEE')->first();
+        $isRangeBased = $feeType->computation_method === 'range_based';
+
+        $scheduleQuery = FeeSchedule::where('fee_type_id', $feeType->id)->where('is_active', true);
+        if ($isRangeBased) {
+            $scheduleQuery->where('range_from', '<=', $unit)->where('range_to', '>=', $unit);
+        }
+        $schedule = $scheduleQuery->orderBy('id')->first();
+
+        if (! $schedule && $isRangeBased) {
+            $schedule = FeeSchedule::where('fee_type_id', $feeType->id)
+                ->where('is_active', true)
+                ->where('range_from', '<=', $unit)
+                ->orderBy('range_from', 'desc')
+                ->first();
+        }
+
+        if (! $schedule) {
+            return back()->with('error', 'No fee schedule found for ' . $feeType->name . '.');
+        }
+
+        $excessFee = 0;
+        $unitFee = 0;
+
+        switch ($feeType->computation_method) {
+            case 'per_unit':
+                $unitFee = (float) $schedule->fee_per_unit;
+                $baseFee = round($unit * $unitFee, 2);
+                break;
+
+            case 'range_based':
+                $threshold = (float) $schedule->excess_threshold;
+                if ($threshold > 0 && $unit > $threshold) {
+                    $excess = $unit - $threshold;
+                    $excessFee = round($excess * (float) $schedule->excess_fee, 2);
+                    $baseFee = round((float) $schedule->fixed_fee + $excessFee, 2);
+                } elseif ((float) $schedule->fee_per_unit > 0) {
+                    $unitFee = (float) $schedule->fee_per_unit;
+                    $baseFee = round($unit * $unitFee, 2);
+                } else {
+                    $baseFee = round((float) $schedule->fixed_fee, 2);
+                    $unitFee = 0;
+                }
+                break;
+
+            case 'fixed':
+                $unitFee = (float) $schedule->fixed_fee;
+                $baseFee = round($unit * $unitFee, 2);
+                break;
+
+            default:
+                $baseFee = 0;
+        }
+
+        AssessmentItem::create([
+            'assessment_id' => $assessment->id,
+            'fee_category_id' => $fpFeeCategory->id,
+            'fee_type_id' => $feeType->id,
+            'fee_code' => $feeType->code,
+            'description' => $feeType->name,
+            'quantity' => $unit,
+            'unit_fee' => $unitFee,
+            'excess_fee' => $excessFee,
+            'inspection_fee' => 0,
+            'amount' => $baseFee,
+            'computation_details' => [
+                'fee_type_code' => $feeTypeCode,
+                'fee_schedule_id' => $schedule->id,
+                'input_unit' => $unit,
+                'computation_method' => $feeType->computation_method,
+                'fixed_fee' => (float) $schedule->fixed_fee,
+                'fee_per_unit' => (float) $schedule->fee_per_unit,
+                'excess_threshold' => (float) $schedule->excess_threshold,
+                'excess_fee_rate' => (float) $schedule->excess_fee,
+                'range' => $isRangeBased ? ($schedule->range_from . '–' . $schedule->range_to) : null,
+            ],
+            'is_active' => true,
+        ]);
+
+        return redirect()->route('assessments.assess.fp', ['fencingApplication' => $fencingApplication->id, 'tab' => 'FP_FEE'])
+            ->with('success', 'Fencing fee item added.');
+    }
+
     public function addDemolitionItem(Request $request, DemolitionApplication $demolitionApplication)
     {
         $allCodes = implode(',', [
@@ -1360,6 +1502,7 @@ class AssessmentController extends Controller
             'OP' => route('assessments.assess.op', ['occupancyApplication' => $application->id, 'tab' => $tabCode]),
             'DP' => route('assessments.assess.dp', ['demolitionApplication' => $application->id, 'tab' => $tabCode]),
             'SGP' => route('assessments.assess.sgp', ['signageApplication' => $application->id, 'tab' => $tabCode]),
+            'FP' => route('assessments.assess.fp', ['fencingApplication' => $application->id, 'tab' => $tabCode]),
             default => route('assessments.assess', ['application' => $application->id, 'tab' => $tabCode]),
         };
 
@@ -1373,6 +1516,7 @@ class AssessmentController extends Controller
             'op' => \App\Models\OccupancyApplication::find($assessment->applicationable_id),
             'dp' => \App\Models\DemolitionApplication::find($assessment->applicationable_id),
             'sgp' => \App\Models\SignageApplication::find($assessment->applicationable_id),
+            'fp' => \App\Models\FencingApplication::find($assessment->applicationable_id),
             default => \App\Models\Application::find($assessment->applicationable_id),
         };
         if ($r = $this->redirectIfFinalized($assessment, $application)) return $r;
@@ -1395,6 +1539,11 @@ class AssessmentController extends Controller
 
         if ($assessment->applicationable_type === 'sgp') {
             return redirect()->route('assessments.assess.sgp', ['signageApplication' => $assessment->applicationable_id, 'tab' => $tab])
+                ->with('success', 'Fee item removed.');
+        }
+
+        if ($assessment->applicationable_type === 'fp') {
+            return redirect()->route('assessments.assess.fp', ['fencingApplication' => $assessment->applicationable_id, 'tab' => $tab])
                 ->with('success', 'Fee item removed.');
         }
 
@@ -1426,9 +1575,14 @@ class AssessmentController extends Controller
         return $this->doSummary($signageApplication, 'SGP');
     }
 
+    public function summaryFp(FencingApplication $fencingApplication)
+    {
+        return $this->doSummary($fencingApplication, 'FP');
+    }
+
     private function doSummary(PermitApplicationContract $application, string $permitCode = 'BP')
     {
-        $assessments = $application->assessments()->with('assessmentItems')->get();
+        $assessments = $application->assessments()->with('assessmentItems.feeCategory')->get();
 
         $summary = [];
         $grandTotal = 0;
@@ -1447,11 +1601,18 @@ class AssessmentController extends Controller
             ];
         }
 
+        $assessmentItems = $assessments
+            ->flatMap(fn ($a) => $a->assessmentItems->where('is_active', true))
+            ->groupBy(fn ($item) => $item->feeCategory->name ?? 'Other Fees');
+
+        $assessment = $assessments->firstWhere('assessment_type', 'engineering') ?? $assessments->last();
+
         $isOp = $permitCode === 'OP';
         $isDp = $permitCode === 'DP';
         $isSgp = $permitCode === 'SGP';
+        $isFp = $permitCode === 'FP';
 
-        return view('assessments.summary', compact('application', 'summary', 'grandTotal', 'isOp', 'isDp', 'isSgp'));
+        return view('assessments.summary', compact('application', 'summary', 'grandTotal', 'assessmentItems', 'assessment', 'isOp', 'isDp', 'isSgp', 'isFp'));
     }
 
     // BP finalize
@@ -1557,6 +1718,21 @@ class AssessmentController extends Controller
         $this->doFinalize($signageApplication);
         return redirect()
             ->to(route('assessments.assess.sgp', $signageApplication) . '?tab=SUMMARY')
+            ->with('success', 'Assessment finalized successfully.');
+    }
+
+    // FP finalize
+    public function finalizeFp(Request $request, FencingApplication $fencingApplication)
+    {
+        $request->validate(['password' => 'required|string']);
+        if (!Hash::check($request->password, Auth::user()->password)) {
+            return redirect()
+                ->to(route('assessments.assess.fp', $fencingApplication) . '?tab=SUMMARY')
+                ->with('error', 'Incorrect password. Assessment not finalized.');
+        }
+        $this->doFinalize($fencingApplication);
+        return redirect()
+            ->to(route('assessments.assess.fp', $fencingApplication) . '?tab=SUMMARY')
             ->with('success', 'Assessment finalized successfully.');
     }
 
@@ -1677,6 +1853,26 @@ class AssessmentController extends Controller
             ->with('success', 'Engineering assessment finalization reverted.');
     }
 
+    // FP revert engineering finalize
+    public function revertEngineeringFp(Request $request, FencingApplication $fencingApplication)
+    {
+        $request->validate(['password' => 'required|string']);
+        if (! Hash::check($request->password, Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
+        $error = $this->guardRevertEngineering($fencingApplication);
+        if ($error) {
+            return back()->with('error', $error);
+        }
+
+        $this->doRevertEngineering($fencingApplication);
+
+        return redirect()
+            ->to(route('assessments.assess.fp', $fencingApplication) . '?tab=SUMMARY')
+            ->with('success', 'Engineering assessment finalization reverted.');
+    }
+
     // OP only — revert an in-progress (not yet finalized) occupancy assessment all the way back to draft,
     // deleting all occupancy fee entries entered so far.
     public function revertToDraftOp(Request $request, OccupancyApplication $occupancyApplication)
@@ -1773,6 +1969,38 @@ class AssessmentController extends Controller
         return redirect()->route('assessments.signage')->with('success', 'Application reverted to draft. All signage fee entries were deleted.');
     }
 
+    // FP only — revert an in-progress (not yet finalized) fencing assessment all the way back to draft,
+    // deleting all fencing fee entries entered so far.
+    public function revertToDraftFp(Request $request, FencingApplication $fencingApplication)
+    {
+        $request->validate(['password' => 'required|string']);
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
+        if ($fencingApplication->status !== 'submitted') {
+            return back()->with('error', 'Only applications awaiting fencing assessment can be reverted to draft.');
+        }
+
+        DB::transaction(function () use ($fencingApplication) {
+            $assessment = Assessment::where('applicationable_type', 'fp')
+                ->where('applicationable_id', $fencingApplication->id)
+                ->where('assessment_type', 'fencing')
+                ->first();
+
+            if ($assessment) {
+                $assessment->assessmentItems()->delete();
+                $assessment->delete();
+            }
+
+            $fencingApplication->update(['status' => 'draft', 'submitted_at' => null]);
+        });
+
+        activity()->causedBy(Auth::user())->performedOn($fencingApplication)->log('Fencing assessment reverted to draft — all fee entries deleted');
+
+        return redirect()->route('assessments.fencing')->with('success', 'Application reverted to draft. All fencing fee entries were deleted.');
+    }
+
     private function guardRevertEngineering(PermitApplicationContract $application): ?string
     {
         if (! in_array($application->status, ['engineering_assessed', 'billed'])) {
@@ -1808,7 +2036,7 @@ class AssessmentController extends Controller
             });
 
             // DP/SGP have no zoning stage — their pre-engineering-assessment status is 'submitted', not 'zoning_assessed'.
-            $revertStatus = in_array($application->getPermitTypeCode(), ['DP', 'SGP']) ? 'submitted' : 'zoning_assessed';
+            $revertStatus = in_array($application->getPermitTypeCode(), ['DP', 'SGP', 'FP']) ? 'submitted' : 'zoning_assessed';
 
             $application->update([
                 'status' => $revertStatus,
@@ -1844,12 +2072,19 @@ class AssessmentController extends Controller
         return $this->doPrint($signageApplication);
     }
 
+    // FP print
+    public function printFp(FencingApplication $fencingApplication)
+    {
+        return $this->doPrint($fencingApplication);
+    }
+
     private function doPrint(PermitApplicationContract $application)
     {
         $settings = Setting::where('group', 'general')->pluck('value', 'key');
         $isOp = $application->getPermitTypeCode() === 'OP';
         $isDp = $application->getPermitTypeCode() === 'DP';
         $isSgp = $application->getPermitTypeCode() === 'SGP';
+        $isFp = $application->getPermitTypeCode() === 'FP';
 
         if ($isDp) {
             return $this->doPrintDp($application, $settings);
@@ -1857,6 +2092,10 @@ class AssessmentController extends Controller
 
         if ($isSgp) {
             return $this->doPrintSgp($application, $settings);
+        }
+
+        if ($isFp) {
+            return $this->doPrintFp($application, $settings);
         }
 
         if ($isOp) {
@@ -2026,6 +2265,44 @@ class AssessmentController extends Controller
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary-sgp', compact(
             'application', 'settings', 'sealImage', 'signageAssessment',
+            'itemsByCategory', 'barangayName', 'preparedBy',
+            'buildingOfficial', 'barcodeImage'
+        ));
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->stream("assessment_{$application->application_number}.pdf");
+    }
+
+    private function doPrintFp(PermitApplicationContract $application, $settings)
+    {
+        $fencingAssessment = $application->assessments()
+            ->where('assessment_type', 'fencing')
+            ->with(['assessmentItems' => fn($q) => $q->where('is_active', true)->with('feeCategory')])
+            ->first();
+
+        $itemsByCategory = $fencingAssessment
+            ? $fencingAssessment->assessmentItems->groupBy(fn($i) => $i->feeCategory?->code ?? 'OTHER')
+            : collect();
+
+        $barangayName = $application->constructionBarangay?->name ?? '';
+
+        $preparedBy = $fencingAssessment?->assessed_by
+            ? \App\Models\User::find($fencingAssessment->assessed_by)
+            : null;
+
+        $buildingOfficial = Signatory::where('role', 'building_official')
+            ->where('is_active', true)
+            ->first();
+
+        $generator    = new BarcodeGeneratorPNG();
+        $barcodeImage = base64_encode(
+            $generator->getBarcode($application->application_number, $generator::TYPE_CODE_128, 2, 80)
+        );
+
+        $sealImage = Setting::imageDataUri($settings, 'general.logo');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary-fp', compact(
+            'application', 'settings', 'sealImage', 'fencingAssessment',
             'itemsByCategory', 'barangayName', 'preparedBy',
             'buildingOfficial', 'barcodeImage'
         ));

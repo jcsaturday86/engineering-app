@@ -470,7 +470,7 @@
             <span class="inline-flex items-center justify-center w-7 h-7 bg-red-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Activity Log
         </h3>
         @php
-            $activities = \Spatie\Activitylog\Models\Activity::where('subject_type', get_class($application))
+            $activities = \Spatie\Activitylog\Models\Activity::where('subject_type', $application->getMorphClass())
                 ->where('subject_id', $application->id)
                 ->latest()
                 ->take(20)

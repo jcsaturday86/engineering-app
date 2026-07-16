@@ -369,13 +369,25 @@
 
 ---
 
+### Fencing Permit (FP) — Full Fifth Permit Workflow — COMPLETED
+
+- New `fencing_applications` table + `FencingApplication` model, morph map `fp` registered; permit code `FP` was a pre-existing inactive `PermitType` row, flipped to active. Same 5-step lifecycle as DP/SGP, no Zoning stage: `draft → submitted → engineering_assessed → billed → paid → permit_generated → released`.
+- Form fields: Applicant Info, Enterprise/Ownership, Applicant Address, Location of Construction, Scope of Work (single-choice: new_construction/erection/addition/repair/others), Design Professional, Plans and Specifications (fixed block), Full-Time Inspector or Supervisor (fixed block, identical shape to Design Professional), Consent of Lot Owner. `FencingApplicationController` mirrors `DemolitionApplicationController`'s CRUD shape, plus a dedicated `report()` action (landscape DomPDF via the shared `pdf/report.blade.php` template, not present on DP/SGP's controllers). No `printForm()` — same deferred-application-print precedent as DP/SGP.
+- **Inspector-section design iteration**: originally built as a repeatable "Add Inspector" Alpine.js UI backed by a new `fencing_inspectors` child table (`is_primary` flag to resolve which inspector prints on the certificate's single Box 3 slot) — the first repeatable-child-record UI pattern anywhere in this codebase. Per user follow-up request, this was simplified to a second FIXED single block instead: migration drops `fencing_inspectors`, adds 8 flat `inspector_*` columns to `fencing_applications` (mirroring `design_professional_*` exactly), `FencingInspector` model deleted, controller/views/PDF updated to read the flat columns directly. A "Same as Design Professional" pill-toggle was then added to the Inspector section, copying all 8 fields via client-side JS (`copyDesignProfessionalToInspector()`), reusing the existing "Same as PEE" toggle pattern already present on the BP application form.
+- **`FP_FEE` fee category** (new, dedicated) reuses existing `ACC_FEE`-scoped `FeeType`/`FeeSchedule` rows rather than seeding new rate data — initially `ASS_FENCE_MASONRY`/`ASS_FENCE_INDIG`, later extended with 7 more codes (`ASS_LINE_GRADE`, `ASS_GP_INSPECT`, `ASS_GP_EXCAV`, `ASS_GP_ISSUANCE`, `ASS_GP_FOUND`, `ASS_GP_OTHER`, `ASS_GP_ENCROACH` — "Line & Grade" / "Ground Preparation & Excavation" fees) via a grouped `<optgroup>` select in `assess.blade.php`'s `FP_FEE` tab. The 7-code addition required a new `case 'fixed':` branch in `AssessmentController::addFenceItem()`'s computation switch (3 of the 7 use fixed-fee computation, unneeded by the original 2-code implementation). These same 7 codes were first mistakenly wired into the Zoning assessment's dropdown instead, then fully reverted per user correction before being correctly added to FP — Zoning's fee dropdown is unchanged from before this session.
+- Final permit certificate: `pdf/fencing-permit.blade.php`, a 2-page plain-HTML/CSS reproduction of NBC Form B-03 (not a scanned-background overlay). Two bugs found and fixed during QA: (1) a DomPDF pagination bug rendering 3 pages instead of 2 — root-caused to insufficient CSS vertical-spacing headroom plus a `display:table`-based two-column layout DomPDF mis-paginated, fixed by tightening spacing and switching to CSS-float/inline-block columns; (2) the Assessed Fees table on page 2 only summed the first active fee item instead of all active items, silently dropping a second fee type when both Masonry and Indigenous fencing fees were assessed on the same application.
+- Sidebar entries added in all 3 locations, positioned between Occupancy Permit and Demolition Permit in the main collapsible nav (per the pre-existing `sort_order` on the seeded `FP` `PermitType` row) — but listed last (after Demolition and Signage) in the Assessment and Permits flyout submenus. Excluded from `OnlineApplicationController`, same as DP/SGP.
+- Full lifecycle verified live end-to-end in-browser (create with both Design Professional/Inspector blocks filled → submit → assess, testing all 3 computation methods → finalize → pay → generate permit → verify 2-page PDF). Test data cleaned up afterward.
+
+---
+
 ## Upcoming Tasks
 
 | Task | Priority | Notes |
 |------|----------|-------|
 | Fix Create/Edit User form (role select + blank-field crash) | High | Currently unusable end-to-end — see "Staff Account Password Complexity" above |
 | Signage Permit fee schedule + application-form print | Medium | `SGP_FEE` category exists but has no seeded rates (manual entry only); no scanned official application form supplied yet for the background-overlay print |
-| Additional permit types (FP, EP, ELP, MP, PP, ECP) | Medium | BP, OP, DP, and SGP are now active; the rest remain unbuilt placeholders in `permit_types` |
+| Additional permit types (EP, ELP, MP, PP, ECP) | Medium | BP, OP, DP, SGP, and FP are now active; the rest remain unbuilt placeholders in `permit_types` |
 | Document requirement upload UI | Low | Model/route exists, UI needs improvement |
 | Email notification configuration | Low | SMTP settings, notification templates |
 | Annual inspection module (non-mech) | Future | Not in current requirements |

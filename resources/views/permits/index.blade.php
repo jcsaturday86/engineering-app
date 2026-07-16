@@ -5,6 +5,7 @@
         'building' => 'Building Permits',
         'demolition' => 'Demolition Permits',
         'signage' => 'Signage Permits',
+        'fencing' => 'Fencing Permits',
         default => 'Occupancy Permits',
     };
 @endphp
@@ -60,6 +61,7 @@
                         'building' => route('permits.building'),
                         'demolition' => route('permits.demolition'),
                         'signage' => route('permits.signage'),
+                        'fencing' => route('permits.fencing'),
                         default => route('permits.occupancy'),
                     };
                 @endphp
@@ -76,7 +78,7 @@
                     <tr>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Permit No.</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Applicant</th>
-                        @unless(in_array($type, ['demolition', 'signage']))
+                        @unless(in_array($type, ['demolition', 'signage', 'fencing']))
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Project Title</th>
                         @endunless
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Status</th>
@@ -96,6 +98,7 @@
                             'occupancy' => route('occupancy-applications.show', $app),
                             'demolition' => route('demolition-applications.show', $app),
                             'signage' => route('signage-applications.show', $app),
+                            'fencing' => route('fencing-applications.show', $app),
                             default => route('applications.show', $app),
                         };
                     @endphp
@@ -106,7 +109,7 @@
                             </a>
                         </td>
                         <td class="px-4 py-3 text-gray-900">{{ $app->applicant_last_name }}, {{ $app->applicant_first_name }}</td>
-                        @unless(in_array($type, ['demolition', 'signage']))
+                        @unless(in_array($type, ['demolition', 'signage', 'fencing']))
                         <td class="px-4 py-3 text-gray-600 max-w-[200px] truncate">{{ $app->project_title ?? '-' }}</td>
                         @endunless
                         <td class="px-4 py-3">
@@ -176,6 +179,7 @@
                                                     'building' => route('permits.restorePermit', $app),
                                                     'demolition' => route('permits.restorePermit.dp', $app),
                                                     'signage' => route('permits.restorePermit.sgp', $app),
+                                                    'fencing' => route('permits.restorePermit.fp', $app),
                                                     default => route('permits.restorePermit.op', $app),
                                                 };
                                             @endphp
@@ -208,6 +212,7 @@
                                         'building' => route('permits.generate', $app),
                                         'demolition' => route('permits.generate.dp', $app),
                                         'signage' => route('permits.generate.sgp', $app),
+                                        'fencing' => route('permits.generate.fp', $app),
                                         default => route('permits.generate.op', $app),
                                     };
                                 @endphp
@@ -257,6 +262,7 @@
                                                         'building' => route('permits.revertGenerate', $app),
                                                         'demolition' => route('permits.revertGenerate.dp', $app),
                                                         'signage' => route('permits.revertGenerate.sgp', $app),
+                                                        'fencing' => route('permits.revertGenerate.fp', $app),
                                                         default => route('permits.revertGenerate.op', $app),
                                                     };
                                                 @endphp
@@ -295,7 +301,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="{{ in_array($type, ['demolition', 'signage']) ? 6 : 7 }}" class="px-4 py-12 text-center text-gray-400">
+                        <td colspan="{{ in_array($type, ['demolition', 'signage', 'fencing']) ? 6 : 7 }}" class="px-4 py-12 text-center text-gray-400">
                             <i class="fas fa-file-invoice text-3xl mb-3"></i>
                             <p>No paid applications found for permit generation</p>
                         </td>

@@ -90,6 +90,31 @@
 </div>
 @endcanany
 
+{{-- Fencing Permit Applications (Staff/Admin) --}}
+@canany(['view-applications', 'create-applications'])
+<div x-data="{ open: {{ str_starts_with($currentRoute, 'fencing-applications') ? 'true' : 'false' }} }">
+    <button @click="open = !open" class="sidebar-link flex items-center justify-between w-full px-3 py-2.5 text-sm font-medium rounded-lg transition text-gray-700">
+        <div class="flex items-center gap-3">
+            <i class="fas fa-border-all w-5 text-center"></i>
+            <span x-show="sidebarOpen || mobileMenuOpen">Fencing Permit</span>
+        </div>
+        <i x-show="sidebarOpen || mobileMenuOpen" :class="open ? 'rotate-90' : ''" class="fas fa-chevron-right text-xs transition-transform"></i>
+    </button>
+    <div x-show="open && (sidebarOpen || mobileMenuOpen)" x-cloak class="ml-8 mt-1 space-y-1">
+        @can('view-applications')
+        <a href="{{ route('fencing-applications.index') }}" class="block px-3 py-2 text-sm rounded-lg {{ $currentRoute === 'fencing-applications.index' ? 'text-primary-700 bg-primary-50 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
+            All Applications
+        </a>
+        @endcan
+        @can('create-applications')
+        <a href="{{ route('fencing-applications.create') }}" class="block px-3 py-2 text-sm rounded-lg {{ $currentRoute === 'fencing-applications.create' ? 'text-primary-700 bg-primary-50 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
+            New Application
+        </a>
+        @endcan
+    </div>
+</div>
+@endcanany
+
 {{-- Demolition Permit Applications (Staff/Admin) --}}
 @canany(['view-applications', 'create-applications'])
 <div x-data="{ open: {{ str_starts_with($currentRoute, 'demolition-applications') ? 'true' : 'false' }} }">
@@ -181,6 +206,9 @@
         <a href="{{ route('assessments.signage') }}" class="block px-3 py-2 text-sm rounded-lg {{ $currentRoute === 'assessments.signage' ? 'text-primary-700 bg-primary-50 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
             Signage Permit
         </a>
+        <a href="{{ route('assessments.fencing') }}" class="block px-3 py-2 text-sm rounded-lg {{ $currentRoute === 'assessments.fencing' ? 'text-primary-700 bg-primary-50 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
+            Fencing Permit
+        </a>
     </div>
 </div>
 @endcanany
@@ -230,6 +258,9 @@
         </a>
         <a href="{{ route('permits.signage') }}" class="block px-3 py-2 text-sm rounded-lg {{ $currentRoute === 'permits.signage' ? 'text-primary-700 bg-primary-50 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
             Signage Permits
+        </a>
+        <a href="{{ route('permits.fencing') }}" class="block px-3 py-2 text-sm rounded-lg {{ $currentRoute === 'permits.fencing' ? 'text-primary-700 bg-primary-50 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
+            Fencing Permits
         </a>
         <a href="{{ route('permits.zoning') }}" class="block px-3 py-2 text-sm rounded-lg {{ $currentRoute === 'permits.zoning' ? 'text-primary-700 bg-primary-50 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
             Zoning

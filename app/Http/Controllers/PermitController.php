@@ -9,6 +9,7 @@ use App\Models\OccupancyApplication;
 use App\Models\Permit;
 use App\Models\PermitType;
 use App\Models\Signatory;
+use App\Models\FencingApplication;
 use App\Models\SignageApplication;
 use App\Notifications\ApplicationApprovedNotification;
 use Illuminate\Http\Request;
@@ -82,6 +83,22 @@ class PermitController extends Controller
         return view('permits.index', compact('applications', 'type', 'year'));
     }
 
+    public function fencingIndex(Request $request)
+    {
+        $query = FencingApplication::with('permits')
+            ->whereIn('status', ['paid', 'permit_generated', 'released']);
+
+        $this->applyPermitFilters($query, $request);
+
+        $year = $request->filled('year') ? (int) $request->year : now()->year;
+        $query->whereYear('created_at', $year);
+
+        $applications = $query->latest()->paginate(20)->withQueryString();
+
+        $type = 'fencing';
+        return view('permits.index', compact('applications', 'type', 'year'));
+    }
+
     public function zoningIndex(Request $request)
     {
         $query = Application::with('zoningAssessment')
@@ -102,7 +119,7 @@ class PermitController extends Controller
 
     public function generateZoningDocuments(Application $application)
     {
-        if ($application->status !== 'paid') {
+        if (! in_array($application->status, ['paid', 'permit_generated', 'released'])) {
             return back()->with('error', 'Application must be paid before generating zoning documents.');
         }
 
@@ -181,6 +198,11 @@ class PermitController extends Controller
         return $this->doGenerate($signageApplication, 'SGP');
     }
 
+    public function generateFp(FencingApplication $fencingApplication)
+    {
+        return $this->doGenerate($fencingApplication, 'FP');
+    }
+
     private function doGenerate(PermitApplicationContract $application, string $permitCode)
     {
         if ($application->status !== 'paid') {
@@ -196,6 +218,7 @@ class PermitController extends Controller
             'OP' => 'op',
             'DP' => 'dp',
             'SGP' => 'sgp',
+            'FP' => 'fp',
             default => 'bp',
         };
         $buildingOfficial = Signatory::where('role', 'building_official')->where('is_active', true)->first();
@@ -269,6 +292,11 @@ class PermitController extends Controller
         return $this->doRevertGenerate($request, $signageApplication);
     }
 
+    public function revertGenerateFp(Request $request, FencingApplication $fencingApplication)
+    {
+        return $this->doRevertGenerate($request, $fencingApplication);
+    }
+
     private function doRevertGenerate(Request $request, PermitApplicationContract $application)
     {
         $request->validate([
@@ -330,6 +358,11 @@ class PermitController extends Controller
         return $this->doRestoreRevoke($request, $signageApplication);
     }
 
+    public function restoreRevokeFp(Request $request, FencingApplication $fencingApplication)
+    {
+        return $this->doRestoreRevoke($request, $fencingApplication);
+    }
+
     private function doRestoreRevoke(Request $request, PermitApplicationContract $application)
     {
         $request->validate(['password' => 'required|string']);
@@ -379,6 +412,11 @@ class PermitController extends Controller
             $application->load('scopeOfWork');
         }
 
+        // Load FP-specific relations (finalized assessment items)
+        if ($application instanceof FencingApplication) {
+            $application->load('assessments.assessmentItems');
+        }
+
         $signatories = Signatory::where('is_active', true)->get()->keyBy('role');
         $settings = \App\Models\Setting::where('group', 'general')->pluck('value', 'key');
 
@@ -412,6 +450,7 @@ class PermitController extends Controller
             'OP' => 'pdf.occupancy-permit',
             'DP' => 'pdf.demolition-permit',
             'SGP' => 'pdf.signage-permit',
+            'FP' => 'pdf.fencing-permit',
             default => 'pdf.building-permit',
         };
 

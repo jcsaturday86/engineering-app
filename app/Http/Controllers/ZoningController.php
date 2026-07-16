@@ -40,14 +40,62 @@ class ZoningController extends Controller
         return FeeCategory::where('code', $code)->value('id');
     }
 
-    public function index()
+    private function filteredQuery(Request $request): array
     {
-        $applications = Application::with('permitType')
-            ->where('status', 'for_zoning_assessment')
-            ->latest()
-            ->paginate(20);
+        $query = Application::with('permitType')
+            ->whereIn('status', [
+                'for_zoning_assessment', 'zoning_assessed', 'engineering_assessed',
+                'billed', 'paid', 'permit_generated', 'released',
+            ])
+            ->where(function ($q) {
+                $q->whereNull('applies_to')->orWhere('applies_to', '!=', 'SKIP_LC');
+            });
 
-        return view('zoning.index', compact('applications'));
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('application_number', 'like', "%{$search}%")
+                    ->orWhere('applicant_first_name', 'like', "%{$search}%")
+                    ->orWhere('applicant_last_name', 'like', "%{$search}%")
+                    ->orWhere('project_title', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $dateFrom = $request->filled('date_from') ? $request->date_from : now()->startOfYear()->toDateString();
+        $dateTo = $request->filled('date_to') ? $request->date_to : now()->toDateString();
+        $query->whereBetween('created_at', [$dateFrom, $dateTo . ' 23:59:59']);
+
+        return [$query, $dateFrom, $dateTo];
+    }
+
+    public function index(Request $request)
+    {
+        [$query, $dateFrom, $dateTo] = $this->filteredQuery($request);
+
+        $applications = $query->latest()->paginate(20)->withQueryString();
+
+        return view('zoning.index', compact('applications', 'dateFrom', 'dateTo'));
+    }
+
+    public function report(Request $request)
+    {
+        [$query, $dateFrom, $dateTo] = $this->filteredQuery($request);
+
+        $data = $query->latest()->get();
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.report', [
+            'data' => $data,
+            'reportType' => 'zoning',
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+        ]);
+        $pdf->setPaper('a4', 'landscape');
+
+        return $pdf->stream("zoning_assessment_report_{$dateFrom}_{$dateTo}.pdf");
     }
 
     public function assess(Application $application)

@@ -15,6 +15,57 @@
         <h2 class="text-xl font-bold text-gray-900">Zoning Assessment</h2>
     </div>
 
+    {{-- Filters --}}
+    <div class="bg-white rounded-xl border border-gray-200 p-4">
+        <form method="GET" class="flex flex-wrap items-end gap-4" autocomplete="off">
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-xs font-medium text-gray-500 mb-1">Search</label>
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Name, application number, project..."
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Status</label>
+                @php
+                    $statusLabels = [
+                        'for_zoning_assessment' => 'Pending',
+                        'zoning_assessed' => 'Zoning Assessed',
+                        'engineering_assessed' => 'Engineering Assessed',
+                        'billed' => 'Billed',
+                        'paid' => 'Paid',
+                        'permit_generated' => 'Permit Generated',
+                        'released' => 'Released',
+                    ];
+                @endphp
+                <select name="status" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                    <option value="">All</option>
+                    @foreach($statusLabels as $s => $label)
+                        <option value="{{ $s }}" {{ request('status') === $s ? 'selected' : '' }}>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Date From</label>
+                <input type="date" name="date_from" value="{{ $dateFrom }}"
+                    class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Date To</label>
+                <input type="date" name="date_to" value="{{ $dateTo }}"
+                    class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <button type="submit" class="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition">
+                <i class="fas fa-search mr-1"></i> Filter
+            </button>
+            @if(request()->hasAny(['search', 'status']) || $dateFrom != now()->startOfYear()->toDateString() || $dateTo != now()->toDateString())
+                <a href="{{ route('zoning.index') }}" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Clear</a>
+            @endif
+            <a href="{{ route('zoning.report', request()->query()) }}" target="_blank" title="Generate PDF Report"
+                class="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                <i class="fas fa-file-pdf"></i>
+            </a>
+        </form>
+    </div>
+
     {{-- Table --}}
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div class="overflow-x-auto">
@@ -64,16 +115,22 @@
                         </td>
                         <td class="px-4 py-3 text-gray-500">{{ $app->created_at->format('M d, Y') }}</td>
                         <td class="px-4 py-3 text-right">
+                            @if($app->status === 'for_zoning_assessment')
                             <a href="{{ route('zoning.assess', $app) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition">
                                 <i class="fas fa-map-marked-alt"></i> Assess
                             </a>
+                            @else
+                            <a href="{{ route('zoning.assess', $app) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50 transition">
+                                <i class="fas fa-eye"></i> View Details
+                            </a>
+                            @endif
                         </td>
                     </tr>
                     @empty
                     <tr>
                         <td colspan="7" class="px-4 py-12 text-center text-gray-400">
                             <i class="fas fa-map text-3xl mb-3"></i>
-                            <p>No applications pending zoning assessment</p>
+                            <p>No zoning assessment transactions found</p>
                         </td>
                     </tr>
                     @endforelse

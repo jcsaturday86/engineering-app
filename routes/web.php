@@ -17,6 +17,7 @@ use App\Http\Controllers\PermitController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\FencingApplicationController;
 use App\Http\Controllers\SignageApplicationController;
 use App\Http\Controllers\FeeScheduleController;
 use App\Http\Controllers\OnlineApplicationController;
@@ -81,6 +82,7 @@ Route::middleware('auth')->group(function () {
     // Building Permit Applications (BP)
     Route::prefix('applications')->name('applications.')->group(function () {
         Route::get('/', [ApplicationController::class, 'index'])->name('index')->middleware('can:view-applications');
+        Route::get('/report', [ApplicationController::class, 'report'])->name('report')->middleware('can:view-applications');
         Route::get('/create', [ApplicationController::class, 'create'])->name('create')->middleware('can:create-applications');
         Route::post('/', [ApplicationController::class, 'store'])->name('store')->middleware('can:create-applications');
         Route::get('/{application}', [ApplicationController::class, 'show'])->name('show')->middleware('can:view-applications');
@@ -96,6 +98,7 @@ Route::middleware('auth')->group(function () {
     // Occupancy Permit Applications (OP)
     Route::prefix('occupancy-applications')->name('occupancy-applications.')->group(function () {
         Route::get('/', [OccupancyApplicationController::class, 'index'])->name('index')->middleware('can:view-applications');
+        Route::get('/report', [OccupancyApplicationController::class, 'report'])->name('report')->middleware('can:view-applications');
         Route::get('/create', [OccupancyApplicationController::class, 'create'])->name('create')->middleware('can:create-applications');
         Route::post('/', [OccupancyApplicationController::class, 'store'])->name('store')->middleware('can:create-applications');
         Route::get('/{occupancyApplication}', [OccupancyApplicationController::class, 'show'])->name('show')->middleware('can:view-applications');
@@ -110,6 +113,7 @@ Route::middleware('auth')->group(function () {
     // Demolition Permit Applications (DP)
     Route::prefix('demolition-applications')->name('demolition-applications.')->group(function () {
         Route::get('/', [DemolitionApplicationController::class, 'index'])->name('index')->middleware('can:view-applications');
+        Route::get('/report', [DemolitionApplicationController::class, 'report'])->name('report')->middleware('can:view-applications');
         Route::get('/create', [DemolitionApplicationController::class, 'create'])->name('create')->middleware('can:create-applications');
         Route::post('/', [DemolitionApplicationController::class, 'store'])->name('store')->middleware('can:create-applications');
         Route::get('/{demolitionApplication}', [DemolitionApplicationController::class, 'show'])->name('show')->middleware('can:view-applications');
@@ -124,6 +128,7 @@ Route::middleware('auth')->group(function () {
     // Signage Permit Applications (SGP)
     Route::prefix('signage-applications')->name('signage-applications.')->group(function () {
         Route::get('/', [SignageApplicationController::class, 'index'])->name('index')->middleware('can:view-applications');
+        Route::get('/report', [SignageApplicationController::class, 'report'])->name('report')->middleware('can:view-applications');
         Route::get('/create', [SignageApplicationController::class, 'create'])->name('create')->middleware('can:create-applications');
         Route::post('/', [SignageApplicationController::class, 'store'])->name('store')->middleware('can:create-applications');
         Route::get('/{signageApplication}', [SignageApplicationController::class, 'show'])->name('show')->middleware('can:view-applications');
@@ -134,9 +139,24 @@ Route::middleware('auth')->group(function () {
         Route::post('/{signageApplication}/revert-submission', [SignageApplicationController::class, 'revertSubmission'])->name('revertSubmission')->middleware('can:revert-submission');
     });
 
+    // Fencing Permit Applications (FP)
+    Route::prefix('fencing-applications')->name('fencing-applications.')->group(function () {
+        Route::get('/', [FencingApplicationController::class, 'index'])->name('index')->middleware('can:view-applications');
+        Route::get('/report', [FencingApplicationController::class, 'report'])->name('report')->middleware('can:view-applications');
+        Route::get('/create', [FencingApplicationController::class, 'create'])->name('create')->middleware('can:create-applications');
+        Route::post('/', [FencingApplicationController::class, 'store'])->name('store')->middleware('can:create-applications');
+        Route::get('/{fencingApplication}', [FencingApplicationController::class, 'show'])->name('show')->middleware('can:view-applications');
+        Route::get('/{fencingApplication}/edit', [FencingApplicationController::class, 'edit'])->name('edit')->middleware('can:edit-applications');
+        Route::put('/{fencingApplication}', [FencingApplicationController::class, 'update'])->name('update')->middleware('can:edit-applications');
+        Route::post('/{fencingApplication}/submit', [FencingApplicationController::class, 'submit'])->name('submit')->middleware('can:submit-applications');
+        Route::post('/{fencingApplication}/cancel', [FencingApplicationController::class, 'cancel'])->name('cancel')->middleware('can:cancel-applications');
+        Route::post('/{fencingApplication}/revert-submission', [FencingApplicationController::class, 'revertSubmission'])->name('revertSubmission')->middleware('can:revert-submission');
+    });
+
     // Zoning Assessment (Planning Office) — BP only
     Route::prefix('zoning')->name('zoning.')->middleware('can:view-zoning')->group(function () {
         Route::get('/', [ZoningController::class, 'index'])->name('index');
+        Route::get('/report', [ZoningController::class, 'report'])->name('report');
         Route::get('/{application}', [ZoningController::class, 'assess'])->name('assess')->middleware('can:create-zoning');
         Route::post('/{application}', [ZoningController::class, 'store'])->name('store')->middleware('can:create-zoning');
         Route::post('/{application}/auto-compute', [ZoningController::class, 'autoCompute'])->name('autoCompute')->middleware('can:create-zoning');
@@ -155,6 +175,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/occupancy', [AssessmentController::class, 'occupancyIndex'])->name('occupancy');
         Route::get('/demolition', [AssessmentController::class, 'demolitionIndex'])->name('demolition');
         Route::get('/signage', [AssessmentController::class, 'signageIndex'])->name('signage');
+        Route::get('/fencing', [AssessmentController::class, 'fencingIndex'])->name('fencing');
         // BP assessment
         Route::get('/{application}', [AssessmentController::class, 'assess'])->name('assess')->middleware('can:create-assessments');
         Route::post('/{application}/item', [AssessmentController::class, 'addItem'])->name('addItem')->middleware('can:create-assessments');
@@ -197,6 +218,15 @@ Route::middleware('auth')->group(function () {
         Route::post('/sgp/{signageApplication}/revert-finalize', [AssessmentController::class, 'revertEngineeringSgp'])->name('revertFinalize.sgp')->middleware('can:revert-assessments');
         Route::post('/sgp/{signageApplication}/revert-to-draft', [AssessmentController::class, 'revertToDraftSgp'])->name('revertToDraft.sgp')->middleware('can:revert-submission');
         Route::get('/sgp/{signageApplication}/print', [AssessmentController::class, 'printSgp'])->name('print.sgp');
+        // FP
+        Route::get('/fp/{fencingApplication}', [AssessmentController::class, 'assessFp'])->name('assess.fp')->middleware('can:create-assessments');
+        Route::post('/fp/{fencingApplication}/item', [AssessmentController::class, 'addItemFp'])->name('addItem.fp')->middleware('can:create-assessments');
+        Route::post('/fp/{fencingApplication}/fence-item', [AssessmentController::class, 'addFenceItem'])->name('addFenceItem.fp')->middleware('can:create-assessments');
+        Route::get('/fp/{fencingApplication}/summary', [AssessmentController::class, 'summaryFp'])->name('summary.fp');
+        Route::post('/fp/{fencingApplication}/finalize', [AssessmentController::class, 'finalizeFp'])->name('finalize.fp')->middleware('can:finalize-assessments');
+        Route::post('/fp/{fencingApplication}/revert-finalize', [AssessmentController::class, 'revertEngineeringFp'])->name('revertFinalize.fp')->middleware('can:revert-assessments');
+        Route::post('/fp/{fencingApplication}/revert-to-draft', [AssessmentController::class, 'revertToDraftFp'])->name('revertToDraft.fp')->middleware('can:revert-submission');
+        Route::get('/fp/{fencingApplication}/print', [AssessmentController::class, 'printFp'])->name('print.fp');
         // Shared
         Route::delete('/item/{assessmentItem}', [AssessmentController::class, 'removeItem'])->name('removeItem')->middleware('can:edit-assessments');
     });
@@ -221,6 +251,8 @@ Route::middleware('auth')->group(function () {
         // SGP payment
         Route::get('/sgp/{signageApplication}/pay', [CollectionController::class, 'createSgp'])->name('create.sgp')->middleware('can:create-collections');
         Route::post('/sgp/{signageApplication}/pay', [CollectionController::class, 'storeSgp'])->name('store.sgp')->middleware('can:create-collections');
+        Route::get('/fp/{fencingApplication}/pay', [CollectionController::class, 'createFp'])->name('create.fp')->middleware('can:create-collections');
+        Route::post('/fp/{fencingApplication}/pay', [CollectionController::class, 'storeFp'])->name('store.fp')->middleware('can:create-collections');
         // Shared
         Route::get('/{collection}/receipt', [CollectionController::class, 'receipt'])->name('receipt')->middleware('can:print-receipts');
         Route::get('/void', [CollectionController::class, 'voidForm'])->name('void')->middleware('can:void-collections');
@@ -233,6 +265,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/occupancy', [PermitController::class, 'occupancyIndex'])->name('occupancy');
         Route::get('/demolition', [PermitController::class, 'demolitionIndex'])->name('demolition');
         Route::get('/signage', [PermitController::class, 'signageIndex'])->name('signage');
+        Route::get('/fencing', [PermitController::class, 'fencingIndex'])->name('fencing');
         // BP permit
         Route::post('/{application}/generate', [PermitController::class, 'generate'])->name('generate')->middleware('can:generate-permits');
         Route::post('/{application}/revert-generate', [PermitController::class, 'revertGenerate'])->name('revertGenerate')->middleware('can:revert-permits');
@@ -249,6 +282,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/sgp/{signageApplication}/generate', [PermitController::class, 'generateSgp'])->name('generate.sgp')->middleware('can:generate-permits');
         Route::post('/sgp/{signageApplication}/revert-generate', [PermitController::class, 'revertGenerateSgp'])->name('revertGenerate.sgp')->middleware('can:revert-permits');
         Route::post('/sgp/{signageApplication}/restore-permit', [PermitController::class, 'restoreRevokeSgp'])->name('restorePermit.sgp')->middleware('can:revert-permits');
+        // FP permit
+        Route::post('/fp/{fencingApplication}/generate', [PermitController::class, 'generateFp'])->name('generate.fp')->middleware('can:generate-permits');
+        Route::post('/fp/{fencingApplication}/revert-generate', [PermitController::class, 'revertGenerateFp'])->name('revertGenerate.fp')->middleware('can:revert-permits');
+        Route::post('/fp/{fencingApplication}/restore-permit', [PermitController::class, 'restoreRevokeFp'])->name('restorePermit.fp')->middleware('can:revert-permits');
         // Shared
         Route::get('/{permit}/print', [PermitController::class, 'print'])->name('print')->middleware('can:print-permits');
         Route::get('/{application}/zoning-cert', [PermitController::class, 'zoningCertification'])->name('zoningCert');

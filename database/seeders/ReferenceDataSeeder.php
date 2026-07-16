@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\ApplicationType;
 use App\Models\BuildingPart;
 use App\Models\FeeCategory;
+use App\Models\FeeType;
 use App\Models\FormOfOwnership;
 use App\Models\LandClassification;
 use App\Models\OccupancyDivision;
@@ -42,7 +43,7 @@ class ReferenceDataSeeder extends Seeder
         $types = [
             ['code' => 'BP',  'name' => 'Building Permit',     'sort_order' => 1,  'is_active' => true],
             ['code' => 'OP',  'name' => 'Occupancy Permit',    'sort_order' => 2,  'is_active' => true],
-            ['code' => 'FP',  'name' => 'Fencing Permit',      'sort_order' => 3,  'is_active' => false],
+            ['code' => 'FP',  'name' => 'Fencing Permit',      'sort_order' => 3,  'is_active' => true],
             ['code' => 'EP',  'name' => 'Excavation Permit',   'sort_order' => 4,  'is_active' => false],
             ['code' => 'DP',  'name' => 'Demolition Permit',   'sort_order' => 5,  'is_active' => true],
             ['code' => 'SGP', 'name' => 'Signage Permit',      'sort_order' => 6,  'is_active' => true],
@@ -439,6 +440,7 @@ class ReferenceDataSeeder extends Seeder
         $opPermitType = PermitType::where('code', 'OP')->first();
         $dpPermitType = PermitType::where('code', 'DP')->first();
         $sgpPermitType = PermitType::where('code', 'SGP')->first();
+        $fpPermitType = PermitType::where('code', 'FP')->first();
 
         if (! $bpPermitType || ! $opPermitType) {
             return;
@@ -490,12 +492,43 @@ class ReferenceDataSeeder extends Seeder
 
         // Signage Permit fee categories
         if ($sgpPermitType) {
-            FeeCategory::updateOrCreate(
+            $sgpFeeCategory = FeeCategory::updateOrCreate(
                 ['code' => 'SGP_FEE'],
                 [
                     'code' => 'SGP_FEE',
                     'name' => 'Signage Permit Fees',
                     'permit_type_id' => $sgpPermitType->id,
+                    'sort_order' => 1,
+                ]
+            );
+
+            // Manual-entry fee type: no fixed schedule, staff types quantity/unit fee by hand.
+            FeeType::updateOrCreate(
+                ['code' => 'SGP_MANUAL'],
+                [
+                    'fee_category_id' => $sgpFeeCategory->id,
+                    'name' => 'Signage Permit Fee (Manual Entry)',
+                    'description' => null,
+                    'computation_method' => 'fixed',
+                    'unit_label' => null,
+                    'has_excess' => false,
+                    'has_minimum' => false,
+                    'is_active' => true,
+                    'sort_order' => 1,
+                ]
+            );
+        }
+
+        // Fencing Permit fee categories — reuses the existing ASS_FENCE_MASONRY/ASS_FENCE_INDIG
+        // FeeType/FeeSchedule rows under ACC_FEE (Settings > Fee Schedules > Accessory) as the
+        // single source of truth for rates; no new FeeType rows are seeded here.
+        if ($fpPermitType) {
+            FeeCategory::updateOrCreate(
+                ['code' => 'FP_FEE'],
+                [
+                    'code' => 'FP_FEE',
+                    'name' => 'Fencing Permit Fees',
+                    'permit_type_id' => $fpPermitType->id,
                     'sort_order' => 1,
                 ]
             );

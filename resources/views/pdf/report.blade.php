@@ -21,12 +21,16 @@
 </head>
 <body>
     <div class="header">
-        <h4>Republic of the Philippines &middot; City / Municipality</h4>
         <h2>
             @switch($reportType)
                 @case('permits') PERMIT REPORT @break
                 @case('revenue') REVENUE REPORT @break
                 @case('collections') COLLECTION REPORT @break
+                @case('applications') BUILDING PERMIT APPLICATIONS REPORT @break
+                @case('occupancy') OCCUPANCY PERMIT APPLICATIONS REPORT @break
+                @case('demolition') DEMOLITION PERMIT APPLICATIONS REPORT @break
+                @case('signage') SIGNAGE PERMIT APPLICATIONS REPORT @break
+                @case('zoning') ZONING ASSESSMENT REPORT @break
             @endswitch
         </h2>
     </div>
@@ -90,6 +94,161 @@
                 <td class="amount">&#8369;{{ number_format($app->total_estimated_cost, 2) }}</td>
                 <td>{{ $dateRange }}</td>
                 <td>{{ $tatDays !== null ? $tatDays . ' day' . ($tatDays == 1 ? '' : 's') : '–' }}</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+    <div class="summary">Total Records: {{ $data->count() }}</div>
+    @elseif($reportType === 'applications')
+    <table class="report">
+        <colgroup>
+            <col style="width: 25px">
+            <col>
+            <col>
+            <col>
+            <col>
+            <col>
+            <col>
+        </colgroup>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>App No.</th>
+                <th>Applicant</th>
+                <th>Project</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>TTA</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($data as $i => $app)
+            @php
+                $permit = $app->permits->sortByDesc('created_at')->first();
+                $tatStart = $app->submitted_at ?? $app->created_at;
+                $tatDays = $permit ? (int) floor($tatStart->diffInDays($permit->created_at, true)) : null;
+            @endphp
+            <tr>
+                <td>{{ $i + 1 }}</td>
+                <td>{{ $app->application_number }}</td>
+                <td>{{ $app->applicant_last_name }}, {{ $app->applicant_first_name }}</td>
+                <td>{{ $app->project_title ?? '-' }}</td>
+                <td>{{ ucfirst(str_replace('_', ' ', $app->status)) }}</td>
+                <td>{{ $app->created_at->format('M d, Y') }}</td>
+                <td>{{ $tatDays !== null ? $tatDays . ' day' . ($tatDays == 1 ? '' : 's') : '–' }}</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+    <div class="summary">Total Records: {{ $data->count() }}</div>
+    @elseif($reportType === 'occupancy')
+    <table class="report">
+        <colgroup>
+            <col style="width: 25px">
+            <col>
+            <col>
+            <col>
+            <col>
+            <col>
+            <col>
+            <col>
+        </colgroup>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>App No.</th>
+                <th>Type</th>
+                <th>Applicant</th>
+                <th>Project</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>TTA</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($data as $i => $app)
+            @php
+                $permit = $app->permits->sortByDesc('created_at')->first();
+                $tatStart = $app->submitted_at ?? $app->created_at;
+                $tatDays = $permit ? (int) floor($tatStart->diffInDays($permit->created_at, true)) : null;
+            @endphp
+            <tr>
+                <td>{{ $i + 1 }}</td>
+                <td>{{ $app->application_number }}</td>
+                <td>{{ $app->applicationType->name ?? 'OP' }}</td>
+                <td>{{ $app->applicant_last_name }}, {{ $app->applicant_first_name }}</td>
+                <td>{{ $app->project_title ?? '-' }}</td>
+                <td>{{ ucfirst(str_replace('_', ' ', $app->status)) }}</td>
+                <td>{{ $app->created_at->format('M d, Y') }}</td>
+                <td>{{ $tatDays !== null ? $tatDays . ' day' . ($tatDays == 1 ? '' : 's') : '–' }}</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+    <div class="summary">Total Records: {{ $data->count() }}</div>
+    @elseif($reportType === 'demolition' || $reportType === 'signage')
+    <table class="report">
+        <colgroup>
+            <col style="width: 25px">
+            <col>
+            <col>
+            <col>
+            <col>
+        </colgroup>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>App No.</th>
+                <th>Applicant</th>
+                <th>Status</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($data as $i => $app)
+            <tr>
+                <td>{{ $i + 1 }}</td>
+                <td>{{ $app->application_number }}</td>
+                <td>{{ $app->applicant_last_name }}, {{ $app->applicant_first_name }}</td>
+                <td>{{ ucfirst(str_replace('_', ' ', $app->status)) }}</td>
+                <td>{{ $app->created_at->format('M d, Y') }}</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+    <div class="summary">Total Records: {{ $data->count() }}</div>
+    @elseif($reportType === 'zoning')
+    <table class="report">
+        <colgroup>
+            <col style="width: 25px">
+            <col>
+            <col>
+            <col>
+            <col>
+            <col>
+            <col>
+        </colgroup>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Application No.</th>
+                <th>Applicant</th>
+                <th>Project Title</th>
+                <th>Building Location</th>
+                <th>Status</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($data as $i => $app)
+            <tr>
+                <td>{{ $i + 1 }}</td>
+                <td>{{ $app->application_number }}</td>
+                <td>{{ $app->applicant_last_name }}, {{ $app->applicant_first_name }}</td>
+                <td>{{ $app->project_title ?? '-' }}</td>
+                <td>{{ $app->building_street ?? '' }}{{ $app->building_street && $app->buildingBarangay ? ', ' : '' }}{{ $app->buildingBarangay->name ?? '' }}</td>
+                <td>{{ ucfirst(str_replace('_', ' ', $app->status)) }}</td>
+                <td>{{ $app->created_at->format('M d, Y') }}</td>
             </tr>
             @endforeach
         </tbody>

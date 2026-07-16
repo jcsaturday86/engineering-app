@@ -235,14 +235,6 @@
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
         </div>
 
-        {{-- ================================================================== --}}
-        {{-- REMARKS --}}
-        {{-- ================================================================== --}}
-        <div class="bg-white rounded-xl border border-gray-200 p-5">
-            <label for="remarks" class="block text-xs font-medium text-gray-600 mb-1">Remarks</label>
-            <textarea name="remarks" id="remarks" rows="2"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">{{ old('remarks', $application->remarks ?? '') }}</textarea>
-        </div>
     </div>
 
     {{-- ================================================================== --}}

@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Notification;
 
 class OccupancyApplicationController extends Controller
 {
-    public function index(Request $request)
+    private function filteredQuery(Request $request): array
     {
         $query = OccupancyApplication::with('applicationType', 'permits')
             ->where('status', '!=', 'cancelled');
@@ -40,12 +40,37 @@ class OccupancyApplicationController extends Controller
             $query->where('status', $request->status);
         }
 
-        $year = $request->filled('year') ? (int) $request->year : now()->year;
-        $query->whereYear('created_at', $year);
+        $dateFrom = $request->filled('date_from') ? $request->date_from : now()->startOfYear()->toDateString();
+        $dateTo = $request->filled('date_to') ? $request->date_to : now()->toDateString();
+        $query->whereBetween('created_at', [$dateFrom, $dateTo . ' 23:59:59']);
+
+        return [$query, $dateFrom, $dateTo];
+    }
+
+    public function index(Request $request)
+    {
+        [$query, $dateFrom, $dateTo] = $this->filteredQuery($request);
 
         $applications = $query->latest()->paginate(20)->withQueryString();
 
-        return view('occupancy-applications.index', compact('applications', 'year'));
+        return view('occupancy-applications.index', compact('applications', 'dateFrom', 'dateTo'));
+    }
+
+    public function report(Request $request)
+    {
+        [$query, $dateFrom, $dateTo] = $this->filteredQuery($request);
+
+        $data = $query->latest()->get();
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.report', [
+            'data' => $data,
+            'reportType' => 'occupancy',
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+        ]);
+        $pdf->setPaper('a4', 'landscape');
+
+        return $pdf->stream("occupancy_applications_report_{$dateFrom}_{$dateTo}.pdf");
     }
 
     public function create()

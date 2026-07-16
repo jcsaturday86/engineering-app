@@ -28,6 +28,7 @@
                 'OP' => route('collections.store.op', $application),
                 'DP' => route('collections.store.dp', $application),
                 'SGP' => route('collections.store.sgp', $application),
+                'FP' => route('collections.store.fp', $application),
                 default => route('collections.store', $application),
             };
         @endphp

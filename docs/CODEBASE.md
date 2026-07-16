@@ -40,6 +40,7 @@ engineering-app/
 | OccupancyApplication | occupancy_applications | OP only. Same contract/trait. getPermitTypeCode() = 'OP' |
 | DemolitionApplication | demolition_applications | DP only. Same contract/trait. getPermitTypeCode() = 'DP'. Overrides `buildingBarangay()` → `demolition_barangay_id` (aliased as `demolitionBarangay()`) |
 | SignageApplication | signage_applications | SGP only. Same contract/trait. getPermitTypeCode() = 'SGP'. Overrides `buildingBarangay()` → aliases `applicantBarangay()` (no separate site-location column) |
+| FencingApplication | fencing_applications | FP only. Same contract/trait. getPermitTypeCode() = 'FP'. Overrides `buildingBarangay()` → `construction_barangay_id` (aliased as `constructionBarangay()`) — the generic trait default targets `building_barangay_id`, a column this table doesn't have. Inspector data lives as 8 flat `inspector_*` columns on this table (a repeatable `FencingInspector` child-table/model was built then deleted this session in favor of this fixed-block shape, matching Design Professional) |
 | ApplicationOccupancyGroup | application_occupancy_groups | morphTo: applicationable |
 | ApplicationRequirement | application_requirements | morphTo: applicationable |
 | Assessment | assessments | morphTo: applicationable. hasMany: assessmentItems. SoftDeletes, LogsActivity |
@@ -108,6 +109,11 @@ index, create, store, show, edit, update, submit, cancel, revertSubmission
 
 Same shape again, trimmed further (no enterprise/CTC/inspector/lot-owner sections, no occupancy-group selection). **No `printForm()`** — the application-form print is deferred pending a scanned official form.
 
+### FencingApplicationController (FP only)
+index, report, create, store, show, edit, update, submit, revertSubmission, cancel
+
+Same shape as `DemolitionApplicationController`, with FP-specific fields (enterprise, address, Location of Construction, Scope of Work, Design Professional, Full-Time Inspector or Supervisor, Consent of Lot Owner). Adds a dedicated `report()` method (`GET /fencing-applications/report`) streaming a landscape DomPDF via the shared `pdf/report.blade.php` template — no equivalent exists on DP/SGP's controllers. **No `printForm()`** — same deferred-application-form-print precedent as DP/SGP; the final permit certificate print (`printFp()` on `PermitController`) is built separately and is not deferred.
+
 ### GeoController
 `barangaysForCity(City $city)` — `GET /geo/barangays/{city}`, returns active barangays for a city as JSON (`id`, `name`). Used by the BP/OP application form's cascading address dropdowns instead of shipping the full ~42K-row barangay dataset to the page.
 
@@ -127,6 +133,7 @@ index, update, store, updateCert, updateOther, destroy
 | occupancyIndex | GET /assessments/occupancy | OP list (same statuses) |
 | demolitionIndex | GET /assessments/demolition | DP list (submitted/engineering_assessed/billed) |
 | signageIndex | GET /assessments/signage | SGP list (submitted/engineering_assessed/billed) |
+| fencingIndex | GET /assessments/fencing | FP list (submitted/engineering_assessed/billed) |
 | assess | GET /assessments/{id} | Tabbed fee entry (Construction/Electrical/Mechanical/…) |
 | addConstructionItem | POST /assessments/{id}/construction-item | BOPMS-style: Part+Division+Area → auto fee lookup |
 | addElectricalItem | POST /assessments/{id}/electrical-item | BOPMS-style: 7 types, auto inspection % |

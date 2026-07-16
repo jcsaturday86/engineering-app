@@ -8,6 +8,7 @@ use App\Models\Billing;
 use App\Models\Collection;
 use App\Models\CollectionDetail;
 use App\Models\DemolitionApplication;
+use App\Models\FencingApplication;
 use App\Models\OccupancyApplication;
 use App\Models\SignageApplication;
 use App\Models\VoidTransaction;
@@ -119,6 +120,12 @@ class CollectionController extends Controller
         return $this->doCreate($signageApplication);
     }
 
+    // FP payment
+    public function createFp(FencingApplication $fencingApplication)
+    {
+        return $this->doCreate($fencingApplication);
+    }
+
     private function doCreate(PermitApplicationContract $application)
     {
         if ($application->status !== 'billed') {
@@ -158,6 +165,12 @@ class CollectionController extends Controller
         return $this->doStore($request, $signageApplication);
     }
 
+    // FP store payment
+    public function storeFp(Request $request, FencingApplication $fencingApplication)
+    {
+        return $this->doStore($request, $fencingApplication);
+    }
+
     private function doStore(Request $request, PermitApplicationContract $application)
     {
         $validated = $request->validate([
@@ -185,6 +198,7 @@ class CollectionController extends Controller
             'OP' => 'op',
             'DP' => 'dp',
             'SGP' => 'sgp',
+            'FP' => 'fp',
             default => 'bp',
         };
 

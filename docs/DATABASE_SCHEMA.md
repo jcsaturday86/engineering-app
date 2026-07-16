@@ -93,7 +93,7 @@ Standard hierarchical geo tables with `psgc_code`, `name`, `is_active`. ~42K bar
 
 > `MECH_INSP` is a hidden category (excluded from assessment tabs). It holds the NBC mechanical permit inspection fee rates (29 INSP_* fee types, 55 schedule rows) mirroring BOPMS `ann_inspection_f*` tables.
 
-> `DEMO_FEE` (Demolition Permit, `permit_type_id` scoped to DP) holds 6 real NBC demolition-fee types with seeded rates, each carrying a `unit_label`. `SGP_FEE` (Signage Permit, `permit_type_id` scoped to SGP) is a single empty category with no seeded `FeeType`/`FeeSchedule` rows — SGP assessment is manual-entry only via the generic fee-item fallback form.
+> `DEMO_FEE` (Demolition Permit, `permit_type_id` scoped to DP) holds 6 real NBC demolition-fee types with seeded rates, each carrying a `unit_label`. `SGP_FEE` (Signage Permit, `permit_type_id` scoped to SGP) is a single empty category with no seeded `FeeType`/`FeeSchedule` rows — SGP assessment is manual-entry only via the generic fee-item fallback form. `FP_FEE` (name "Fencing Permit Fees", Fencing Permit, `permit_type_id` scoped to FP) is likewise empty of its own `FeeType`/`FeeSchedule` rows — it does not mint new fee types. Instead, `AssessmentItem` rows tagged `fee_category_id = FP_FEE` point their `fee_type_id` at existing `ACC_FEE`-scoped `FeeType` rows (`ASS_FENCE_MASONRY`, `ASS_FENCE_INDIG`, `ASS_LINE_GRADE`, `ASS_GP_INSPECT`, `ASS_GP_EXCAV`, `ASS_GP_ISSUANCE`, `ASS_GP_FOUND`, `ASS_GP_OTHER`, `ASS_GP_ENCROACH`) — reusing the ancillary/accessory fee schedule rather than duplicating it. `fee_category_id` and `fee_type_id` are independent, unenforced foreign keys, so this cross-category reference is intentional, not a data error.
 
 ### `fee_types`
 
@@ -232,8 +232,31 @@ A much simpler table than `demolition_applications` — no enterprise, CTC, insp
 
 > `SignageApplication::buildingBarangay()` is overridden to alias `applicantBarangay()` (not a separate `building_barangay_id` column — SGP has no site-location address distinct from the applicant's own).
 
+### `fencing_applications` (Fencing Permit only)
+
+Structurally closest to `demolition_applications` — has enterprise, design-professional, inspector, and lot-owner blocks — but keyed off `applicant_ctc_*`-free applicant address fields (no CTC on the applicant) and uses `construction_*` naming (not `demolition_*`) for the site-location block.
+
+| Column Group | Columns |
+|-------------|---------|
+| **Identity** | id, application_type_id (FK), app_year, app_month, app_counter, application_number (unique, FP-YYYY-MM-NNNNN) |
+| **Status** | status (default: 'draft'), source (walk_in/online) |
+| **Applicant** | applicant_first/middle/last_name, applicant_tin, applicant_telephone |
+| **Enterprise** | owned_by_enterprise, enterprise_name, form_of_ownership_id (FK) |
+| **Applicant Address** | applicant_province/city/barangay_id (FK), applicant_street, applicant_zip_code |
+| **Location of Construction** | lot_no, block_no, tct_no, tax_dec_no, construction_street, construction_barangay_id (FK) — distinct from the applicant's own barangay, mirroring DP's `demolition_barangay_id` pattern |
+| **Scope of Work** | scope_of_work (enum: new_construction/erection/addition/repair/others), scope_of_work_detail |
+| **Design Professional, Plans and Specifications** | design_professional_name, design_professional_address, design_professional_prc_no, design_professional_prc_validity, design_professional_ptr_no, design_professional_ptr_date_issued, design_professional_ptr_issued_at, design_professional_tin |
+| **Full-Time Inspector or Supervisor** | inspector_name, inspector_address, inspector_prc_no, inspector_prc_validity, inspector_ptr_no, inspector_ptr_date_issued, inspector_ptr_issued_at, inspector_tin — same field shape as the Design Professional block, appended as flat columns (see history note below) |
+| **Consent of Lot Owner** | owner_name, owner_address, owner_ctc_no, owner_ctc_date_issued, owner_ctc_issued_at |
+| **Processing** | entered_by, assessed_by, approved_by, client_user_id (all FK → users), submitted/assessed/approved/paid/released/cancelled_at, cancellation_reason, issued_date |
+| **System** | remarks, deleted_at |
+
+**Indexes:** [status], [app_year, app_month]
+
+> **History note:** `fencing_applications` originally shipped alongside a child table `fencing_inspectors` (one-to-many, with `is_primary`/`sort_order`, to support a repeatable "Add Inspector" UI). This was simplified in the same session before release — `fencing_inspectors` was dropped and replaced with the 8 flat `inspector_*` columns listed above, directly on `fencing_applications`, mirroring `design_professional_*` exactly. The `fencing_inspectors` table does not exist in the current schema.
+
 ### `application_occupancy_groups`
-Polymorphic (`applicationable_type` / `applicationable_id`), `occupancy_group_id`, `occupancy_sub_group_id`, `others_text`. BP and OP only — DP and SGP have no occupancy-group concept.
+Polymorphic (`applicationable_type` / `applicationable_id`), `occupancy_group_id`, `occupancy_sub_group_id`, `others_text`. BP and OP only — DP, SGP, and FP have no occupancy-group concept.
 
 ### `application_requirements`
 Polymorphic, `requirement_name`, `file_path`, `original_filename`, `status` (pending/approved/rejected), `reviewer_remarks`, `reviewed_by`, `reviewed_at`.
@@ -247,8 +270,8 @@ Polymorphic, `requirement_name`, `file_path`, `original_filename`, `status` (pen
 | Column | Type | Description |
 |--------|------|-------------|
 | id | bigint PK | |
-| applicationable_type / applicationable_id | varchar(10) / bigint | Polymorphic: 'bp', 'op', 'dp', or 'sgp' |
-| assessment_type | string(30) | building, occupancy, demolition, signage, zoning |
+| applicationable_type / applicationable_id | varchar(10) / bigint | Polymorphic: 'bp', 'op', 'dp', 'sgp', or 'fp' |
+| assessment_type | string(30) | building, occupancy, demolition, signage, fencing, zoning |
 | filing_fee / processing_fee / total_amount | decimal(15,2) | Default: 0 |
 | status | enum | draft, finalized |
 | assessed_by | FK → users | Yes |

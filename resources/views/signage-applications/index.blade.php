@@ -47,19 +47,25 @@
                 </select>
             </div>
             <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">Year</label>
-                <select name="year" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
-                    @foreach([now()->year, now()->year - 1] as $y)
-                        <option value="{{ $y }}" {{ $year == $y ? 'selected' : '' }}>{{ $y }}</option>
-                    @endforeach
-                </select>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Date From</label>
+                <input type="date" name="date_from" value="{{ $dateFrom }}"
+                    class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Date To</label>
+                <input type="date" name="date_to" value="{{ $dateTo }}"
+                    class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
             </div>
             <button type="submit" class="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition">
                 <i class="fas fa-search mr-1"></i> Filter
             </button>
-            @if(request()->hasAny(['search', 'status']) || $year != now()->year)
+            @if(request()->hasAny(['search', 'status']) || $dateFrom != now()->startOfYear()->toDateString() || $dateTo != now()->toDateString())
                 <a href="{{ route('signage-applications.index') }}" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Clear</a>
             @endif
+            <a href="{{ route('signage-applications.report', request()->query()) }}" target="_blank" title="Generate PDF Report"
+                class="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                <i class="fas fa-file-pdf"></i>
+            </a>
         </form>
     </div>
 

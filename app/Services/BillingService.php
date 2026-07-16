@@ -48,6 +48,7 @@ class BillingService
                 'OP' => 'op',
                 'DP' => 'dp',
                 'SGP' => 'sgp',
+                'FP' => 'fp',
                 default => 'bp',
             };
 

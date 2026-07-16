@@ -15,10 +15,11 @@
     $isOp = $isOp ?? false;
     $isDp = $isDp ?? false;
     $isSgp = $isSgp ?? false;
-    $addItemRoute = $isDp ? route('assessments.addItem.dp', $application) : ($isSgp ? route('assessments.addItem.sgp', $application) : ($isOp ? route('assessments.addItem.op', $application) : route('assessments.addItem', $application)));
-    $finalizeRoute = $isDp ? route('assessments.finalize.dp', $application) : ($isSgp ? route('assessments.finalize.sgp', $application) : ($isOp ? route('assessments.finalize.op', $application) : route('assessments.finalize', $application)));
-    $revertRoute = $isDp ? route('assessments.revertFinalize.dp', $application) : ($isSgp ? route('assessments.revertFinalize.sgp', $application) : ($isOp ? route('assessments.revertFinalize.op', $application) : route('assessments.revertFinalize', $application)));
-    $backRoute = $isDp ? route('assessments.demolition') : ($isSgp ? route('assessments.signage') : ($isOp ? route('assessments.occupancy') : route('assessments.index')));
+    $isFp = $isFp ?? false;
+    $addItemRoute = $isDp ? route('assessments.addItem.dp', $application) : ($isSgp ? route('assessments.addItem.sgp', $application) : ($isFp ? route('assessments.addItem.fp', $application) : ($isOp ? route('assessments.addItem.op', $application) : route('assessments.addItem', $application))));
+    $finalizeRoute = $isDp ? route('assessments.finalize.dp', $application) : ($isSgp ? route('assessments.finalize.sgp', $application) : ($isFp ? route('assessments.finalize.fp', $application) : ($isOp ? route('assessments.finalize.op', $application) : route('assessments.finalize', $application))));
+    $revertRoute = $isDp ? route('assessments.revertFinalize.dp', $application) : ($isSgp ? route('assessments.revertFinalize.sgp', $application) : ($isFp ? route('assessments.revertFinalize.fp', $application) : ($isOp ? route('assessments.revertFinalize.op', $application) : route('assessments.revertFinalize', $application))));
+    $backRoute = $isDp ? route('assessments.demolition') : ($isSgp ? route('assessments.signage') : ($isFp ? route('assessments.fencing') : ($isOp ? route('assessments.occupancy') : route('assessments.index'))));
     $tabCategories = $tabCategories ?? $feeCategories;
     $activeTab = $activeTab ?? ($tabCategories->first()?->code ?? 'CONST');
     $itemsByCategory = $itemsByCategory ?? $assessmentItems->groupBy('fee_category_id');
@@ -84,7 +85,7 @@
 
             {{-- Revert to Draft Button + Password Modal (OP/DP only, ongoing/not-yet-finalized assessment) --}}
             @can('revert-submission')
-            @if(($isOp && $application->status === 'zoning_assessed') || (($isDp || $isSgp) && $application->status === 'submitted'))
+            @if(($isOp && $application->status === 'zoning_assessed') || (($isDp || $isSgp || $isFp) && $application->status === 'submitted'))
             <div x-data="{ open: false, pw: '' }" class="inline-block">
                 <button @click="open = true; pw = ''"
                     class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition">
@@ -107,7 +108,7 @@
                             </div>
                         </div>
 
-                        <form action="{{ $isDp ? route('assessments.revertToDraft.dp', $application) : ($isSgp ? route('assessments.revertToDraft.sgp', $application) : route('assessments.revertToDraft.op', $application)) }}" method="POST" autocomplete="off">
+                        <form action="{{ $isDp ? route('assessments.revertToDraft.dp', $application) : ($isSgp ? route('assessments.revertToDraft.sgp', $application) : ($isFp ? route('assessments.revertToDraft.fp', $application) : route('assessments.revertToDraft.op', $application))) }}" method="POST" autocomplete="off">
                             @csrf
                             <div class="mb-4">
                                 <label class="block text-xs font-medium text-gray-600 mb-1">
@@ -926,6 +927,68 @@
                 </form>
             </div>
             @endif
+            @elseif($cat->code === 'FP_FEE')
+            {{-- Fencing Fee Form — reuses the ASS_FENCE_MASONRY/ASS_FENCE_INDIG/ASS_LINE_GRADE/
+                 ASS_GP_* rates from Settings > Fee Schedules > Accessory. --}}
+            @if(!$isFinalized)
+            <div x-data="{
+                feeCode: '',
+                unitLabels: {
+                    ASS_LINE_GRADE: 'linear meter(s)',
+                    ASS_GP_INSPECT: 'inspection(s)', ASS_GP_EXCAV: 'cu.m.', ASS_GP_ISSUANCE: 'permit(s)',
+                    ASS_GP_FOUND: 'cu.m.', ASS_GP_OTHER: 'cu.m.', ASS_GP_ENCROACH: 'sq.m.',
+                    ASS_FENCE_MASONRY: 'meter(s) height',
+                    ASS_FENCE_INDIG: 'linear meter(s)',
+                },
+                get unitLabel() { return this.unitLabels[this.feeCode] || 'unit'; }
+            }">
+                <h4 class="text-sm font-semibold text-gray-700 mb-3">
+                    <i class="fas fa-plus-circle text-blue-500 mr-1"></i> Add Fencing Fee Item
+                </h4>
+                <form action="{{ route('assessments.addFenceItem.fp', $application) }}" method="POST" autocomplete="off">
+                    @csrf
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Fencing Fee <span class="text-red-500">*</span></label>
+                            <select name="fence_fee_type" @change="feeCode = $event.target.value" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">-- Select --</option>
+                                <optgroup label="Line &amp; Grade:">
+                                    <option value="ASS_LINE_GRADE">Establishment of Line and Grade</option>
+                                </optgroup>
+                                <optgroup label="Ground Preparation &amp; Excavation:">
+                                    <option value="ASS_GP_INSPECT">GP - Inspection and Verification Fee</option>
+                                    <option value="ASS_GP_EXCAV">GP - Per cu.m of Excavation</option>
+                                    <option value="ASS_GP_ISSUANCE">GP - Issuance of GP &amp; EP (valid 30 days)</option>
+                                    <option value="ASS_GP_FOUND">GP - Excavation for Foundation with Basement (per cu.m)</option>
+                                    <option value="ASS_GP_OTHER">GP - Excavation Other than Foundation (per cu.m)</option>
+                                    <option value="ASS_GP_ENCROACH">GP - Encroachment of Footings to Public Areas</option>
+                                </optgroup>
+                                <optgroup label="Fencing:">
+                                    <option value="ASS_FENCE_MASONRY">Fencing - Masonry/Metal/Concrete</option>
+                                    <option value="ASS_FENCE_INDIG">Fencing - Indigenous/Barbed/Chicken/Hog Wire (per linear meter)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">
+                                Unit
+                                <span x-show="feeCode" x-cloak class="ml-1 text-blue-600 font-semibold" x-text="'(' + unitLabel + ')'"></span>
+                                <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number" name="unit" step="0.01" min="0.01" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit" class="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">Fee and amount are auto-computed based on the Accessory fee schedule.</p>
+                </form>
+            </div>
+            @endif
             @else
             {{-- Generic Fee Item Form (other tabs) --}}
             @if(!$isFinalized)
@@ -1290,7 +1353,7 @@
             {{-- Print Button (finalized only) --}}
             @if($assessment && $assessment->status === 'finalized')
             <div class="flex justify-end gap-2">
-                <a href="{{ $isDp ? route('assessments.print.dp', $application) : ($isSgp ? route('assessments.print.sgp', $application) : ($isOp ? route('assessments.print.op', $application) : route('assessments.print', $application))) }}"
+                <a href="{{ $isDp ? route('assessments.print.dp', $application) : ($isSgp ? route('assessments.print.sgp', $application) : ($isFp ? route('assessments.print.fp', $application) : ($isOp ? route('assessments.print.op', $application) : route('assessments.print', $application)))) }}"
                    target="_blank"
                    class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition shadow-sm">
                     <i class="fas fa-print"></i> Print Summary of Computation

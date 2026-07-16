@@ -261,19 +261,6 @@
     </div>
 
     {{-- ================================================================== --}}
-    {{-- REMARKS --}}
-    {{-- ================================================================== --}}
-    @if($application->remarks)
-    @php $sectionNum++ @endphp
-    <div class="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">
-            <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Remarks
-        </h3>
-        <p class="text-sm text-gray-900 whitespace-pre-line">{{ $application->remarks }}</p>
-    </div>
-    @endif
-
-    {{-- ================================================================== --}}
     {{-- ASSESSMENT SUMMARY --}}
     {{-- ================================================================== --}}
     @if($application->assessments && $application->assessments->count())
@@ -323,7 +310,7 @@
             <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Activity Log
         </h3>
         @php
-            $activities = \Spatie\Activitylog\Models\Activity::where('subject_type', get_class($application))
+            $activities = \Spatie\Activitylog\Models\Activity::where('subject_type', $application->getMorphClass())
                 ->where('subject_id', $application->id)
                 ->latest()
                 ->take(20)
