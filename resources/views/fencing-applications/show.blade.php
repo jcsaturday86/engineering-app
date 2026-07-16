@@ -154,6 +154,9 @@
                     </div>
                 @endif
                 @endcan
+                <a href="{{ route('fencing-applications.print', $application) }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
+                    <i class="fas fa-print"></i> Print
+                </a>
             </div>
         </div>
     </div>
@@ -226,6 +229,18 @@
             <div>
                 <p class="text-xs text-gray-500">Zip Code</p>
                 <p class="text-sm text-gray-900 mt-0.5">{{ $application->applicant_zip_code ?? '---' }}</p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500">CTC No.</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->applicant_ctc_no ?? '---' }}</p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500">CTC Date Issued</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->applicant_ctc_date_issued ? $application->applicant_ctc_date_issued->format('M d, Y') : '---' }}</p>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500">CTC Issued At</p>
+                <p class="text-sm text-gray-900 mt-0.5">{{ $application->applicant_ctc_issued_at ?? '---' }}</p>
             </div>
         </div>
     </div>
@@ -455,40 +470,6 @@
         </div>
     </div>
     @endif
-
-    {{-- ================================================================== --}}
-    {{-- ACTIVITY LOG --}}
-    {{-- ================================================================== --}}
-    @php $sectionNum++ @endphp
-    <div class="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">
-            <span class="inline-flex items-center justify-center w-7 h-7 bg-teal-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Activity Log
-        </h3>
-        @php
-            $activities = \Spatie\Activitylog\Models\Activity::where('subject_type', $application->getMorphClass())
-                ->where('subject_id', $application->id)
-                ->latest()
-                ->take(20)
-                ->get();
-        @endphp
-        @if($activities->count())
-            <div class="space-y-3">
-                @foreach($activities as $activity)
-                    <div class="flex items-start gap-3">
-                        <div class="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full shrink-0 mt-0.5">
-                            <i class="fas fa-circle-dot text-xs text-gray-400"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-900">{{ $activity->description }}</p>
-                            <p class="text-xs text-gray-500 mt-0.5">{{ $activity->created_at->format('M d, Y h:i A') }}</p>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-        @else
-            <p class="text-sm text-gray-500">No activity recorded.</p>
-        @endif
-    </div>
 
     {{-- Cancelled notice --}}
     @if($application->status === 'cancelled')

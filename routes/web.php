@@ -151,6 +151,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/{fencingApplication}/submit', [FencingApplicationController::class, 'submit'])->name('submit')->middleware('can:submit-applications');
         Route::post('/{fencingApplication}/cancel', [FencingApplicationController::class, 'cancel'])->name('cancel')->middleware('can:cancel-applications');
         Route::post('/{fencingApplication}/revert-submission', [FencingApplicationController::class, 'revertSubmission'])->name('revertSubmission')->middleware('can:revert-submission');
+        Route::get('/{fencingApplication}/print', [FencingApplicationController::class, 'printForm'])->name('print')->middleware('can:view-applications');
     });
 
     // Zoning Assessment (Planning Office) — BP only

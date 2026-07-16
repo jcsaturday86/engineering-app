@@ -222,6 +222,56 @@ class FencingApplicationController extends Controller
         return redirect()->route('fencing-applications.index')->with('warning', 'Application has been cancelled.');
     }
 
+    public function printForm(FencingApplication $fencingApplication)
+    {
+        $fencingApplication->load([
+            'formOfOwnership',
+            'applicantProvince', 'applicantCity', 'applicantBarangay', 'constructionBarangay',
+            'permits',
+        ]);
+
+        $application = $fencingApplication;
+
+        $settings = \App\Models\Setting::where('group', 'general')->pluck('value', 'key');
+        $sealImage = \App\Models\Setting::imageDataUri($settings, 'general.logo');
+        $nationalGovtLogo = \App\Models\Setting::imageDataUri($settings, 'general.national_govt_logo');
+        [$boTitle, $boName, $boDesignation] = $this->resolveBuildingOfficial($application);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.fencing-application-form', compact('application', 'sealImage', 'nationalGovtLogo', 'settings', 'boTitle', 'boName', 'boDesignation'));
+        $pdf->setOption('defaultMediaType', 'print');
+        $pdf->setOption('dpi', 200);
+        $pdf->setPaper([0, 0, 595.44, 840.96]);
+
+        return $pdf->stream("fp_application_{$application->application_number}.pdf");
+    }
+
+    /**
+     * Prefer the generated Permit's immutable building-official snapshot; fall back to the
+     * currently-active Building Official signatory when no Permit has been generated yet.
+     *
+     * @return array{0: string, 1: string, 2: string} [title, name, designation]
+     */
+    private function resolveBuildingOfficial(FencingApplication $application): array
+    {
+        $permit = $application->permits->first();
+
+        if ($permit) {
+            return [
+                $permit->building_official_title ?? '',
+                $permit->building_official_name ?? '',
+                $permit->building_official_designation ?? 'Building Official',
+            ];
+        }
+
+        $signatory = \App\Models\Signatory::where('role', 'building_official')->where('is_active', true)->first();
+
+        return [
+            $signatory?->title ?? '',
+            $signatory?->name ?? '',
+            $signatory?->designation ?? 'Building Official',
+        ];
+    }
+
     private function getFormData(): array
     {
         $sfcCityId = City::where('name', 'like', '%SAN FERNANDO%')->where('province_id', 3)->value('id') ?? 71;
@@ -253,6 +303,9 @@ class FencingApplicationController extends Controller
             'applicant_barangay_id' => 'required|exists:barangays,id',
             'applicant_street' => 'nullable|string|max:255',
             'applicant_zip_code' => 'nullable|string|max:10',
+            'applicant_ctc_no' => 'nullable|string|max:50',
+            'applicant_ctc_date_issued' => 'nullable|date',
+            'applicant_ctc_issued_at' => 'nullable|string|max:255',
             // Location of Construction
             'lot_no' => 'nullable|string|max:50',
             'block_no' => 'nullable|string|max:50',

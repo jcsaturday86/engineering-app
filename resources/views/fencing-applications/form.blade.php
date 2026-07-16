@@ -190,6 +190,26 @@
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
                 </div>
             </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                    <label for="applicant_ctc_no" class="block text-xs font-medium text-gray-600 mb-1">CTC No.</label>
+                    <input type="text" name="applicant_ctc_no" id="applicant_ctc_no"
+                        value="{{ old('applicant_ctc_no', $application->applicant_ctc_no ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                </div>
+                <div>
+                    <label for="applicant_ctc_date_issued" class="block text-xs font-medium text-gray-600 mb-1">Date Issued</label>
+                    <input type="date" name="applicant_ctc_date_issued" id="applicant_ctc_date_issued"
+                        value="{{ old('applicant_ctc_date_issued', optional($application->applicant_ctc_date_issued ?? null)->format('Y-m-d')) }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                </div>
+                <div>
+                    <label for="applicant_ctc_issued_at" class="block text-xs font-medium text-gray-600 mb-1">Issued At</label>
+                    <input type="text" name="applicant_ctc_issued_at" id="applicant_ctc_issued_at"
+                        value="{{ old('applicant_ctc_issued_at', $application->applicant_ctc_issued_at ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                </div>
+            </div>
         </div>
 
         {{-- ================================================================== --}}

@@ -38,6 +38,9 @@ class FencingApplication extends Model implements PermitApplicationContract
         'applicant_barangay_id',
         'applicant_street',
         'applicant_zip_code',
+        'applicant_ctc_no',
+        'applicant_ctc_date_issued',
+        'applicant_ctc_issued_at',
         // Location of Construction
         'lot_no',
         'block_no',
@@ -101,6 +104,7 @@ class FencingApplication extends Model implements PermitApplicationContract
             'inspector_prc_validity' => 'date',
             'inspector_ptr_date_issued' => 'date',
             'owner_ctc_date_issued' => 'date',
+            'applicant_ctc_date_issued' => 'date',
             'submitted_at' => 'datetime',
             'assessed_at' => 'datetime',
             'approved_at' => 'datetime',

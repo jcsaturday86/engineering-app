@@ -244,7 +244,10 @@
       "Bash(nohup php artisan serve --port=8100)",
       "Bash(curl -s -c /tmp/cj2.txt -b /tmp/cj2.txt \"http://localhost:8100/fencing-applications/create\" -o /tmp/fp_toggle_test.html -w \"%{http_code}\\\\n\")",
       "Bash(php -l app/Http/Controllers/ZoningController.php)",
-      "Bash(curl -s -c /tmp/cjz2.txt -b /tmp/cj2.txt \"http://localhost:8100/zoning/10\" -o /tmp/zoning_reverted.html -w \"%{http_code}\\\\n\")"
+      "Bash(curl -s -c /tmp/cjz2.txt -b /tmp/cj2.txt \"http://localhost:8100/zoning/10\" -o /tmp/zoning_reverted.html -w \"%{http_code}\\\\n\")",
+      "Bash(find \"C:/Users/Jay Carlou/AppData/Local/Temp\" -iname \"*.png\" -newermt \"2026-07-16 10:00\" 2>/dev/null | head -20 *)",
+      "Bash(curl -s -b /tmp/cjnew2.txt \"http://localhost:8100/fencing-applications/3\" -o /tmp/fp_show_check3.html -w \"%{http_code}\\\\n\")",
+      "Bash(curl -sI -b /tmp/cjnew2.txt \"http://localhost:8100/fencing-applications/3\")"
     ]
   }
 }
