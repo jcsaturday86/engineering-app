@@ -208,8 +208,7 @@ $grandTotal += $constSub;
 {{-- ═══════════════ 4. ELECTRICAL FEES ═══════════════ --}}
 @php
 $elecAmt  = $elecItems->sum('amount');
-$elecInsp = $elecItems->sum('inspection_fee');
-$elecSub  = $elecAmt + $elecInsp;
+$elecSub  = $elecAmt;
 $grandTotal += $elecSub;
 @endphp
 <div class="section">
@@ -224,36 +223,25 @@ $grandTotal += $elecSub;
             <td class="col-sub-placeholder th"></td>
         </tr>
         @forelse($elecItems as $idx => $item)
+        @php $isLast = $idx === $elecItems->count() - 1; @endphp
         <tr>
             <td class="col-desc">{{ chr(96 + $idx + 1) }}) {{ $item->description }}</td>
             <td class="col-unit">{{ $item->quantity > 0 ? number_format($item->quantity, 2) : '' }}</td>
             <td class="col-fee">{{ $item->unit_fee > 0 ? number_format($item->unit_fee, 2) : '' }}</td>
             <td class="col-add">{{ number_format($item->excess_fee, 2) }}</td>
             <td class="col-amt">P &nbsp;{{ number_format($item->amount, 2) }}</td>
-            <td class="col-sub"></td>
+            <td class="col-sub">@if($isLast && $elecSub > 0)P &nbsp;{{ number_format($elecSub, 2) }}@endif</td>
         </tr>
         @empty
-        @endforelse
-        @if($elecItems->isNotEmpty())
-        <tr>
-            <td class="col-desc">{{ chr(96 + $elecItems->count() + 1) }}) Electrical Inspection Fee</td>
-            <td class="col-unit"></td>
-            <td class="col-fee"></td>
-            <td class="col-add"></td>
-            <td class="col-amt">P &nbsp;{{ number_format($elecInsp, 2) }}</td>
-            <td class="col-sub">P &nbsp;{{ number_format($elecSub, 2) }}</td>
-        </tr>
-        @else
         <tr><td class="col-desc" style="color:#888;font-style:italic">—</td><td colspan="4"></td><td class="col-sub"></td></tr>
-        @endif
+        @endforelse
     </table>
 </div>
 
 {{-- ═══════════════ 5. MECHANICAL FEES ═══════════════ --}}
 @php
 $mechAmt  = $mechItems->sum('amount');
-$mechInsp = $mechItems->sum('inspection_fee');
-$mechSub  = $mechAmt + $mechInsp;
+$mechSub  = $mechAmt;
 $grandTotal += $mechSub;
 @endphp
 <div class="section">
@@ -268,34 +256,24 @@ $grandTotal += $mechSub;
             <td class="col-sub-placeholder th"></td>
         </tr>
         @forelse($mechItems as $idx => $item)
+        @php $isLast = $idx === $mechItems->count() - 1; @endphp
         <tr>
             <td class="col-desc">{{ chr(96 + $idx + 1) }}) {{ $item->description }}</td>
             <td class="col-unit">{{ $item->quantity > 0 ? number_format($item->quantity, 2) : '' }}</td>
             <td class="col-fee">{{ $item->unit_fee > 0 ? number_format($item->unit_fee, 2) : '' }}</td>
             <td class="col-add">{{ number_format($item->excess_fee, 2) }}</td>
             <td class="col-amt">P &nbsp;{{ number_format($item->amount, 2) }}</td>
-            <td class="col-sub"></td>
+            <td class="col-sub">@if($isLast && $mechSub > 0)P &nbsp;{{ number_format($mechSub, 2) }}@endif</td>
         </tr>
         @empty
-        @endforelse
-        @if($mechItems->isNotEmpty())
-        <tr>
-            <td class="col-desc">{{ chr(96 + $mechItems->count() + 1) }}) Mechanical Inspection Fee</td>
-            <td class="col-unit"></td>
-            <td class="col-fee"></td>
-            <td class="col-add"></td>
-            <td class="col-amt">P &nbsp;{{ number_format($mechInsp, 2) }}</td>
-            <td class="col-sub">P &nbsp;{{ number_format($mechSub, 2) }}</td>
-        </tr>
-        @else
         <tr><td class="col-desc" style="color:#888;font-style:italic">—</td><td colspan="4"></td><td class="col-sub"></td></tr>
-        @endif
+        @endforelse
     </table>
 </div>
 
 {{-- ═══════════════ 6. SANITARY/PLUMBING FEES ═══════════════ --}}
 @php
-$plumbSub = $plumbItems->sum('amount') + $plumbItems->sum('inspection_fee');
+$plumbSub = $plumbItems->sum('amount');
 $grandTotal += $plumbSub;
 @endphp
 <div class="section">
@@ -328,8 +306,7 @@ $grandTotal += $plumbSub;
 {{-- ═══════════════ 7. ELECTRONICS FEES ═══════════════ --}}
 @php
 $electAmt  = $electItems->sum('amount');
-$electInsp = $electItems->sum('inspection_fee');
-$electSub  = $electAmt + $electInsp;
+$electSub  = $electAmt;
 $grandTotal += $electSub;
 @endphp
 <div class="section">
@@ -344,25 +321,18 @@ $grandTotal += $electSub;
             <td class="col-sub-placeholder th"></td>
         </tr>
         @forelse($electItems as $idx => $item)
+        @php $isLast = $idx === $electItems->count() - 1; @endphp
         <tr>
             <td class="col-desc">{{ chr(96 + $idx + 1) }}) {{ $item->description }}</td>
             <td class="col-unit">{{ $item->quantity > 0 ? number_format($item->quantity, 2) : '' }}</td>
             <td class="col-fee">{{ $item->unit_fee > 0 ? number_format($item->unit_fee, 2) : '' }}</td>
             <td class="col-add">{{ number_format($item->excess_fee, 2) }}</td>
             <td class="col-amt">P &nbsp;{{ number_format($item->amount, 2) }}</td>
-            <td class="col-sub"></td>
+            <td class="col-sub">@if($isLast && $electSub > 0)P &nbsp;{{ number_format($electSub, 2) }}@endif</td>
         </tr>
         @empty
         <tr><td class="col-desc" style="color:#888;font-style:italic">—</td><td colspan="4"></td><td class="col-sub"></td></tr>
         @endforelse
-        @if($electItems->isNotEmpty())
-        <tr>
-            <td class="col-desc">{{ chr(96 + $electItems->count() + 1) }}) Electronics Inspection Fee</td>
-            <td colspan="3"></td>
-            <td class="col-amt">P &nbsp;{{ number_format($electInsp, 2) }}</td>
-            <td class="col-sub">P &nbsp;{{ number_format($electSub, 2) }}</td>
-        </tr>
-        @endif
     </table>
 </div>
 

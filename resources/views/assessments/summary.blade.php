@@ -15,8 +15,10 @@
     $isOp = $isOp ?? false;
     $isDp = $isDp ?? false;
     $isSgp = $isSgp ?? false;
-    $printRoute = $isDp ? route('assessments.print.dp', $application) : ($isSgp ? route('assessments.print.sgp', $application) : ($isOp ? route('assessments.print.op', $application) : route('assessments.print', $application)));
-    $backRoute = $isDp ? route('assessments.assess.dp', $application) : ($isSgp ? route('assessments.assess.sgp', $application) : ($isOp ? route('assessments.assess.op', $application) : route('assessments.assess', $application)));
+    $isFp = $isFp ?? false;
+    $isMp = $isMp ?? false;
+    $printRoute = $isDp ? route('assessments.print.dp', $application) : ($isSgp ? route('assessments.print.sgp', $application) : ($isFp ? route('assessments.print.fp', $application) : ($isMp ? route('assessments.print.mp', $application) : ($isOp ? route('assessments.print.op', $application) : route('assessments.print', $application)))));
+    $backRoute = $isDp ? route('assessments.assess.dp', $application) : ($isSgp ? route('assessments.assess.sgp', $application) : ($isFp ? route('assessments.assess.fp', $application) : ($isMp ? route('assessments.assess.mp', $application) : ($isOp ? route('assessments.assess.op', $application) : route('assessments.assess', $application)))));
 @endphp
 <div class="space-y-6">
     {{-- Header --}}

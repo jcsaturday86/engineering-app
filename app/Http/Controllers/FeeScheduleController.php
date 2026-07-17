@@ -22,6 +22,7 @@ class FeeScheduleController extends Controller
                 $q->where('is_active', true)
                     ->where('code', '!=', 'MECH_INSP')
                     ->where('code', '!=', 'DEMO_FEE')
+                    ->whereNotIn('code', ['MP_AC', 'MP_MACH', 'MP_ESC', 'MP_ELEV', 'MP_GENSET'])
                     ->orderBy('sort_order')
                     ->withCount('feeTypes');
             }])

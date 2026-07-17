@@ -1,0 +1,163 @@
+@extends('layouts.app')
+
+@section('title', $application ? 'Edit Mechanical Permit Application' : 'New Mechanical Permit Application')
+
+@section('breadcrumbs')
+    <a href="{{ route('dashboard') }}" class="text-gray-500 hover:text-gray-700">Dashboard</a>
+    <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
+    <a href="{{ route('mechanical-applications.index') }}" class="text-gray-500 hover:text-gray-700">Mechanical Applications</a>
+    <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
+    <span class="text-gray-900 font-medium">{{ $application ? 'Edit ' . $application->application_number : 'New Application' }}</span>
+@endsection
+
+@section('content')
+<form
+    method="POST"
+    action="{{ $application ? route('mechanical-applications.update', $application) : route('mechanical-applications.store') }}"
+    autocomplete="off"
+>
+    @csrf
+    @if($application)
+        @method('PUT')
+    @endif
+
+    <div class="space-y-4">
+        {{-- Compact Form Header --}}
+        <div class="bg-gray-50 rounded-xl border border-gray-200 px-5 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center justify-center px-2.5 py-1 text-xs font-bold rounded-md bg-teal-600 text-white">MP</span>
+                <div>
+                    <h2 class="text-lg font-bold text-gray-900">
+                        {{ $application ? 'Edit Application' : 'New Mechanical Permit Application' }}
+                    </h2>
+                    @if($application)
+                        <p class="text-xs text-gray-500">{{ $application->application_number }}</p>
+                    @endif
+                </div>
+            </div>
+            <p class="text-xs text-gray-400">Fields marked with <span class="text-red-500">*</span> are required</p>
+        </div>
+
+        {{-- Validation Error Summary --}}
+        @if($errors->any())
+        <div class="bg-red-50 border border-red-200 rounded-xl p-4" id="validation-errors">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-exclamation-triangle text-red-500 mt-0.5"></i>
+                <div>
+                    <h4 class="text-sm font-semibold text-red-800">Please correct the following errors ({{ $errors->count() }}):</h4>
+                    <ul class="mt-2 text-sm text-red-700 list-disc list-inside space-y-1">
+                        @foreach($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
+        </div>
+        @endif
+
+        {{-- ================================================================== --}}
+        {{-- 1. APPLICATION KIND --}}
+        {{-- ================================================================== --}}
+        <div class="bg-white rounded-xl border {{ $errors->has('application_kind') ? 'border-red-300 ring-1 ring-red-200' : 'border-gray-200' }} p-5 space-y-3">
+            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
+                <span class="inline-flex items-center justify-center w-7 h-7 bg-teal-600 text-white text-xs font-bold rounded-full mr-2">1</span>Application Kind <span class="text-red-500 ml-1">*</span>
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label class="flex items-center gap-2 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50">
+                    <input type="radio" name="application_kind" value="new" required
+                        {{ old('application_kind', $application->application_kind ?? 'new') === 'new' ? 'checked' : '' }}
+                        {{ $application && $application->status !== 'draft' ? 'disabled' : '' }}
+                        class="w-4 h-4 text-teal-600 border-gray-300 focus:ring-teal-500">
+                    <span>
+                        <span class="block text-sm font-medium text-gray-900">New</span>
+                        <span class="block text-xs text-gray-500">First-time permit application for the equipment</span>
+                    </span>
+                </label>
+                <label class="flex items-center gap-2 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50">
+                    <input type="radio" name="application_kind" value="yearly"
+                        {{ old('application_kind', $application->application_kind ?? 'new') === 'yearly' ? 'checked' : '' }}
+                        {{ $application && $application->status !== 'draft' ? 'disabled' : '' }}
+                        class="w-4 h-4 text-teal-600 border-gray-300 focus:ring-teal-500">
+                    <span>
+                        <span class="block text-sm font-medium text-gray-900">Yearly</span>
+                        <span class="block text-xs text-gray-500">Annual re-inspection of previously permitted equipment</span>
+                    </span>
+                </label>
+            </div>
+            @if($application && $application->status !== 'draft')
+                <input type="hidden" name="application_kind" value="{{ $application->application_kind }}">
+                <p class="text-xs text-gray-400">Application kind can no longer be changed once submitted.</p>
+            @endif
+            @error('application_kind')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
+        </div>
+
+        {{-- ================================================================== --}}
+        {{-- 2. OWNER / LESSEE --}}
+        {{-- ================================================================== --}}
+        <div class="bg-white rounded-xl border {{ $errors->has('owner_name') ? 'border-red-300 ring-1 ring-red-200' : 'border-gray-200' }} p-5 space-y-3">
+            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
+                <span class="inline-flex items-center justify-center w-7 h-7 bg-teal-600 text-white text-xs font-bold rounded-full mr-2">2</span>Owner / Lessee
+            </h3>
+            <div>
+                <label for="owner_name" class="block text-xs font-medium text-gray-600 mb-1">Name of Owner/Lessee <span class="text-red-500">*</span></label>
+                <input type="text" name="owner_name" id="owner_name" required
+                    value="{{ old('owner_name', $application->owner_name ?? '') }}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                @error('owner_name')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
+            </div>
+        </div>
+
+        {{-- ================================================================== --}}
+        {{-- 3. LOCATION ADDRESS --}}
+        {{-- ================================================================== --}}
+        <div class="bg-white rounded-xl border {{ $errors->hasAny(['location_street','location_barangay_id']) ? 'border-red-300 ring-1 ring-red-200' : 'border-gray-200' }} p-5 space-y-3">
+            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
+                <span class="inline-flex items-center justify-center w-7 h-7 bg-teal-600 text-white text-xs font-bold rounded-full mr-2">3</span>Location Address
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label for="location_street" class="block text-xs font-medium text-gray-600 mb-1">Street/Bldg. <span class="text-red-500">*</span></label>
+                    <input type="text" name="location_street" id="location_street" required
+                        value="{{ old('location_street', $application->location_street ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('location_street')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
+                </div>
+                <div>
+                    <label for="location_barangay_id" class="block text-xs font-medium text-gray-600 mb-1">Barangay <span class="text-red-500">*</span></label>
+                    <select name="location_barangay_id" id="location_barangay_id" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                        <option value="">-- Select --</option>
+                        @foreach($sfcBarangays as $brgy)
+                            <option value="{{ $brgy->id }}" {{ old('location_barangay_id', $application->location_barangay_id ?? '') == $brgy->id ? 'selected' : '' }}>{{ $brgy->name }}</option>
+                        @endforeach
+                    </select>
+                    @error('location_barangay_id')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ================================================================== --}}
+    {{-- FORM ACTIONS --}}
+    {{-- ================================================================== --}}
+    <div class="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4">
+        <a href="{{ route('mechanical-applications.index') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition">
+            <i class="fas fa-times text-xs"></i> Cancel
+        </a>
+        <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-2.5 bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 transition">
+            <i class="fas fa-save text-xs"></i> {{ $application ? 'Update Application' : 'Create Application' }}
+        </button>
+    </div>
+</form>
+@endsection
+
+@if($errors->any())
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var el = document.getElementById('validation-errors');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+</script>
+@endpush
+@endif

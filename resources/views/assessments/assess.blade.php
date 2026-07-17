@@ -16,10 +16,11 @@
     $isDp = $isDp ?? false;
     $isSgp = $isSgp ?? false;
     $isFp = $isFp ?? false;
-    $addItemRoute = $isDp ? route('assessments.addItem.dp', $application) : ($isSgp ? route('assessments.addItem.sgp', $application) : ($isFp ? route('assessments.addItem.fp', $application) : ($isOp ? route('assessments.addItem.op', $application) : route('assessments.addItem', $application))));
-    $finalizeRoute = $isDp ? route('assessments.finalize.dp', $application) : ($isSgp ? route('assessments.finalize.sgp', $application) : ($isFp ? route('assessments.finalize.fp', $application) : ($isOp ? route('assessments.finalize.op', $application) : route('assessments.finalize', $application))));
-    $revertRoute = $isDp ? route('assessments.revertFinalize.dp', $application) : ($isSgp ? route('assessments.revertFinalize.sgp', $application) : ($isFp ? route('assessments.revertFinalize.fp', $application) : ($isOp ? route('assessments.revertFinalize.op', $application) : route('assessments.revertFinalize', $application))));
-    $backRoute = $isDp ? route('assessments.demolition') : ($isSgp ? route('assessments.signage') : ($isFp ? route('assessments.fencing') : ($isOp ? route('assessments.occupancy') : route('assessments.index'))));
+    $isMp = $isMp ?? false;
+    $addItemRoute = $isDp ? route('assessments.addItem.dp', $application) : ($isSgp ? route('assessments.addItem.sgp', $application) : ($isFp ? route('assessments.addItem.fp', $application) : ($isMp ? route('assessments.addMechItem.mp', $application) : ($isOp ? route('assessments.addItem.op', $application) : route('assessments.addItem', $application)))));
+    $finalizeRoute = $isDp ? route('assessments.finalize.dp', $application) : ($isSgp ? route('assessments.finalize.sgp', $application) : ($isFp ? route('assessments.finalize.fp', $application) : ($isMp ? route('assessments.finalize.mp', $application) : ($isOp ? route('assessments.finalize.op', $application) : route('assessments.finalize', $application)))));
+    $revertRoute = $isDp ? route('assessments.revertFinalize.dp', $application) : ($isSgp ? route('assessments.revertFinalize.sgp', $application) : ($isFp ? route('assessments.revertFinalize.fp', $application) : ($isMp ? route('assessments.revertFinalize.mp', $application) : ($isOp ? route('assessments.revertFinalize.op', $application) : route('assessments.revertFinalize', $application)))));
+    $backRoute = $isDp ? route('assessments.demolition') : ($isSgp ? route('assessments.signage') : ($isFp ? route('assessments.fencing') : ($isMp ? route('assessments.mechanical') : ($isOp ? route('assessments.occupancy') : route('assessments.index')))));
     $tabCategories = $tabCategories ?? $feeCategories;
     $activeTab = $activeTab ?? ($tabCategories->first()?->code ?? 'CONST');
     $itemsByCategory = $itemsByCategory ?? $assessmentItems->groupBy('fee_category_id');
@@ -85,7 +86,7 @@
 
             {{-- Revert to Draft Button + Password Modal (OP/DP only, ongoing/not-yet-finalized assessment) --}}
             @can('revert-submission')
-            @if(($isOp && $application->status === 'zoning_assessed') || (($isDp || $isSgp || $isFp) && $application->status === 'submitted'))
+            @if(($isOp && $application->status === 'zoning_assessed') || (($isDp || $isSgp || $isFp || $isMp) && $application->status === 'submitted'))
             <div x-data="{ open: false, pw: '' }" class="inline-block">
                 <button @click="open = true; pw = ''"
                     class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition">
@@ -108,7 +109,7 @@
                             </div>
                         </div>
 
-                        <form action="{{ $isDp ? route('assessments.revertToDraft.dp', $application) : ($isSgp ? route('assessments.revertToDraft.sgp', $application) : ($isFp ? route('assessments.revertToDraft.fp', $application) : route('assessments.revertToDraft.op', $application))) }}" method="POST" autocomplete="off">
+                        <form action="{{ $isDp ? route('assessments.revertToDraft.dp', $application) : ($isSgp ? route('assessments.revertToDraft.sgp', $application) : ($isFp ? route('assessments.revertToDraft.fp', $application) : ($isMp ? route('assessments.revertToDraft.mp', $application) : route('assessments.revertToDraft.op', $application)))) }}" method="POST" autocomplete="off">
                             @csrf
                             <div class="mb-4">
                                 <label class="block text-xs font-medium text-gray-600 mb-1">
@@ -726,7 +727,7 @@
                             </button>
                         </div>
                     </div>
-                    <p class="text-xs text-gray-400 mt-2">Violation surcharges use a fixed penalty amount. Construction-stage surcharges are computed as a percentage of the total BP assessment (Construction + Electrical + Mechanical + Plumbing + Electronics + Accessory Building + Accessory Misc. amounts including inspection fees) at the time of adding.</p>
+                    <p class="text-xs text-gray-400 mt-2">Violation surcharges use a fixed penalty amount. Construction-stage surcharges are computed as a percentage of the total BP assessment (Construction + Electrical + Mechanical + Plumbing + Electronics + Accessory Building + Accessory Misc. amounts) at the time of adding.</p>
                 </form>
             </div>
             @endif
@@ -989,6 +990,142 @@
                 </form>
             </div>
             @endif
+            @elseif(in_array($cat->code, ['MP_AC', 'MP_MACH', 'MP_ESC', 'MP_ELEV', 'MP_GENSET']))
+            {{-- Mechanical Permit equipment tabs — each reuses the existing MECH_*/INSP_* rates
+                 from Settings > Fee Schedules > Mechanical. New applications post MECH_* codes
+                 (plus a separate inspection-fee line computed server-side); Yearly applications
+                 post the matching INSP_* codes directly as the primary fee. --}}
+            @php
+                $mpGroupCode = substr($cat->code, 3); // MP_AC -> AC, MP_MACH -> MACH, etc.
+                $mpIsYearly = ($application->application_kind ?? 'new') === 'yearly';
+                $mpOptionGroups = [
+                    'AC' => [
+                        'label' => 'Air Conditioning / Refrigeration',
+                        'options' => [
+                            'MECH_REFRIG' => 'Refrigeration (Cold Storage), per ton',
+                            'MECH_ICE' => 'Ice Plants, per ton',
+                            'MECH_WINDOW_AC' => 'Window Type Air Conditioners, per unit',
+                            'MECH_VENT' => 'Mechanical Ventilation, per kW',
+                            'MECH_CENTRAL_AC' => 'Packaged/Centralized Air Conditioning Systems',
+                        ],
+                        'units' => [
+                            'REFRIG' => 'ton(s)', 'ICE' => 'ton(s)', 'WINDOW_AC' => 'unit(s)',
+                            'VENT' => 'kW', 'CENTRAL_AC' => 'ton(s) TR',
+                        ],
+                    ],
+                    'MACH' => [
+                        'label' => 'Machinery',
+                        'options' => [
+                            'MECH_BOILER' => 'Boilers, per rated capacity in kW',
+                            'MECH_DIESEL' => 'Diesel/Gasoline Engines, per kW',
+                            'MECH_INT_COMB' => 'Other Internal Combustion Engines, per kW',
+                            'MECH_WATER_HEATER' => 'Pressurized Water Heaters, per unit',
+                            'MECH_WATER_PUMP' => 'Water/Sump/Sewage Pumps, per kW',
+                            'MECH_SPRINKLER' => 'Automatic Fire Sprinkler System, per head',
+                            'MECH_COMPRESSED' => 'Compressed Air/Vacuum/Industrial Gases, per outlet',
+                            'MECH_GAS_METER' => 'Gas Meter, per unit',
+                            'MECH_POWER_PIPE' => 'Power Piping, per lineal meter',
+                            'MECH_PRESSURE_V' => 'Pressure Vessels, per cu. meter',
+                            'MECH_OTHER_EQUIP' => 'Other Machinery/Equipment, per kW',
+                            'MECH_PNEUMATIC' => 'Pneumatic Tubes/Conveyors/Monorails, per lineal meter',
+                            'MECH_WEIGH_SCALE' => 'Weighing Scale Structure, per ton',
+                        ],
+                        'units' => [
+                            'BOILER' => 'kW', 'DIESEL' => 'kW', 'INT_COMB' => 'kW',
+                            'WATER_HEATER' => 'unit(s)', 'WATER_PUMP' => 'kW', 'SPRINKLER' => 'head(s)',
+                            'COMPRESSED' => 'outlet(s)', 'GAS_METER' => 'unit(s)', 'POWER_PIPE' => 'lineal meter(s)',
+                            'PRESSURE_V' => 'cu. meter(s)', 'OTHER_EQUIP' => 'kW', 'PNEUMATIC' => 'lineal meter(s)',
+                            'WEIGH_SCALE' => 'ton(s)',
+                        ],
+                    ],
+                    'ESC' => [
+                        'label' => 'Escalators / Funiculars / Cable Cars',
+                        'options' => [
+                            'MECH_ESC_KW' => 'Escalator/Moving Walk, per kW',
+                            'MECH_ESC_RANGE' => 'Escalator/Moving Walk, per lineal meter travel',
+                            'MECH_FUNIC_KW' => 'Funicular, per kW',
+                            'MECH_FUNIC_LM' => 'Funicular, per lineal meter travel',
+                            'MECH_CABLE_KW' => 'Cable Car, per kW',
+                            'MECH_CABLE_LM' => 'Cable Car, per lineal meter travel',
+                        ],
+                        'units' => [
+                            'ESC_KW' => 'kW', 'ESC_RANGE' => 'lineal meter(s)', 'FUNIC_KW' => 'kW',
+                            'FUNIC_LM' => 'lineal meter(s)', 'CABLE_KW' => 'kW', 'CABLE_LM' => 'lineal meter(s)',
+                        ],
+                    ],
+                    'ELEV' => [
+                        'label' => 'Elevators',
+                        'options' => [
+                            'MECH_ELEV_DUMB' => 'Motor Driven Dumbwaiters',
+                            'MECH_ELEV_CONST' => 'Construction Elevators for Material',
+                            'MECH_ELEV_PASS' => 'Passenger Elevators',
+                            'MECH_ELEV_FRT' => 'Freight Elevators',
+                            'MECH_ELEV_CAR' => 'Car Elevators',
+                        ],
+                        'units' => [
+                            'ELEV_DUMB' => 'unit(s)', 'ELEV_CONST' => 'unit(s)', 'ELEV_PASS' => 'unit(s)',
+                            'ELEV_FRT' => 'unit(s)', 'ELEV_CAR' => 'unit(s)',
+                        ],
+                    ],
+                    'GENSET' => [
+                        'label' => 'Generator Set',
+                        'options' => [
+                            'MECH_GENSET' => 'Generator Set, per kVA',
+                        ],
+                        'units' => [
+                            'GENSET' => 'kVA',
+                        ],
+                    ],
+                ][$mpGroupCode];
+            @endphp
+            @if(!$isFinalized)
+            <div x-data="{
+                feeCode: '',
+                unitLabels: {
+                    @foreach($mpOptionGroups['units'] as $suffix => $label)
+                    {{ $mpIsYearly ? 'INSP_' . $suffix : 'MECH_' . $suffix }}: '{{ $label }}',
+                    @endforeach
+                },
+                get unitLabel() { return this.unitLabels[this.feeCode] || 'unit'; }
+            }">
+                <h4 class="text-sm font-semibold text-gray-700 mb-3">
+                    <i class="fas fa-plus-circle text-blue-500 mr-1"></i> Add {{ $mpOptionGroups['label'] }} Item
+                </h4>
+                <form action="{{ route('assessments.addMechItem.mp', $application) }}" method="POST" autocomplete="off">
+                    @csrf
+                    <input type="hidden" name="mechanical_group" value="{{ $mpGroupCode }}">
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">{{ $mpOptionGroups['label'] }} Fee <span class="text-red-500">*</span></label>
+                            <select name="mechanical_fee_type" @change="feeCode = $event.target.value" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">-- Select --</option>
+                                @foreach($mpOptionGroups['options'] as $code => $label)
+                                <option value="{{ $mpIsYearly ? 'INSP_' . substr($code, 5) : $code }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">
+                                Unit
+                                <span x-show="feeCode" x-cloak class="ml-1 text-blue-600 font-semibold" x-text="'(' + unitLabel + ')'"></span>
+                                <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number" name="unit" step="0.01" min="0.01" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit" class="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">
+                        {{ $mpIsYearly ? 'Annual inspection fee, auto-computed based on the Mechanical inspection fee schedule.' : 'Permit fee (plus inspection fee), auto-computed based on the Mechanical fee schedule.' }}
+                    </p>
+                </form>
+            </div>
+            @endif
             @else
             {{-- Generic Fee Item Form (other tabs) --}}
             @if(!$isFinalized)
@@ -1091,7 +1228,6 @@
                             <th class="text-right px-4 py-3 font-medium text-gray-500">kVA/Unit</th>
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Fixed Fee</th>
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Additional</th>
-                            <th class="text-right px-4 py-3 font-medium text-gray-500">Inspection</th>
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Amount</th>
                             @elseif($cat->code === 'PLUMB')
                             <th class="text-left px-4 py-3 font-medium text-gray-500">Plumbing Fee</th>
@@ -1126,7 +1262,6 @@
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Unit</th>
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Fee/Unit</th>
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Excess/Add.</th>
-                            <th class="text-right px-4 py-3 font-medium text-gray-500">Inspection</th>
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Amount</th>
                             @else
                             <th class="text-left px-4 py-3 font-medium text-gray-500">Fee Code</th>
@@ -1162,7 +1297,6 @@
                             <td class="px-4 py-3 text-right text-gray-700">{{ $item->quantity > 1 ? number_format($item->quantity, 2) : '-' }}</td>
                             <td class="px-4 py-3 text-right text-gray-700">&#8369;{{ number_format($fixedFee, 2) }}</td>
                             <td class="px-4 py-3 text-right text-gray-700">&#8369;{{ number_format($additionalFee, 2) }}</td>
-                            <td class="px-4 py-3 text-right text-gray-700">&#8369;{{ number_format($item->inspection_fee, 2) }}</td>
                             <td class="px-4 py-3 text-right font-medium text-gray-900">&#8369;{{ number_format($item->amount, 2) }}</td>
                             @elseif($cat->code === 'PLUMB')
                             <td class="px-4 py-3 text-gray-900 text-xs">{{ $item->description }}</td>
@@ -1198,7 +1332,6 @@
                             <td class="px-4 py-3 text-right text-gray-700">{{ number_format($item->quantity, 2) }}</td>
                             <td class="px-4 py-3 text-right text-gray-700">@if($item->unit_fee > 0)&#8369;{{ number_format($item->unit_fee, 2) }}@else-@endif</td>
                             <td class="px-4 py-3 text-right text-gray-700">@if($item->excess_fee > 0)&#8369;{{ number_format($item->excess_fee, 2) }}@else-@endif</td>
-                            <td class="px-4 py-3 text-right text-gray-700">&#8369;{{ number_format($item->inspection_fee, 2) }}</td>
                             <td class="px-4 py-3 text-right font-medium text-gray-900">&#8369;{{ number_format($item->amount, 2) }}</td>
                             @else
                             <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ $item->fee_code }}</td>
@@ -1231,8 +1364,7 @@
                             <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('amount'), 2) }}</td>
                             <td></td>
                             @elseif($cat->code === 'ELEC')
-                            <td colspan="5" class="px-4 py-3 text-right font-semibold text-gray-700">Subtotal</td>
-                            <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('inspection_fee'), 2) }}</td>
+                            <td colspan="4" class="px-4 py-3 text-right font-semibold text-gray-700">Subtotal</td>
                             <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('amount'), 2) }}</td>
                             <td></td>
                             @elseif($cat->code === 'PLUMB')
@@ -1256,8 +1388,7 @@
                             <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('amount'), 2) }}</td>
                             <td></td>
                             @elseif($cat->code === 'MECH')
-                            <td colspan="5" class="px-4 py-3 text-right font-semibold text-gray-700">Subtotal</td>
-                            <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('inspection_fee'), 2) }}</td>
+                            <td colspan="4" class="px-4 py-3 text-right font-semibold text-gray-700">Subtotal</td>
                             <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('amount'), 2) }}</td>
                             <td></td>
                             @else
@@ -1330,10 +1461,12 @@
                         <span class="text-gray-600">Items Subtotal</span>
                         <span class="font-medium text-gray-900">&#8369;{{ number_format($totals['subtotal'], 2) }}</span>
                     </div>
+                    @if($isMp)
                     <div class="flex justify-between text-sm">
                         <span class="text-gray-600">Inspection Fees</span>
                         <span class="font-medium text-gray-900">&#8369;{{ number_format($totals['inspection'], 2) }}</span>
                     </div>
+                    @endif
                     <div class="flex justify-between text-sm">
                         <span class="text-gray-600">Filing Fee</span>
                         <span class="font-medium text-gray-900">&#8369;{{ number_format($totals['filing'], 2) }}</span>
@@ -1353,7 +1486,7 @@
             {{-- Print Button (finalized only) --}}
             @if($assessment && $assessment->status === 'finalized')
             <div class="flex justify-end gap-2">
-                <a href="{{ $isDp ? route('assessments.print.dp', $application) : ($isSgp ? route('assessments.print.sgp', $application) : ($isFp ? route('assessments.print.fp', $application) : ($isOp ? route('assessments.print.op', $application) : route('assessments.print', $application)))) }}"
+                <a href="{{ $isDp ? route('assessments.print.dp', $application) : ($isSgp ? route('assessments.print.sgp', $application) : ($isFp ? route('assessments.print.fp', $application) : ($isMp ? route('assessments.print.mp', $application) : ($isOp ? route('assessments.print.op', $application) : route('assessments.print', $application))))) }}"
                    target="_blank"
                    class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition shadow-sm">
                     <i class="fas fa-print"></i> Print Summary of Computation

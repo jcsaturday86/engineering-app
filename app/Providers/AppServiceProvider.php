@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\Application;
 use App\Models\DemolitionApplication;
 use App\Models\FencingApplication;
+use App\Models\MechanicalApplication;
 use App\Models\OccupancyApplication;
 use App\Models\SignageApplication;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -25,6 +26,7 @@ class AppServiceProvider extends ServiceProvider
             'dp' => DemolitionApplication::class,
             'sgp' => SignageApplication::class,
             'fp' => FencingApplication::class,
+            'mp' => MechanicalApplication::class,
         ]);
     }
 }

@@ -573,6 +573,17 @@ class FeeScheduleSeeder extends Seeder
             ['range_from' => 51,  'range_to' => 100.9,  'fee_per_unit' => 12, 'insp_fee' => 1.2, 'insp_method' => 'per_unit'],
             ['range_from' => 101, 'range_to' => 1000000,'fee_per_unit' => 3,  'insp_fee' => 0.3, 'insp_method' => 'per_unit'],
         ]);
+
+        // --- Generator Set (per kVA) --- placeholder rate, no official NBC schedule seeded yet.
+        // Simple flat per_unit (unlike MECH_DIESEL's tiered range_based) — edit the real rate via
+        // Settings > Fee Schedules > Mechanical once the official NBC per-kVA schedule is available.
+        $feeTypeId = $this->upsertFeeType(
+            'MECH', 'MECH_GENSET', 'Generator Set (per kVA)',
+            'per_unit', false, false, ++$order,
+        );
+        $this->syncSchedules($feeTypeId, [
+            ['fee_per_unit' => 40, 'insp_fee' => 4, 'insp_method' => 'per_unit'],
+        ]);
     }
 
     // =========================================================================
@@ -1828,6 +1839,11 @@ class FeeScheduleSeeder extends Seeder
             ['range_from' => 51,  'range_to' => 100.99, 'fee_per_unit' => 10],
             ['range_from' => 101, 'range_to' => 999999, 'fee_per_unit' => 10, 'excess_threshold' => 100, 'excess_fee' => 2.4],
         ]);
+
+        // Generator Set (per kVA) — placeholder rate, no official NBC schedule seeded yet.
+        $id = $this->upsertFeeType('MECH_INSP', 'INSP_GENSET', 'Insp. Fee — Generator Set (per kVA)',
+            'per_unit', false, false, ++$o);
+        $this->syncSchedules($id, [['fee_per_unit' => 4]]);
 
         // ── O. Other Mechanical Equipment ──
 

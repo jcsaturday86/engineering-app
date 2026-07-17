@@ -77,6 +77,7 @@
                                     'DP' => 'bg-red-100 text-red-700',
                                     'SGP' => 'bg-purple-100 text-purple-700',
                                     'FP' => 'bg-teal-100 text-teal-700',
+                                    'MP' => 'bg-cyan-100 text-cyan-700',
                                     default => 'bg-gray-100 text-gray-700',
                                 };
                             @endphp
@@ -84,7 +85,7 @@
                                 {{ $app->getPermitTypeCode() }}
                             </span>
                         </td>
-                        <td class="px-4 py-3 text-gray-900">{{ $app->applicant_last_name }}, {{ $app->applicant_first_name }}</td>
+                        <td class="px-4 py-3 text-gray-900">{{ $app->owner_name ?? ($app->applicant_last_name . ', ' . $app->applicant_first_name) }}</td>
                         <td class="px-4 py-3 text-right font-medium text-gray-900">&#8369;{{ number_format($app->billings->where('status','unpaid')->first()?->total_amount ?? 0, 2) }}</td>
                         <td class="px-4 py-3 text-gray-500">{{ $app->created_at->format('M d, Y') }}</td>
                         <td class="px-4 py-3 text-right">
@@ -95,6 +96,7 @@
                                     'DP' => route('collections.create.dp', $app),
                                     'SGP' => route('collections.create.sgp', $app),
                                     'FP' => route('collections.create.fp', $app),
+                                    'MP' => route('collections.create.mp', $app),
                                     default => route('collections.create', $app),
                                 };
                             @endphp

@@ -29,8 +29,10 @@
                 'DP' => route('collections.store.dp', $application),
                 'SGP' => route('collections.store.sgp', $application),
                 'FP' => route('collections.store.fp', $application),
+                'MP' => route('collections.store.mp', $application),
                 default => route('collections.store', $application),
             };
+            $payerName = $application->owner_name ?? trim(($application->applicant_last_name ?? '') . ', ' . ($application->applicant_first_name ?? ''), ', ');
         @endphp
         <form method="POST" action="{{ $storeRoute }}" class="p-5 space-y-3" autocomplete="off">
             @csrf
@@ -44,7 +46,7 @@
                 </div>
                 <div>
                     <p class="text-xs font-medium text-gray-500">Applicant</p>
-                    <p class="text-sm text-gray-900">{{ $application->applicant_last_name }}, {{ $application->applicant_first_name }}</p>
+                    <p class="text-sm text-gray-900">{{ $payerName ?: '—' }}</p>
                 </div>
             </div>
 
@@ -61,7 +63,7 @@
                 </div>
                 <div>
                     <label for="paid_by" class="block text-sm font-medium text-gray-700 mb-1">Paid By <span class="text-red-500">*</span></label>
-                    <input type="text" name="paid_by" id="paid_by" value="{{ old('paid_by', $application->applicant_last_name . ', ' . $application->applicant_first_name) }}" required
+                    <input type="text" name="paid_by" id="paid_by" value="{{ old('paid_by', $payerName) }}" required
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('paid_by') border-red-300 @enderror">
                     @error('paid_by')
                         <p class="mt-1 text-xs text-red-500">{{ $message }}</p>

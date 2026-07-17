@@ -49,7 +49,7 @@ class ReferenceDataSeeder extends Seeder
             ['code' => 'SGP', 'name' => 'Signage Permit',      'sort_order' => 6,  'is_active' => true],
             ['code' => 'SP',  'name' => 'Sign Permit',         'sort_order' => 7,  'is_active' => false],
             ['code' => 'ELP', 'name' => 'Electrical Permit',   'sort_order' => 8,  'is_active' => false],
-            ['code' => 'MP',  'name' => 'Mechanical Permit',   'sort_order' => 9,  'is_active' => false],
+            ['code' => 'MP',  'name' => 'Mechanical Permit',   'sort_order' => 9,  'is_active' => true],
             ['code' => 'PP',  'name' => 'Plumbing Permit',     'sort_order' => 10, 'is_active' => false],
             ['code' => 'ECP', 'name' => 'Electronics Permit',  'sort_order' => 11, 'is_active' => false],
         ];
@@ -441,6 +441,7 @@ class ReferenceDataSeeder extends Seeder
         $dpPermitType = PermitType::where('code', 'DP')->first();
         $sgpPermitType = PermitType::where('code', 'SGP')->first();
         $fpPermitType = PermitType::where('code', 'FP')->first();
+        $mpPermitType = PermitType::where('code', 'MP')->first();
 
         if (! $bpPermitType || ! $opPermitType) {
             return;
@@ -532,6 +533,26 @@ class ReferenceDataSeeder extends Seeder
                     'sort_order' => 1,
                 ]
             );
+        }
+
+        // Mechanical Permit equipment-tab fee categories — each reuses the existing MECH_*/INSP_*
+        // FeeType/FeeSchedule rows (Settings > Fee Schedules > Mechanical, BP-scoped) by code; no
+        // new FeeType rows are seeded under these categories themselves.
+        if ($mpPermitType) {
+            $mpCategories = [
+                ['code' => 'MP_AC', 'name' => 'Air Conditioning / Refrigeration', 'sort_order' => 1],
+                ['code' => 'MP_MACH', 'name' => 'Machinery', 'sort_order' => 2],
+                ['code' => 'MP_ESC', 'name' => 'Escalators / Funiculars / Cable Cars', 'sort_order' => 3],
+                ['code' => 'MP_ELEV', 'name' => 'Elevators', 'sort_order' => 4],
+                ['code' => 'MP_GENSET', 'name' => 'Generator Set', 'sort_order' => 5],
+            ];
+
+            foreach ($mpCategories as $category) {
+                FeeCategory::updateOrCreate(
+                    ['code' => $category['code']],
+                    array_merge($category, ['permit_type_id' => $mpPermitType->id])
+                );
+            }
         }
 
         // Zoning fee categories (associated with Building Permit)

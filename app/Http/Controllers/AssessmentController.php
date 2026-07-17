@@ -16,6 +16,7 @@ use App\Models\OccupancyApplication;
 use App\Models\Setting;
 use App\Models\Signatory;
 use App\Models\FencingApplication;
+use App\Models\MechanicalApplication;
 use App\Models\SignageApplication;
 use App\Models\User;
 use App\Notifications\AssessmentCompleteNotification;
@@ -110,6 +111,15 @@ class AssessmentController extends Controller
         return view('assessments.fencing-index', compact('applications'));
     }
 
+    public function mechanicalIndex()
+    {
+        $applications = MechanicalApplication::whereIn('status', ['submitted', 'engineering_assessed', 'billed'])
+            ->latest()
+            ->paginate(20);
+
+        return view('assessments.mechanical-index', compact('applications'));
+    }
+
     // BP assessment
     public function assess(Application $application)
     {
@@ -140,6 +150,12 @@ class AssessmentController extends Controller
         return $this->doAssess($fencingApplication, 'fencing', 'FP');
     }
 
+    // MP assessment
+    public function assessMp(MechanicalApplication $mechanicalApplication)
+    {
+        return $this->doAssess($mechanicalApplication, 'mechanical', 'MP');
+    }
+
     private function morphTypeFor(string $permitCode): string
     {
         return match ($permitCode) {
@@ -147,6 +163,7 @@ class AssessmentController extends Controller
             'DP' => 'dp',
             'SGP' => 'sgp',
             'FP' => 'fp',
+            'MP' => 'mp',
             default => 'bp',
         };
     }
@@ -197,10 +214,11 @@ class AssessmentController extends Controller
         $isDp = $permitCode === 'DP';
         $isSgp = $permitCode === 'SGP';
         $isFp = $permitCode === 'FP';
+        $isMp = $permitCode === 'MP';
 
         return view('assessments.assess', compact(
             'application', 'assessment', 'feeCategories', 'tabCategories',
-            'totals', 'assessmentItems', 'itemsByCategory', 'activeTab', 'isOp', 'isDp', 'isSgp', 'isFp',
+            'totals', 'assessmentItems', 'itemsByCategory', 'activeTab', 'isOp', 'isDp', 'isSgp', 'isFp', 'isMp',
             'buildingParts', 'occupancyDivisions'
         ));
     }
@@ -213,6 +231,7 @@ class AssessmentController extends Controller
                 'dp' => route('assessments.assess.dp', $application) . '?tab=SUMMARY',
                 'sgp' => route('assessments.assess.sgp', $application) . '?tab=SUMMARY',
                 'fp' => route('assessments.assess.fp', $application) . '?tab=SUMMARY',
+                'mp' => route('assessments.assess.mp', $application) . '?tab=SUMMARY',
                 default => route('assessments.assess', $application) . '?tab=SUMMARY',
             };
             return redirect()->to($route)->with('error', 'This assessment has been finalized and cannot be modified.');
@@ -316,7 +335,6 @@ class AssessmentController extends Controller
         }
 
         $elecCategory = FeeCategory::where('code', 'ELEC')->first();
-        $inspectionPct = (float) (Setting::where('key', 'assessment.electrical_inspection_percentage')->value('value') ?? 10);
 
         if (in_array($feeTypeCode, ['ELEC_TCL', 'ELEC_TRANS', 'ELEC_UPS'])) {
             $kva = (float) $validated['kva'];
@@ -337,8 +355,7 @@ class AssessmentController extends Controller
             $fixedFee = (float) $feeSchedule->fixed_fee;
             $feePerUnit = (float) $feeSchedule->fee_per_unit;
             $baseFee = round($fixedFee + ($kva * $feePerUnit), 2);
-            $inspectionFee = round($baseFee * $inspectionPct / 100, 2);
-            $amount = $baseFee + $inspectionFee;
+            $amount = $baseFee;
             $description = $feeType->name . ' - ' . number_format($kva, 2) . ' kVA';
 
             AssessmentItem::create([
@@ -350,7 +367,7 @@ class AssessmentController extends Controller
                 'quantity' => $kva,
                 'unit_fee' => $feePerUnit,
                 'excess_fee' => 0,
-                'inspection_fee' => $inspectionFee,
+                'inspection_fee' => 0,
                 'amount' => $amount,
                 'computation_details' => [
                     'fee_type_code' => $feeTypeCode,
@@ -378,8 +395,7 @@ class AssessmentController extends Controller
             }
 
             $baseFee = (float) $feeSchedule->fixed_fee;
-            $inspectionFee = round($baseFee * $inspectionPct / 100, 2);
-            $amount = $baseFee + $inspectionFee;
+            $amount = $baseFee;
 
             AssessmentItem::create([
                 'assessment_id' => $assessment->id,
@@ -390,7 +406,7 @@ class AssessmentController extends Controller
                 'quantity' => 1,
                 'unit_fee' => 0,
                 'excess_fee' => 0,
-                'inspection_fee' => $inspectionFee,
+                'inspection_fee' => 0,
                 'amount' => $amount,
                 'computation_details' => [
                     'fee_type_code' => $feeTypeCode,
@@ -416,8 +432,7 @@ class AssessmentController extends Controller
             }
 
             $baseFee = (float) $feeSchedule->fixed_fee;
-            $inspectionFee = round($baseFee * $inspectionPct / 100, 2);
-            $amount = $baseFee + $inspectionFee;
+            $amount = $baseFee;
             $description = $feeType->name . ' - ' . $occupancyType;
 
             AssessmentItem::create([
@@ -429,7 +444,7 @@ class AssessmentController extends Controller
                 'quantity' => 1,
                 'unit_fee' => 0,
                 'excess_fee' => 0,
-                'inspection_fee' => $inspectionFee,
+                'inspection_fee' => 0,
                 'amount' => $amount,
                 'computation_details' => [
                     'fee_type_code' => $feeTypeCode,
@@ -530,44 +545,9 @@ class AssessmentController extends Controller
                 $baseFee = 0;
         }
 
-        // Inspection fee — reads from MECH_INSP fee_schedules (INSP_* fee types, mirrors BOPMS ann_inspection_f* tables).
-        $insp                = $this->resolveInspectionFee($feeTypeCode, $unit);
-        $inspFee             = $insp['fee'];
-        $inspMethod          = $insp['method'];
-        $inspExcessThreshold = $insp['excess_threshold'];
-        $inspExcessFee       = $insp['excess_fee'];
-        $inspExcessEvery     = $insp['every'];
-
-        switch ($inspMethod) {
-            case 'flat':
-                // Flat fee for the range band regardless of unit count (A. refrigeration/AC/vent)
-                if ($inspExcessThreshold > 0 && $unit > $inspExcessThreshold) {
-                    $inspectionFee = round($inspFee + (($unit - $inspExcessThreshold) / $inspExcessEvery) * $inspExcessFee, 2);
-                } else {
-                    $inspectionFee = round($inspFee, 2);
-                }
-                break;
-
-            case 'tiered':
-                // First N units at insp_fee, remaining at insp_excess_fee (C elevators)
-                if ($inspExcessThreshold > 0 && $unit > $inspExcessThreshold) {
-                    $inspectionFee = round($inspExcessThreshold * $inspFee + ($unit - $inspExcessThreshold) * $inspExcessFee, 2);
-                } else {
-                    $inspectionFee = round($unit * $inspFee, 2);
-                }
-                break;
-
-            default: // per_unit — B escalators, D boiler, H diesel, L ICE, most O
-                if ($inspExcessThreshold > 0 && $unit > $inspExcessThreshold) {
-                    // Base: threshold × insp_fee; excess: ((unit-threshold)/every) × excess_fee
-                    $inspectionFee = round($inspExcessThreshold * $inspFee + (($unit - $inspExcessThreshold) / $inspExcessEvery) * $inspExcessFee, 2);
-                } else {
-                    $inspectionFee = round($unit * $inspFee, 2);
-                }
-        }
-
-        // amount = base fee only; inspection_fee is stored separately so the
-        // grand total formula (sum(amount) + sum(inspection_fee)) gives the correct total.
+        // amount = base fee only. Inspection fees are not charged on Building Permit
+        // Mechanical items (see resolveInspectionFee(), still used by the separate
+        // standalone Mechanical Permit feature's addMechanicalUnitItem()).
         $amount = $baseFee;
 
         AssessmentItem::create([
@@ -579,7 +559,7 @@ class AssessmentController extends Controller
             'quantity'            => $unit,
             'unit_fee'            => $unitFee,
             'excess_fee'          => $excessFee,
-            'inspection_fee'      => $inspectionFee,
+            'inspection_fee'      => 0,
             'amount'              => $amount,
             'computation_details' => [
                 'fee_type_code'        => $feeTypeCode,
@@ -591,11 +571,6 @@ class AssessmentController extends Controller
                 'excess_threshold'     => (float) $schedule->excess_threshold,
                 'excess_fee_rate'      => (float) $schedule->excess_fee,
                 'range'                => $isRangeBased ? ($schedule->range_from . ' - ' . $schedule->range_to) : null,
-                'insp_method'           => $inspMethod,
-                'insp_fee'              => $inspFee,
-                'insp_excess_threshold' => $inspExcessThreshold,
-                'insp_excess_fee'       => $inspExcessFee,
-                'insp_excess_every'     => $inspExcessEvery,
             ],
             'is_active'           => true,
         ]);
@@ -1204,7 +1179,7 @@ class AssessmentController extends Controller
             $amount  = round((float) $schedule->fixed_fee, 2);
             $unitFee = $amount;
         } else {
-            // Percentage: base = sum of amount + inspection_fee across the 7 core BP assessment categories
+            // Percentage: base = sum of amount across the 7 core BP assessment categories
             $bpCategoryIds = FeeCategory::whereIn('code', $bpCategoryCodes)->pluck('id');
 
             $bpItems = $assessment->assessmentItems()
@@ -1212,7 +1187,7 @@ class AssessmentController extends Controller
                 ->whereIn('fee_category_id', $bpCategoryIds)
                 ->get();
 
-            $totalBPFeeBase = $bpItems->sum('amount') + $bpItems->sum('inspection_fee');
+            $totalBPFeeBase = $bpItems->sum('amount');
 
             $amount  = round($totalBPFeeBase * (float) $schedule->percentage, 2);
             $unitFee = 0;
@@ -1390,6 +1365,179 @@ class AssessmentController extends Controller
             ->with('success', 'Fencing fee item added.');
     }
 
+    // MP add item — one method handling all 5 equipment tabs (AC/MACH/ESC/ELEV/GENSET). New
+    // applications source their primary fee from MECH_* (plus a separate inspection-fee line via
+    // resolveInspectionFee(), mirroring addMechanicalItem()'s BP behavior); Yearly applications
+    // source the primary fee directly from the matching INSP_* fee type, with no add-on line.
+    public function addMechanicalUnitItem(Request $request, MechanicalApplication $mechanicalApplication)
+    {
+        $codesByGroup = [
+            'AC' => ['MECH_REFRIG', 'MECH_ICE', 'MECH_WINDOW_AC', 'MECH_VENT', 'MECH_CENTRAL_AC'],
+            'MACH' => [
+                'MECH_BOILER', 'MECH_DIESEL', 'MECH_INT_COMB',
+                'MECH_WATER_HEATER', 'MECH_WATER_PUMP', 'MECH_SPRINKLER', 'MECH_COMPRESSED', 'MECH_GAS_METER',
+                'MECH_POWER_PIPE', 'MECH_PRESSURE_V', 'MECH_OTHER_EQUIP', 'MECH_PNEUMATIC', 'MECH_WEIGH_SCALE',
+            ],
+            'ESC' => ['MECH_ESC_KW', 'MECH_ESC_RANGE', 'MECH_FUNIC_KW', 'MECH_FUNIC_LM', 'MECH_CABLE_KW', 'MECH_CABLE_LM'],
+            'ELEV' => ['MECH_ELEV_DUMB', 'MECH_ELEV_CONST', 'MECH_ELEV_PASS', 'MECH_ELEV_FRT', 'MECH_ELEV_CAR'],
+            'GENSET' => ['MECH_GENSET'],
+        ];
+
+        $validated = $request->validate([
+            'mechanical_group' => ['required', 'string', Rule::in(array_keys($codesByGroup))],
+            'mechanical_fee_type' => 'required|string',
+            'unit' => 'required|numeric|min:0.01',
+        ]);
+
+        $group = $validated['mechanical_group'];
+        $isYearly = $mechanicalApplication->application_kind === 'yearly';
+        $mechCodes = $codesByGroup[$group];
+        $allowedCodes = $isYearly
+            ? array_map(fn ($c) => 'INSP_' . substr($c, 5), $mechCodes)
+            : $mechCodes;
+
+        if (! in_array($validated['mechanical_fee_type'], $allowedCodes, true)) {
+            return back()->with('error', 'Invalid fee type for this equipment group.');
+        }
+
+        $assessment = Assessment::firstOrCreate(
+            [
+                'applicationable_type' => 'mp',
+                'applicationable_id' => $mechanicalApplication->id,
+                'assessment_type' => 'mechanical',
+            ],
+            ['status' => 'draft', 'assessed_by' => Auth::id()]
+        );
+
+        if ($r = $this->redirectIfFinalized($assessment, $mechanicalApplication)) return $r;
+
+        $feeTypeCode = $validated['mechanical_fee_type'];
+        $unit = (float) $validated['unit'];
+
+        $feeType = FeeType::where('code', $feeTypeCode)->first();
+        if (! $feeType) {
+            return back()->with('error', 'Fee type not found: ' . $feeTypeCode);
+        }
+
+        $mpCategory = FeeCategory::where('code', 'MP_' . $group)->first();
+        if (! $mpCategory) {
+            return back()->with('error', 'Fee category not configured: MP_' . $group);
+        }
+
+        $isRangeBased = $feeType->computation_method === 'range_based';
+
+        $scheduleQuery = FeeSchedule::where('fee_type_id', $feeType->id)->where('is_active', true);
+        if ($isRangeBased) {
+            $scheduleQuery->where('range_from', '<=', $unit)->where('range_to', '>=', $unit);
+        }
+        $schedule = $scheduleQuery->first();
+
+        if (! $schedule) {
+            return back()->with('error', 'No fee schedule found for ' . $feeType->name . ' at unit ' . number_format($unit, 2) . '.');
+        }
+
+        $excessFee = 0;
+        $unitFee = 0;
+
+        switch ($feeType->computation_method) {
+            case 'per_unit':
+                $unitFee = (float) $schedule->fee_per_unit;
+                $baseFee = round($unit * $unitFee, 2);
+                break;
+
+            case 'fixed':
+                $unitFee = (float) $schedule->fixed_fee;
+                $baseFee = round($unit * $unitFee, 2);
+                break;
+
+            case 'range_based':
+                $threshold = (float) $schedule->excess_threshold;
+                if ($threshold > 0) {
+                    $excess = max(0, $unit - $threshold);
+                    $excessFee = round($excess * (float) $schedule->excess_fee, 2);
+                    $baseFee = round((float) $schedule->fixed_fee + $excessFee, 2);
+                    $unitFee = 0;
+                } elseif ((float) $schedule->fee_per_unit > 0) {
+                    $unitFee = (float) $schedule->fee_per_unit;
+                    $baseFee = round($unit * $unitFee, 2);
+                } else {
+                    $baseFee = round((float) $schedule->fixed_fee, 2);
+                    $unitFee = 0;
+                }
+                break;
+
+            case 'cumulative_range':
+                // First N units at fee_per_unit, remainder at excess_fee (tiered elevator
+                // inspection — only reachable here for Yearly applications, since New applications
+                // never select an INSP_* code directly).
+                $threshold = (float) $schedule->excess_threshold;
+                if ($threshold > 0 && $unit > $threshold) {
+                    $baseFee = round($threshold * (float) $schedule->fee_per_unit + ($unit - $threshold) * (float) $schedule->excess_fee, 2);
+                } else {
+                    $baseFee = round($unit * (float) $schedule->fee_per_unit, 2);
+                }
+                $unitFee = (float) $schedule->fee_per_unit;
+                break;
+
+            default:
+                $baseFee = 0;
+        }
+
+        // New: separate inspection-fee line via the matching INSP_* schedule (same as addMechanicalItem()).
+        // Yearly: the selected fee type IS the INSP_* code, already computed above as the primary fee.
+        $inspectionFee = 0;
+        if (! $isYearly) {
+            $insp = $this->resolveInspectionFee($feeTypeCode, $unit);
+            $inspFee = $insp['fee'];
+            $inspMethod = $insp['method'];
+            $inspExcessThreshold = $insp['excess_threshold'];
+            $inspExcessFee = $insp['excess_fee'];
+            $inspExcessEvery = $insp['every'];
+
+            switch ($inspMethod) {
+                case 'flat':
+                    $inspectionFee = ($inspExcessThreshold > 0 && $unit > $inspExcessThreshold)
+                        ? round($inspFee + (($unit - $inspExcessThreshold) / $inspExcessEvery) * $inspExcessFee, 2)
+                        : round($inspFee, 2);
+                    break;
+                case 'tiered':
+                    $inspectionFee = ($inspExcessThreshold > 0 && $unit > $inspExcessThreshold)
+                        ? round($inspExcessThreshold * $inspFee + ($unit - $inspExcessThreshold) * $inspExcessFee, 2)
+                        : round($unit * $inspFee, 2);
+                    break;
+                default:
+                    $inspectionFee = ($inspExcessThreshold > 0 && $unit > $inspExcessThreshold)
+                        ? round($inspExcessThreshold * $inspFee + (($unit - $inspExcessThreshold) / $inspExcessEvery) * $inspExcessFee, 2)
+                        : round($unit * $inspFee, 2);
+            }
+        }
+
+        AssessmentItem::create([
+            'assessment_id' => $assessment->id,
+            'fee_category_id' => $mpCategory->id,
+            'fee_type_id' => $feeType->id,
+            'fee_code' => $feeType->code,
+            'description' => $feeType->name,
+            'quantity' => $unit,
+            'unit_fee' => $unitFee,
+            'excess_fee' => $excessFee,
+            'inspection_fee' => $inspectionFee,
+            'amount' => $baseFee,
+            'computation_details' => [
+                'group' => $group,
+                'application_kind' => $mechanicalApplication->application_kind,
+                'fee_type_code' => $feeTypeCode,
+                'fee_schedule_id' => $schedule->id,
+                'input_unit' => $unit,
+                'computation_method' => $feeType->computation_method,
+            ],
+            'is_active' => true,
+        ]);
+
+        return redirect()->route('assessments.assess.mp', ['mechanicalApplication' => $mechanicalApplication->id, 'tab' => 'MP_' . $group])
+            ->with('success', 'Mechanical fee item added.');
+    }
+
     public function addDemolitionItem(Request $request, DemolitionApplication $demolitionApplication)
     {
         $allCodes = implode(',', [
@@ -1503,6 +1651,7 @@ class AssessmentController extends Controller
             'DP' => route('assessments.assess.dp', ['demolitionApplication' => $application->id, 'tab' => $tabCode]),
             'SGP' => route('assessments.assess.sgp', ['signageApplication' => $application->id, 'tab' => $tabCode]),
             'FP' => route('assessments.assess.fp', ['fencingApplication' => $application->id, 'tab' => $tabCode]),
+            'MP' => route('assessments.assess.mp', ['mechanicalApplication' => $application->id, 'tab' => $tabCode]),
             default => route('assessments.assess', ['application' => $application->id, 'tab' => $tabCode]),
         };
 
@@ -1517,6 +1666,7 @@ class AssessmentController extends Controller
             'dp' => \App\Models\DemolitionApplication::find($assessment->applicationable_id),
             'sgp' => \App\Models\SignageApplication::find($assessment->applicationable_id),
             'fp' => \App\Models\FencingApplication::find($assessment->applicationable_id),
+            'mp' => \App\Models\MechanicalApplication::find($assessment->applicationable_id),
             default => \App\Models\Application::find($assessment->applicationable_id),
         };
         if ($r = $this->redirectIfFinalized($assessment, $application)) return $r;
@@ -1544,6 +1694,11 @@ class AssessmentController extends Controller
 
         if ($assessment->applicationable_type === 'fp') {
             return redirect()->route('assessments.assess.fp', ['fencingApplication' => $assessment->applicationable_id, 'tab' => $tab])
+                ->with('success', 'Fee item removed.');
+        }
+
+        if ($assessment->applicationable_type === 'mp') {
+            return redirect()->route('assessments.assess.mp', ['mechanicalApplication' => $assessment->applicationable_id, 'tab' => $tab])
                 ->with('success', 'Fee item removed.');
         }
 
@@ -1580,6 +1735,11 @@ class AssessmentController extends Controller
         return $this->doSummary($fencingApplication, 'FP');
     }
 
+    public function summaryMp(MechanicalApplication $mechanicalApplication)
+    {
+        return $this->doSummary($mechanicalApplication, 'MP');
+    }
+
     private function doSummary(PermitApplicationContract $application, string $permitCode = 'BP')
     {
         $assessments = $application->assessments()->with('assessmentItems.feeCategory')->get();
@@ -1611,8 +1771,9 @@ class AssessmentController extends Controller
         $isDp = $permitCode === 'DP';
         $isSgp = $permitCode === 'SGP';
         $isFp = $permitCode === 'FP';
+        $isMp = $permitCode === 'MP';
 
-        return view('assessments.summary', compact('application', 'summary', 'grandTotal', 'assessmentItems', 'assessment', 'isOp', 'isDp', 'isSgp', 'isFp'));
+        return view('assessments.summary', compact('application', 'summary', 'grandTotal', 'assessmentItems', 'assessment', 'isOp', 'isDp', 'isSgp', 'isFp', 'isMp'));
     }
 
     // BP finalize
@@ -1733,6 +1894,21 @@ class AssessmentController extends Controller
         $this->doFinalize($fencingApplication);
         return redirect()
             ->to(route('assessments.assess.fp', $fencingApplication) . '?tab=SUMMARY')
+            ->with('success', 'Assessment finalized successfully.');
+    }
+
+    // MP finalize
+    public function finalizeMp(Request $request, MechanicalApplication $mechanicalApplication)
+    {
+        $request->validate(['password' => 'required|string']);
+        if (!Hash::check($request->password, Auth::user()->password)) {
+            return redirect()
+                ->to(route('assessments.assess.mp', $mechanicalApplication) . '?tab=SUMMARY')
+                ->with('error', 'Incorrect password. Assessment not finalized.');
+        }
+        $this->doFinalize($mechanicalApplication);
+        return redirect()
+            ->to(route('assessments.assess.mp', $mechanicalApplication) . '?tab=SUMMARY')
             ->with('success', 'Assessment finalized successfully.');
     }
 
@@ -1873,6 +2049,26 @@ class AssessmentController extends Controller
             ->with('success', 'Engineering assessment finalization reverted.');
     }
 
+    // MP revert engineering finalize
+    public function revertEngineeringMp(Request $request, MechanicalApplication $mechanicalApplication)
+    {
+        $request->validate(['password' => 'required|string']);
+        if (! Hash::check($request->password, Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
+        $error = $this->guardRevertEngineering($mechanicalApplication);
+        if ($error) {
+            return back()->with('error', $error);
+        }
+
+        $this->doRevertEngineering($mechanicalApplication);
+
+        return redirect()
+            ->to(route('assessments.assess.mp', $mechanicalApplication) . '?tab=SUMMARY')
+            ->with('success', 'Engineering assessment finalization reverted.');
+    }
+
     // OP only — revert an in-progress (not yet finalized) occupancy assessment all the way back to draft,
     // deleting all occupancy fee entries entered so far.
     public function revertToDraftOp(Request $request, OccupancyApplication $occupancyApplication)
@@ -2001,6 +2197,38 @@ class AssessmentController extends Controller
         return redirect()->route('assessments.fencing')->with('success', 'Application reverted to draft. All fencing fee entries were deleted.');
     }
 
+    // MP only — revert an in-progress (not yet finalized) mechanical assessment all the way back to draft,
+    // deleting all mechanical fee entries entered so far.
+    public function revertToDraftMp(Request $request, MechanicalApplication $mechanicalApplication)
+    {
+        $request->validate(['password' => 'required|string']);
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
+        if ($mechanicalApplication->status !== 'submitted') {
+            return back()->with('error', 'Only applications awaiting mechanical assessment can be reverted to draft.');
+        }
+
+        DB::transaction(function () use ($mechanicalApplication) {
+            $assessment = Assessment::where('applicationable_type', 'mp')
+                ->where('applicationable_id', $mechanicalApplication->id)
+                ->where('assessment_type', 'mechanical')
+                ->first();
+
+            if ($assessment) {
+                $assessment->assessmentItems()->delete();
+                $assessment->delete();
+            }
+
+            $mechanicalApplication->update(['status' => 'draft', 'submitted_at' => null]);
+        });
+
+        activity()->causedBy(Auth::user())->performedOn($mechanicalApplication)->log('Mechanical assessment reverted to draft — all fee entries deleted');
+
+        return redirect()->route('assessments.mechanical')->with('success', 'Application reverted to draft. All mechanical fee entries were deleted.');
+    }
+
     private function guardRevertEngineering(PermitApplicationContract $application): ?string
     {
         if (! in_array($application->status, ['engineering_assessed', 'billed'])) {
@@ -2035,8 +2263,8 @@ class AssessmentController extends Controller
                 $assessment->update(['status' => 'draft', 'finalized_at' => null, 'assessed_by' => null]);
             });
 
-            // DP/SGP have no zoning stage — their pre-engineering-assessment status is 'submitted', not 'zoning_assessed'.
-            $revertStatus = in_array($application->getPermitTypeCode(), ['DP', 'SGP', 'FP']) ? 'submitted' : 'zoning_assessed';
+            // DP/SGP/FP/MP have no zoning stage — their pre-engineering-assessment status is 'submitted', not 'zoning_assessed'.
+            $revertStatus = in_array($application->getPermitTypeCode(), ['DP', 'SGP', 'FP', 'MP']) ? 'submitted' : 'zoning_assessed';
 
             $application->update([
                 'status' => $revertStatus,
@@ -2078,6 +2306,12 @@ class AssessmentController extends Controller
         return $this->doPrint($fencingApplication);
     }
 
+    // MP print
+    public function printMp(MechanicalApplication $mechanicalApplication)
+    {
+        return $this->doPrint($mechanicalApplication);
+    }
+
     private function doPrint(PermitApplicationContract $application)
     {
         $settings = Setting::where('group', 'general')->pluck('value', 'key');
@@ -2085,6 +2319,7 @@ class AssessmentController extends Controller
         $isDp = $application->getPermitTypeCode() === 'DP';
         $isSgp = $application->getPermitTypeCode() === 'SGP';
         $isFp = $application->getPermitTypeCode() === 'FP';
+        $isMp = $application->getPermitTypeCode() === 'MP';
 
         if ($isDp) {
             return $this->doPrintDp($application, $settings);
@@ -2096,6 +2331,10 @@ class AssessmentController extends Controller
 
         if ($isFp) {
             return $this->doPrintFp($application, $settings);
+        }
+
+        if ($isMp) {
+            return $this->doPrintMp($application, $settings);
         }
 
         if ($isOp) {
@@ -2303,6 +2542,44 @@ class AssessmentController extends Controller
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary-fp', compact(
             'application', 'settings', 'sealImage', 'fencingAssessment',
+            'itemsByCategory', 'barangayName', 'preparedBy',
+            'buildingOfficial', 'barcodeImage'
+        ));
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->stream("assessment_{$application->application_number}.pdf");
+    }
+
+    private function doPrintMp(PermitApplicationContract $application, $settings)
+    {
+        $mechanicalAssessment = $application->assessments()
+            ->where('assessment_type', 'mechanical')
+            ->with(['assessmentItems' => fn($q) => $q->where('is_active', true)->with('feeCategory')])
+            ->first();
+
+        $itemsByCategory = $mechanicalAssessment
+            ? $mechanicalAssessment->assessmentItems->groupBy(fn($i) => $i->feeCategory?->code ?? 'OTHER')
+            : collect();
+
+        $barangayName = $application->locationBarangay?->name ?? '';
+
+        $preparedBy = $mechanicalAssessment?->assessed_by
+            ? \App\Models\User::find($mechanicalAssessment->assessed_by)
+            : null;
+
+        $buildingOfficial = Signatory::where('role', 'building_official')
+            ->where('is_active', true)
+            ->first();
+
+        $generator    = new BarcodeGeneratorPNG();
+        $barcodeImage = base64_encode(
+            $generator->getBarcode($application->application_number, $generator::TYPE_CODE_128, 2, 80)
+        );
+
+        $sealImage = Setting::imageDataUri($settings, 'general.logo');
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary-mp', compact(
+            'application', 'settings', 'sealImage', 'mechanicalAssessment',
             'itemsByCategory', 'barangayName', 'preparedBy',
             'buildingOfficial', 'barcodeImage'
         ));

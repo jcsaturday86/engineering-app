@@ -9,6 +9,7 @@ use App\Models\Collection;
 use App\Models\CollectionDetail;
 use App\Models\DemolitionApplication;
 use App\Models\FencingApplication;
+use App\Models\MechanicalApplication;
 use App\Models\OccupancyApplication;
 use App\Models\SignageApplication;
 use App\Models\VoidTransaction;
@@ -79,7 +80,15 @@ class CollectionController extends Controller
             ->latest()
             ->get();
 
-        $forPayment = $bpForPayment->concat($opForPayment)->concat($dpForPayment)->sortByDesc('created_at');
+        $mpForPayment = MechanicalApplication::where('status', 'billed')
+            ->whereDoesntHave('collections', fn ($q) => $q->where('status', 'active'))
+            ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
+                ->where('application_number', 'like', "%{$search}%")
+                ->orWhere('owner_name', 'like', "%{$search}%")))
+            ->latest()
+            ->get();
+
+        $forPayment = $bpForPayment->concat($opForPayment)->concat($dpForPayment)->concat($mpForPayment)->sortByDesc('created_at');
 
         $month = $request->get('month', now()->format('Y-m'));
         $monthStart = \Carbon\Carbon::createFromFormat('Y-m', $month)->startOfMonth();
@@ -124,6 +133,12 @@ class CollectionController extends Controller
     public function createFp(FencingApplication $fencingApplication)
     {
         return $this->doCreate($fencingApplication);
+    }
+
+    // MP payment
+    public function createMp(MechanicalApplication $mechanicalApplication)
+    {
+        return $this->doCreate($mechanicalApplication);
     }
 
     private function doCreate(PermitApplicationContract $application)
@@ -171,6 +186,12 @@ class CollectionController extends Controller
         return $this->doStore($request, $fencingApplication);
     }
 
+    // MP store payment
+    public function storeMp(Request $request, MechanicalApplication $mechanicalApplication)
+    {
+        return $this->doStore($request, $mechanicalApplication);
+    }
+
     private function doStore(Request $request, PermitApplicationContract $application)
     {
         $validated = $request->validate([
@@ -199,6 +220,7 @@ class CollectionController extends Controller
             'DP' => 'dp',
             'SGP' => 'sgp',
             'FP' => 'fp',
+            'MP' => 'mp',
             default => 'bp',
         };
 
