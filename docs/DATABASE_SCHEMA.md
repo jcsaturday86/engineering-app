@@ -234,7 +234,7 @@ A much simpler table than `demolition_applications` — no enterprise, CTC, insp
 
 ### `fencing_applications` (Fencing Permit only)
 
-Structurally closest to `demolition_applications` — has enterprise, design-professional, inspector, and lot-owner blocks — but keyed off `applicant_ctc_*`-free applicant address fields (no CTC on the applicant) and uses `construction_*` naming (not `demolition_*`) for the site-location block.
+Structurally closest to `demolition_applications` — has enterprise, design-professional, inspector, and lot-owner blocks — and uses `construction_*` naming (not `demolition_*`) for the site-location block. A later migration added an `applicant_ctc_*` triplet to the Applicant Address block (DP has no equivalent applicant-level CTC fields — only its lot-owner-consent block carries CTC data), matching the pattern already used for Design Professional, Full-Time Inspector, and Consent of Lot Owner.
 
 | Column Group | Columns |
 |-------------|---------|
@@ -242,7 +242,7 @@ Structurally closest to `demolition_applications` — has enterprise, design-pro
 | **Status** | status (default: 'draft'), source (walk_in/online) |
 | **Applicant** | applicant_first/middle/last_name, applicant_tin, applicant_telephone |
 | **Enterprise** | owned_by_enterprise, enterprise_name, form_of_ownership_id (FK) |
-| **Applicant Address** | applicant_province/city/barangay_id (FK), applicant_street, applicant_zip_code |
+| **Applicant Address** | applicant_province/city/barangay_id (FK), applicant_street, applicant_zip_code, applicant_ctc_no, applicant_ctc_date_issued, applicant_ctc_issued_at |
 | **Location of Construction** | lot_no, block_no, tct_no, tax_dec_no, construction_street, construction_barangay_id (FK) — distinct from the applicant's own barangay, mirroring DP's `demolition_barangay_id` pattern |
 | **Scope of Work** | scope_of_work (enum: new_construction/erection/addition/repair/others), scope_of_work_detail |
 | **Design Professional, Plans and Specifications** | design_professional_name, design_professional_address, design_professional_prc_no, design_professional_prc_validity, design_professional_ptr_no, design_professional_ptr_date_issued, design_professional_ptr_issued_at, design_professional_tin |

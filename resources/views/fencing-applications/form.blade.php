@@ -77,10 +77,11 @@
                     @error('applicant_first_name')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="applicant_middle_name" class="block text-xs font-medium text-gray-600 mb-1">Middle Name</label>
-                    <input type="text" name="applicant_middle_name" id="applicant_middle_name"
+                    <label for="applicant_middle_name" class="block text-xs font-medium text-gray-600 mb-1">Middle Name <span class="text-red-500">*</span></label>
+                    <input type="text" name="applicant_middle_name" id="applicant_middle_name" required
                         value="{{ old('applicant_middle_name', $application->applicant_middle_name ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('applicant_middle_name')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label for="applicant_last_name" class="block text-xs font-medium text-gray-600 mb-1">Last Name <span class="text-red-500">*</span></label>
@@ -90,18 +91,20 @@
                     @error('applicant_last_name')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="applicant_tin" class="block text-xs font-medium text-gray-600 mb-1">TIN</label>
-                    <input type="text" name="applicant_tin" id="applicant_tin"
+                    <label for="applicant_tin" class="block text-xs font-medium text-gray-600 mb-1">TIN <span class="text-red-500">*</span></label>
+                    <input type="text" name="applicant_tin" id="applicant_tin" required
                         value="{{ old('applicant_tin', $application->applicant_tin ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('applicant_tin')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
-                    <label for="applicant_telephone" class="block text-xs font-medium text-gray-600 mb-1">Telephone Number</label>
-                    <input type="text" name="applicant_telephone" id="applicant_telephone"
+                    <label for="applicant_telephone" class="block text-xs font-medium text-gray-600 mb-1">Telephone Number <span class="text-red-500">*</span></label>
+                    <input type="text" name="applicant_telephone" id="applicant_telephone" required
                         value="{{ old('applicant_telephone', $application->applicant_telephone ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('applicant_telephone')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div class="flex items-end pb-2">
                     <label class="inline-flex items-center gap-2 cursor-pointer">
@@ -113,20 +116,22 @@
                     </label>
                 </div>
                 <div x-show="ownedByEnterprise" x-cloak>
-                    <label for="enterprise_name" class="block text-xs font-medium text-gray-600 mb-1">Enterprise Name</label>
-                    <input type="text" name="enterprise_name" id="enterprise_name"
+                    <label for="enterprise_name" class="block text-xs font-medium text-gray-600 mb-1">Enterprise Name <span class="text-red-500" x-show="ownedByEnterprise">*</span></label>
+                    <input type="text" name="enterprise_name" id="enterprise_name" :required="ownedByEnterprise"
                         value="{{ old('enterprise_name', $application->enterprise_name ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('enterprise_name')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="form_of_ownership_id" class="block text-xs font-medium text-gray-600 mb-1">Form of Ownership</label>
-                    <select name="form_of_ownership_id" id="form_of_ownership_id"
+                    <label for="form_of_ownership_id" class="block text-xs font-medium text-gray-600 mb-1">Form of Ownership <span class="text-red-500" x-show="ownedByEnterprise">*</span></label>
+                    <select name="form_of_ownership_id" id="form_of_ownership_id" :required="ownedByEnterprise"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
                         <option value="">-- Select --</option>
                         @foreach($formOfOwnerships as $ownership)
                             <option value="{{ $ownership->id }}" {{ old('form_of_ownership_id', $application->form_of_ownership_id ?? '') == $ownership->id ? 'selected' : '' }}>{{ $ownership->name }}</option>
                         @endforeach
                     </select>
+                    @error('form_of_ownership_id')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
             </div>
         </div>
@@ -178,36 +183,41 @@
                     @error('applicant_barangay_id')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="applicant_street" class="block text-xs font-medium text-gray-600 mb-1">No./Street/Bldg</label>
-                    <input type="text" name="applicant_street" id="applicant_street"
+                    <label for="applicant_street" class="block text-xs font-medium text-gray-600 mb-1">No./Street/Bldg <span class="text-red-500">*</span></label>
+                    <input type="text" name="applicant_street" id="applicant_street" required
                         value="{{ old('applicant_street', $application->applicant_street ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('applicant_street')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="applicant_zip_code" class="block text-xs font-medium text-gray-600 mb-1">Zip Code</label>
-                    <input type="text" name="applicant_zip_code" id="applicant_zip_code"
+                    <label for="applicant_zip_code" class="block text-xs font-medium text-gray-600 mb-1">Zip Code <span class="text-red-500">*</span></label>
+                    <input type="text" name="applicant_zip_code" id="applicant_zip_code" required
                         value="{{ old('applicant_zip_code', $application->applicant_zip_code ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('applicant_zip_code')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                    <label for="applicant_ctc_no" class="block text-xs font-medium text-gray-600 mb-1">CTC No.</label>
-                    <input type="text" name="applicant_ctc_no" id="applicant_ctc_no"
+                    <label for="applicant_ctc_no" class="block text-xs font-medium text-gray-600 mb-1">CTC No. <span class="text-red-500">*</span></label>
+                    <input type="text" name="applicant_ctc_no" id="applicant_ctc_no" required
                         value="{{ old('applicant_ctc_no', $application->applicant_ctc_no ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('applicant_ctc_no')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="applicant_ctc_date_issued" class="block text-xs font-medium text-gray-600 mb-1">Date Issued</label>
-                    <input type="date" name="applicant_ctc_date_issued" id="applicant_ctc_date_issued"
+                    <label for="applicant_ctc_date_issued" class="block text-xs font-medium text-gray-600 mb-1">Date Issued <span class="text-red-500">*</span></label>
+                    <input type="date" name="applicant_ctc_date_issued" id="applicant_ctc_date_issued" required
                         value="{{ old('applicant_ctc_date_issued', optional($application->applicant_ctc_date_issued ?? null)->format('Y-m-d')) }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('applicant_ctc_date_issued')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="applicant_ctc_issued_at" class="block text-xs font-medium text-gray-600 mb-1">Issued At</label>
-                    <input type="text" name="applicant_ctc_issued_at" id="applicant_ctc_issued_at"
+                    <label for="applicant_ctc_issued_at" class="block text-xs font-medium text-gray-600 mb-1">Issued At <span class="text-red-500">*</span></label>
+                    <input type="text" name="applicant_ctc_issued_at" id="applicant_ctc_issued_at" required
                         value="{{ old('applicant_ctc_issued_at', $application->applicant_ctc_issued_at ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('applicant_ctc_issued_at')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
             </div>
         </div>
@@ -222,28 +232,32 @@
             </h3>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
-                    <label for="lot_no" class="block text-xs font-medium text-gray-600 mb-1">Lot No.</label>
-                    <input type="text" name="lot_no" id="lot_no"
+                    <label for="lot_no" class="block text-xs font-medium text-gray-600 mb-1">Lot No. <span class="text-red-500">*</span></label>
+                    <input type="text" name="lot_no" id="lot_no" required
                         value="{{ old('lot_no', $application->lot_no ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('lot_no')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="block_no" class="block text-xs font-medium text-gray-600 mb-1">Blk No.</label>
-                    <input type="text" name="block_no" id="block_no"
+                    <label for="block_no" class="block text-xs font-medium text-gray-600 mb-1">Blk No. <span class="text-red-500">*</span></label>
+                    <input type="text" name="block_no" id="block_no" required
                         value="{{ old('block_no', $application->block_no ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('block_no')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="tct_no" class="block text-xs font-medium text-gray-600 mb-1">TCT No.</label>
-                    <input type="text" name="tct_no" id="tct_no"
+                    <label for="tct_no" class="block text-xs font-medium text-gray-600 mb-1">TCT No. <span class="text-red-500">*</span></label>
+                    <input type="text" name="tct_no" id="tct_no" required
                         value="{{ old('tct_no', $application->tct_no ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('tct_no')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="tax_dec_no" class="block text-xs font-medium text-gray-600 mb-1">Tax Dec. No.</label>
-                    <input type="text" name="tax_dec_no" id="tax_dec_no"
+                    <label for="tax_dec_no" class="block text-xs font-medium text-gray-600 mb-1">Tax Dec. No. <span class="text-red-500">*</span></label>
+                    <input type="text" name="tax_dec_no" id="tax_dec_no" required
                         value="{{ old('tax_dec_no', $application->tax_dec_no ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('tax_dec_no')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -295,7 +309,7 @@
                         <span class="text-sm text-gray-700">Repair (Specify)</span>
                     </label>
                     <input type="text" name="scope_of_work_detail" x-show="scopeOfWork === 'repair'" x-cloak
-                        :disabled="scopeOfWork !== 'repair'"
+                        :disabled="scopeOfWork !== 'repair'" :required="scopeOfWork === 'repair'"
                         value="{{ old('scope_of_work_detail', ($application->scope_of_work ?? '') === 'repair' ? ($application->scope_of_work_detail ?? '') : '') }}"
                         placeholder="Specify details..."
                         class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
@@ -308,13 +322,14 @@
                         <span class="text-sm text-gray-700">Others (Specify)</span>
                     </label>
                     <input type="text" name="scope_of_work_detail" x-show="scopeOfWork === 'others'" x-cloak
-                        :disabled="scopeOfWork !== 'others'"
+                        :disabled="scopeOfWork !== 'others'" :required="scopeOfWork === 'others'"
                         value="{{ old('scope_of_work_detail', ($application->scope_of_work ?? '') === 'others' ? ($application->scope_of_work_detail ?? '') : '') }}"
                         placeholder="Specify details..."
                         class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
                 </div>
             </div>
             @error('scope_of_work')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
+            @error('scope_of_work_detail')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
         </div>
 
         {{-- ================================================================== --}}
@@ -327,58 +342,66 @@
             </h3>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                    <label for="design_professional_name" class="block text-xs font-medium text-gray-600 mb-1">Name of Architect or Civil Engineer</label>
-                    <input type="text" name="design_professional_name" id="design_professional_name"
+                    <label for="design_professional_name" class="block text-xs font-medium text-gray-600 mb-1">Name of Architect or Civil Engineer <span class="text-red-500">*</span></label>
+                    <input type="text" name="design_professional_name" id="design_professional_name" required
                         value="{{ old('design_professional_name', $application->design_professional_name ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('design_professional_name')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="design_professional_address" class="block text-xs font-medium text-gray-600 mb-1">Address</label>
-                    <input type="text" name="design_professional_address" id="design_professional_address"
+                    <label for="design_professional_address" class="block text-xs font-medium text-gray-600 mb-1">Address <span class="text-red-500">*</span></label>
+                    <input type="text" name="design_professional_address" id="design_professional_address" required
                         value="{{ old('design_professional_address', $application->design_professional_address ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('design_professional_address')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                    <label for="design_professional_prc_no" class="block text-xs font-medium text-gray-600 mb-1">PRC No.</label>
-                    <input type="text" name="design_professional_prc_no" id="design_professional_prc_no"
+                    <label for="design_professional_prc_no" class="block text-xs font-medium text-gray-600 mb-1">PRC No. <span class="text-red-500">*</span></label>
+                    <input type="text" name="design_professional_prc_no" id="design_professional_prc_no" required
                         value="{{ old('design_professional_prc_no', $application->design_professional_prc_no ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('design_professional_prc_no')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="design_professional_prc_validity" class="block text-xs font-medium text-gray-600 mb-1">Validity</label>
-                    <input type="date" name="design_professional_prc_validity" id="design_professional_prc_validity"
+                    <label for="design_professional_prc_validity" class="block text-xs font-medium text-gray-600 mb-1">Validity <span class="text-red-500">*</span></label>
+                    <input type="date" name="design_professional_prc_validity" id="design_professional_prc_validity" required
                         value="{{ old('design_professional_prc_validity', optional($application->design_professional_prc_validity ?? null)->format('Y-m-d')) }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('design_professional_prc_validity')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                    <label for="design_professional_ptr_no" class="block text-xs font-medium text-gray-600 mb-1">PTR No.</label>
-                    <input type="text" name="design_professional_ptr_no" id="design_professional_ptr_no"
+                    <label for="design_professional_ptr_no" class="block text-xs font-medium text-gray-600 mb-1">PTR No. <span class="text-red-500">*</span></label>
+                    <input type="text" name="design_professional_ptr_no" id="design_professional_ptr_no" required
                         value="{{ old('design_professional_ptr_no', $application->design_professional_ptr_no ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('design_professional_ptr_no')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="design_professional_ptr_date_issued" class="block text-xs font-medium text-gray-600 mb-1">Date Issued</label>
-                    <input type="date" name="design_professional_ptr_date_issued" id="design_professional_ptr_date_issued"
+                    <label for="design_professional_ptr_date_issued" class="block text-xs font-medium text-gray-600 mb-1">Date Issued <span class="text-red-500">*</span></label>
+                    <input type="date" name="design_professional_ptr_date_issued" id="design_professional_ptr_date_issued" required
                         value="{{ old('design_professional_ptr_date_issued', optional($application->design_professional_ptr_date_issued ?? null)->format('Y-m-d')) }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('design_professional_ptr_date_issued')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="design_professional_ptr_issued_at" class="block text-xs font-medium text-gray-600 mb-1">Issued At</label>
-                    <input type="text" name="design_professional_ptr_issued_at" id="design_professional_ptr_issued_at"
+                    <label for="design_professional_ptr_issued_at" class="block text-xs font-medium text-gray-600 mb-1">Issued At <span class="text-red-500">*</span></label>
+                    <input type="text" name="design_professional_ptr_issued_at" id="design_professional_ptr_issued_at" required
                         value="{{ old('design_professional_ptr_issued_at', $application->design_professional_ptr_issued_at ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('design_professional_ptr_issued_at')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                    <label for="design_professional_tin" class="block text-xs font-medium text-gray-600 mb-1">TIN</label>
-                    <input type="text" name="design_professional_tin" id="design_professional_tin"
+                    <label for="design_professional_tin" class="block text-xs font-medium text-gray-600 mb-1">TIN <span class="text-red-500">*</span></label>
+                    <input type="text" name="design_professional_tin" id="design_professional_tin" required
                         value="{{ old('design_professional_tin', $application->design_professional_tin ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('design_professional_tin')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
             </div>
         </div>
@@ -407,58 +430,66 @@
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                    <label for="inspector_name" class="block text-xs font-medium text-gray-600 mb-1">Name of Architect or Civil Engineer</label>
-                    <input type="text" name="inspector_name" id="inspector_name"
+                    <label for="inspector_name" class="block text-xs font-medium text-gray-600 mb-1">Name of Architect or Civil Engineer <span class="text-red-500">*</span></label>
+                    <input type="text" name="inspector_name" id="inspector_name" required
                         value="{{ old('inspector_name', $application->inspector_name ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('inspector_name')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="inspector_address" class="block text-xs font-medium text-gray-600 mb-1">Address</label>
-                    <input type="text" name="inspector_address" id="inspector_address"
+                    <label for="inspector_address" class="block text-xs font-medium text-gray-600 mb-1">Address <span class="text-red-500">*</span></label>
+                    <input type="text" name="inspector_address" id="inspector_address" required
                         value="{{ old('inspector_address', $application->inspector_address ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('inspector_address')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                    <label for="inspector_prc_no" class="block text-xs font-medium text-gray-600 mb-1">PRC No.</label>
-                    <input type="text" name="inspector_prc_no" id="inspector_prc_no"
+                    <label for="inspector_prc_no" class="block text-xs font-medium text-gray-600 mb-1">PRC No. <span class="text-red-500">*</span></label>
+                    <input type="text" name="inspector_prc_no" id="inspector_prc_no" required
                         value="{{ old('inspector_prc_no', $application->inspector_prc_no ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('inspector_prc_no')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="inspector_prc_validity" class="block text-xs font-medium text-gray-600 mb-1">Validity</label>
-                    <input type="date" name="inspector_prc_validity" id="inspector_prc_validity"
+                    <label for="inspector_prc_validity" class="block text-xs font-medium text-gray-600 mb-1">Validity <span class="text-red-500">*</span></label>
+                    <input type="date" name="inspector_prc_validity" id="inspector_prc_validity" required
                         value="{{ old('inspector_prc_validity', optional($application->inspector_prc_validity ?? null)->format('Y-m-d')) }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('inspector_prc_validity')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                    <label for="inspector_ptr_no" class="block text-xs font-medium text-gray-600 mb-1">PTR No.</label>
-                    <input type="text" name="inspector_ptr_no" id="inspector_ptr_no"
+                    <label for="inspector_ptr_no" class="block text-xs font-medium text-gray-600 mb-1">PTR No. <span class="text-red-500">*</span></label>
+                    <input type="text" name="inspector_ptr_no" id="inspector_ptr_no" required
                         value="{{ old('inspector_ptr_no', $application->inspector_ptr_no ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('inspector_ptr_no')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="inspector_ptr_date_issued" class="block text-xs font-medium text-gray-600 mb-1">Date Issued</label>
-                    <input type="date" name="inspector_ptr_date_issued" id="inspector_ptr_date_issued"
+                    <label for="inspector_ptr_date_issued" class="block text-xs font-medium text-gray-600 mb-1">Date Issued <span class="text-red-500">*</span></label>
+                    <input type="date" name="inspector_ptr_date_issued" id="inspector_ptr_date_issued" required
                         value="{{ old('inspector_ptr_date_issued', optional($application->inspector_ptr_date_issued ?? null)->format('Y-m-d')) }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('inspector_ptr_date_issued')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="inspector_ptr_issued_at" class="block text-xs font-medium text-gray-600 mb-1">Issued At</label>
-                    <input type="text" name="inspector_ptr_issued_at" id="inspector_ptr_issued_at"
+                    <label for="inspector_ptr_issued_at" class="block text-xs font-medium text-gray-600 mb-1">Issued At <span class="text-red-500">*</span></label>
+                    <input type="text" name="inspector_ptr_issued_at" id="inspector_ptr_issued_at" required
                         value="{{ old('inspector_ptr_issued_at', $application->inspector_ptr_issued_at ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('inspector_ptr_issued_at')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                    <label for="inspector_tin" class="block text-xs font-medium text-gray-600 mb-1">TIN</label>
-                    <input type="text" name="inspector_tin" id="inspector_tin"
+                    <label for="inspector_tin" class="block text-xs font-medium text-gray-600 mb-1">TIN <span class="text-red-500">*</span></label>
+                    <input type="text" name="inspector_tin" id="inspector_tin" required
                         value="{{ old('inspector_tin', $application->inspector_tin ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('inspector_tin')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
             </div>
         </div>
@@ -473,36 +504,41 @@
             </h3>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                    <label for="owner_name" class="block text-xs font-medium text-gray-600 mb-1">Name</label>
-                    <input type="text" name="owner_name" id="owner_name"
+                    <label for="owner_name" class="block text-xs font-medium text-gray-600 mb-1">Name <span class="text-red-500">*</span></label>
+                    <input type="text" name="owner_name" id="owner_name" required
                         value="{{ old('owner_name', $application->owner_name ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('owner_name')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="owner_address" class="block text-xs font-medium text-gray-600 mb-1">Address</label>
-                    <input type="text" name="owner_address" id="owner_address"
+                    <label for="owner_address" class="block text-xs font-medium text-gray-600 mb-1">Address <span class="text-red-500">*</span></label>
+                    <input type="text" name="owner_address" id="owner_address" required
                         value="{{ old('owner_address', $application->owner_address ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('owner_address')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                    <label for="owner_ctc_no" class="block text-xs font-medium text-gray-600 mb-1">CTC No.</label>
-                    <input type="text" name="owner_ctc_no" id="owner_ctc_no"
+                    <label for="owner_ctc_no" class="block text-xs font-medium text-gray-600 mb-1">CTC No. <span class="text-red-500">*</span></label>
+                    <input type="text" name="owner_ctc_no" id="owner_ctc_no" required
                         value="{{ old('owner_ctc_no', $application->owner_ctc_no ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('owner_ctc_no')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="owner_ctc_date_issued" class="block text-xs font-medium text-gray-600 mb-1">Date Issued</label>
-                    <input type="date" name="owner_ctc_date_issued" id="owner_ctc_date_issued"
+                    <label for="owner_ctc_date_issued" class="block text-xs font-medium text-gray-600 mb-1">Date Issued <span class="text-red-500">*</span></label>
+                    <input type="date" name="owner_ctc_date_issued" id="owner_ctc_date_issued" required
                         value="{{ old('owner_ctc_date_issued', optional($application->owner_ctc_date_issued ?? null)->format('Y-m-d')) }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('owner_ctc_date_issued')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="owner_ctc_issued_at" class="block text-xs font-medium text-gray-600 mb-1">Issued At</label>
-                    <input type="text" name="owner_ctc_issued_at" id="owner_ctc_issued_at"
+                    <label for="owner_ctc_issued_at" class="block text-xs font-medium text-gray-600 mb-1">Issued At <span class="text-red-500">*</span></label>
+                    <input type="text" name="owner_ctc_issued_at" id="owner_ctc_issued_at" required
                         value="{{ old('owner_ctc_issued_at', $application->owner_ctc_issued_at ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('owner_ctc_issued_at')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
             </div>
         </div>

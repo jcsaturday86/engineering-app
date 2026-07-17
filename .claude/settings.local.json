@@ -247,7 +247,19 @@
       "Bash(curl -s -c /tmp/cjz2.txt -b /tmp/cj2.txt \"http://localhost:8100/zoning/10\" -o /tmp/zoning_reverted.html -w \"%{http_code}\\\\n\")",
       "Bash(find \"C:/Users/Jay Carlou/AppData/Local/Temp\" -iname \"*.png\" -newermt \"2026-07-16 10:00\" 2>/dev/null | head -20 *)",
       "Bash(curl -s -b /tmp/cjnew2.txt \"http://localhost:8100/fencing-applications/3\" -o /tmp/fp_show_check3.html -w \"%{http_code}\\\\n\")",
-      "Bash(curl -sI -b /tmp/cjnew2.txt \"http://localhost:8100/fencing-applications/3\")"
+      "Bash(curl -sI -b /tmp/cjnew2.txt \"http://localhost:8100/fencing-applications/3\")",
+      "Bash(\"C:\\\\xampp\\\\php\\\\php.exe\" artisan *)",
+      "Bash('C:\\\\xampp\\\\php\\\\php.exe' artisan *)",
+      "Bash(\"C:\\\\xampp\\\\php\\\\php.exe\" render_fpdebug.php)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"http://localhost/engineering-app/public/fp_debug.html\" --max-time 5)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"http://localhost:8100\" --max-time 5)",
+      "Bash(nohup \"C:\\\\xampp\\\\php\\\\php.exe\" artisan serve --port=8100)",
+      "Bash('C:\\\\xampp\\\\php\\\\php.exe' -r ' *)",
+      "Bash(\"C:\\\\xampp\\\\php\\\\php.exe\" render_fppdf.php)",
+      "Bash(cat > *)",
+      "Bash(rm -f C:/xampp/htdocs/engineering-app/public/fp_crop_*.png)",
+      "Bash(rm -f C:/xampp/htdocs/engineering-app/public/fp_src_p2_crop*.png)",
+      "Bash(rm -f \"/c/Users/JAYCAR~1/AppData/Local/Temp/claude/C--xampp-htdocs-engineering-app/80b4d8b2-6a63-4704-9397-2303c3138762/scratchpad/scan_fp6.php\")"
     ]
   }
 }
