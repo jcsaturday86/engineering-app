@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AnnualInspectionApplication;
 use App\Models\Barangay;
 use App\Models\City;
-use App\Models\MechanicalApplication;
 use App\Models\PermitType;
 use App\Models\User;
 use App\Notifications\ApplicationSubmittedNotification;
@@ -14,11 +14,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 
-class MechanicalApplicationController extends Controller
+class AnnualInspectionApplicationController extends Controller
 {
     private function filteredQuery(Request $request): array
     {
-        $query = MechanicalApplication::where('status', '!=', 'cancelled');
+        $query = AnnualInspectionApplication::where('status', '!=', 'cancelled');
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -45,16 +45,16 @@ class MechanicalApplicationController extends Controller
 
         $applications = $query->latest()->paginate(20)->withQueryString();
 
-        return view('mechanical-applications.index', compact('applications', 'dateFrom', 'dateTo'));
+        return view('annual-inspection-applications.index', compact('applications', 'dateFrom', 'dateTo'));
     }
 
     public function create()
     {
-        $mpPermitType = PermitType::where('code', 'MP')->where('is_active', true)->firstOrFail();
+        $aiPermitType = PermitType::where('code', 'AI')->where('is_active', true)->firstOrFail();
         $data = $this->getFormData();
         $data['application'] = null;
 
-        return view('mechanical-applications.form', $data);
+        return view('annual-inspection-applications.form', $data);
     }
 
     public function store(Request $request)
@@ -63,16 +63,16 @@ class MechanicalApplicationController extends Controller
 
         DB::beginTransaction();
         try {
-            $counter = DB::table('mechanical_applications')
+            $counter = DB::table('annual_inspection_applications')
                 ->where('app_year', now()->year)
                 ->where('app_month', now()->month)
                 ->lockForUpdate()
                 ->max('app_counter');
 
             $nextCounter = ($counter ?? 0) + 1;
-            $appNumber = sprintf('MP-%s-%s-%05d', now()->format('Y'), now()->format('m'), $nextCounter);
+            $appNumber = sprintf('AI-%s-%s-%05d', now()->format('Y'), now()->format('m'), $nextCounter);
 
-            $application = MechanicalApplication::create(array_merge($validated, [
+            $application = AnnualInspectionApplication::create(array_merge($validated, [
                 'app_year' => now()->year,
                 'app_month' => now()->month,
                 'app_counter' => $nextCounter,
@@ -84,7 +84,7 @@ class MechanicalApplicationController extends Controller
 
             DB::commit();
 
-            return redirect()->route('mechanical-applications.show', $application)
+            return redirect()->route('annual-inspection-applications.show', $application)
                 ->with('success', "Application {$appNumber} created successfully.");
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -92,39 +92,39 @@ class MechanicalApplicationController extends Controller
         }
     }
 
-    public function show(MechanicalApplication $mechanicalApplication)
+    public function show(AnnualInspectionApplication $annualInspectionApplication)
     {
-        $mechanicalApplication->load([
+        $annualInspectionApplication->load([
             'locationBarangay',
             'assessments.assessmentItems', 'billings', 'collections', 'permits',
-            'mechanicalPermitUnits.permit',
+            'annualInspectionPermitUnits.permit',
         ]);
 
-        $application = $mechanicalApplication;
+        $application = $annualInspectionApplication;
 
-        return view('mechanical-applications.show', compact('application'));
+        return view('annual-inspection-applications.show', compact('application'));
     }
 
-    public function edit(MechanicalApplication $mechanicalApplication)
+    public function edit(AnnualInspectionApplication $annualInspectionApplication)
     {
-        $mpPermitType = PermitType::where('code', 'MP')->where('is_active', true)->firstOrFail();
+        $aiPermitType = PermitType::where('code', 'AI')->where('is_active', true)->firstOrFail();
         $data = $this->getFormData();
-        $data['application'] = $mechanicalApplication;
+        $data['application'] = $annualInspectionApplication;
 
-        return view('mechanical-applications.form', $data);
+        return view('annual-inspection-applications.form', $data);
     }
 
-    public function update(Request $request, MechanicalApplication $mechanicalApplication)
+    public function update(Request $request, AnnualInspectionApplication $annualInspectionApplication)
     {
         $validated = $this->validateApplication($request);
 
         DB::beginTransaction();
         try {
-            $mechanicalApplication->update($validated);
+            $annualInspectionApplication->update($validated);
 
             DB::commit();
 
-            return redirect()->route('mechanical-applications.show', $mechanicalApplication)
+            return redirect()->route('annual-inspection-applications.show', $annualInspectionApplication)
                 ->with('success', 'Application updated successfully.');
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -132,7 +132,7 @@ class MechanicalApplicationController extends Controller
         }
     }
 
-    public function submit(Request $request, MechanicalApplication $mechanicalApplication)
+    public function submit(Request $request, AnnualInspectionApplication $annualInspectionApplication)
     {
         $request->validate(['password' => 'required|string']);
 
@@ -140,25 +140,25 @@ class MechanicalApplicationController extends Controller
             return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
         }
 
-        if ($mechanicalApplication->status !== 'draft') {
+        if ($annualInspectionApplication->status !== 'draft') {
             return back()->with('error', 'Only draft applications can be submitted.');
         }
 
-        $mechanicalApplication->update([
+        $annualInspectionApplication->update([
             'status' => 'submitted',
             'submitted_at' => now(),
         ]);
 
-        activity()->causedBy(Auth::user())->performedOn($mechanicalApplication)
-            ->log('Mechanical application submitted — routed to Engineering Assessment');
+        activity()->causedBy(Auth::user())->performedOn($annualInspectionApplication)
+            ->log('Annual Inspection application submitted — routed to Engineering Assessment');
 
         $engineeringUsers = User::role(['engineering-officer', 'engineering-staff'])->get();
-        Notification::send($engineeringUsers, new ApplicationSubmittedNotification($mechanicalApplication));
+        Notification::send($engineeringUsers, new ApplicationSubmittedNotification($annualInspectionApplication));
 
         return back()->with('success', 'Application submitted. Routed to Engineering Assessment.');
     }
 
-    public function revertSubmission(Request $request, MechanicalApplication $mechanicalApplication)
+    public function revertSubmission(Request $request, AnnualInspectionApplication $annualInspectionApplication)
     {
         $request->validate(['password' => 'required|string']);
 
@@ -166,40 +166,40 @@ class MechanicalApplicationController extends Controller
             return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
         }
 
-        if ($mechanicalApplication->status !== 'submitted') {
+        if ($annualInspectionApplication->status !== 'submitted') {
             return back()->with('error', 'Only submitted applications can have their submission reverted.');
         }
 
-        if ($mechanicalApplication->assessments()->where('status', 'finalized')->exists()) {
+        if ($annualInspectionApplication->assessments()->where('status', 'finalized')->exists()) {
             return back()->with('error', 'Cannot revert: engineering assessment has already started.');
         }
 
-        DB::transaction(function () use ($mechanicalApplication) {
-            $mechanicalApplication->update(['status' => 'draft', 'submitted_at' => null]);
+        DB::transaction(function () use ($annualInspectionApplication) {
+            $annualInspectionApplication->update(['status' => 'draft', 'submitted_at' => null]);
         });
 
-        activity()->causedBy(Auth::user())->performedOn($mechanicalApplication)->log('Mechanical application submission reverted to draft');
+        activity()->causedBy(Auth::user())->performedOn($annualInspectionApplication)->log('Annual Inspection application submission reverted to draft');
 
         return back()->with('success', 'Application submission reverted to draft.');
     }
 
-    public function cancel(Request $request, MechanicalApplication $mechanicalApplication)
+    public function cancel(Request $request, AnnualInspectionApplication $annualInspectionApplication)
     {
         $request->validate(['reason' => 'required|string|max:500']);
 
-        if (in_array($mechanicalApplication->status, ['paid', 'permit_generated', 'released'])) {
+        if (in_array($annualInspectionApplication->status, ['paid', 'permit_generated', 'released'])) {
             return back()->with('error', 'Cannot cancel an application that has been paid or has a permit generated.');
         }
 
-        $mechanicalApplication->update([
+        $annualInspectionApplication->update([
             'status' => 'cancelled',
             'cancelled_at' => now(),
             'cancellation_reason' => $request->reason,
         ]);
 
-        activity()->causedBy(Auth::user())->performedOn($mechanicalApplication)->log('Application cancelled');
+        activity()->causedBy(Auth::user())->performedOn($annualInspectionApplication)->log('Application cancelled');
 
-        return redirect()->route('mechanical-applications.index')->with('warning', 'Application has been cancelled.');
+        return redirect()->route('annual-inspection-applications.index')->with('warning', 'Application has been cancelled.');
     }
 
     private function getFormData(): array

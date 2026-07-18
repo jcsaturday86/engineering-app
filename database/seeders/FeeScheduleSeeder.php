@@ -1433,11 +1433,12 @@ class FeeScheduleSeeder extends Seeder
         );
         $this->syncSchedules($feeTypeId, [
             ['range_from' => 1, 'range_to' => 100, 'fixed_fee' => 120],
-            ['range_from' => 101, 'range_to' => 200, 'fixed_fee' => 120],
+            ['range_from' => 101, 'range_to' => 200, 'fixed_fee' => 240],
             ['range_from' => 201, 'range_to' => 350, 'fixed_fee' => 480],
             ['range_from' => 351, 'range_to' => 500, 'fixed_fee' => 720],
             ['range_from' => 501, 'range_to' => 750, 'fixed_fee' => 960],
-            ['range_from' => 751, 'range_to' => 1000, 'fixed_fee' => 1200, 'excess_threshold' => 1000, 'excess_every' => 1000, 'excess_fee' => 1200],
+            ['range_from' => 751, 'range_to' => 1000, 'fixed_fee' => 1200],
+            ['range_from' => 1000.01, 'range_to' => 10000000, 'fixed_fee' => 1200, 'excess_threshold' => 1000, 'excess_every' => 1000, 'excess_fee' => 1200],
         ]);
 
         // C. Cinematographs / Theaters
@@ -1496,9 +1497,10 @@ class FeeScheduleSeeder extends Seeder
         );
         $this->syncSchedules($feeTypeId, [
             ['range_from' => 1, 'range_to' => 100, 'fee_per_unit' => 25],
-            ['range_from' => 101, 'range_to' => 150, 'fee_per_unit' => 20],
-            ['range_from' => 151, 'range_to' => 300, 'fee_per_unit' => 15],
-            ['range_from' => 301, 'range_to' => 10000000, 'fee_per_unit' => 10, 'excess_threshold' => 500, 'excess_every' => 1, 'excess_fee' => 5],
+            ['range_from' => 100.01, 'range_to' => 150, 'fee_per_unit' => 20],
+            ['range_from' => 150.01, 'range_to' => 300, 'fee_per_unit' => 15],
+            ['range_from' => 300.01, 'range_to' => 500, 'fee_per_unit' => 10],
+            ['range_from' => 500.01, 'range_to' => 10000000, 'fee_per_unit' => 5],
         ]);
 
         // F.ii. Window type AC
@@ -1515,19 +1517,8 @@ class FeeScheduleSeeder extends Seeder
         );
         $this->syncSchedules($feeTypeId, [
             ['range_from' => 1, 'range_to' => 100, 'fee_per_unit' => 25],
-            ['range_from' => 101, 'range_to' => 150, 'fee_per_unit' => 20],
-            ['range_from' => 151, 'range_to' => 100000, 'fee_per_unit' => 20, 'excess_threshold' => 500, 'excess_every' => 1, 'excess_fee' => 8],
-        ]);
-
-        // F.iv. Escalator/Moving Walk range (by kW)
-        $feeTypeId = $this->upsertFeeType(
-            'ANN_INSP', 'AINSP_FIV_ESC', 'Annual Mech Insp. - Escalator/Moving Walk (by kW)',
-            'range_based', true, false, ++$order,
-        );
-        $this->syncSchedules($feeTypeId, [
-            ['range_from' => 1, 'range_to' => 1.99, 'fee_per_unit' => 10],
-            ['range_from' => 2, 'range_to' => 7.5, 'fee_per_unit' => 50],
-            ['range_from' => 7.6, 'range_to' => 10000000, 'fee_per_unit' => 20, 'excess_threshold' => 7.5, 'excess_every' => 1, 'excess_fee' => 20],
+            ['range_from' => 100.01, 'range_to' => 500, 'fee_per_unit' => 20],
+            ['range_from' => 500.01, 'range_to' => 10000000, 'fee_per_unit' => 8],
         ]);
 
         // F.v. Escalator/Moving Walk - Other items
@@ -1590,26 +1581,25 @@ class FeeScheduleSeeder extends Seeder
         );
         $this->syncSchedules($feeTypeId, [['fee_per_unit' => 2]]);
 
-        // F.x. Diesel/Gasoline range (annual)
+        // F.x. Diesel/Gasoline Internal Combustion Engine, Gas Turbine, Hydro, Nuclear or Solar Generating Units
         $feeTypeId = $this->upsertFeeType(
-            'ANN_INSP', 'AINSP_FX_DIESEL', 'Annual Mech Insp. - Diesel/Gasoline (by kW)',
-            'range_based', true, false, ++$order,
+            'ANN_INSP', 'AINSP_FX_DIESEL', 'Annual Mech Insp. - Diesel/Gasoline Internal Combustion Engine, Gas Turbine, Hydro, Nuclear or Solar Generating Units (by kW)',
+            'range_based', false, false, ++$order,
         );
         $this->syncSchedules($feeTypeId, [
-            ['range_from' => 1, 'range_to' => 5, 'fee_per_unit' => 55],
-            ['range_from' => 6, 'range_to' => 10, 'fee_per_unit' => 90],
-            ['range_from' => 11, 'range_to' => 1000000, 'fee_per_unit' => 90, 'excess_threshold' => 10, 'excess_every' => 1, 'excess_fee' => 2],
+            ['range_from' => 0.01, 'range_to' => 50, 'fee_per_unit' => 15],
+            ['range_from' => 50.01, 'range_to' => 100, 'fee_per_unit' => 10],
+            ['range_from' => 100.01, 'range_to' => 10000000, 'fee_per_unit' => 2.4],
         ]);
 
-        // F.xi. Other Internal Combustion range (annual)
+        // F.xi. Internal Combustion Engines
         $feeTypeId = $this->upsertFeeType(
-            'ANN_INSP', 'AINSP_FXI_INTCOMB', 'Annual Mech Insp. - Other Internal Combustion (by kW)',
+            'ANN_INSP', 'AINSP_FXI_INTCOMB', 'Annual Mech Insp. - Internal Combustion Engines (by kW)',
             'range_based', true, false, ++$order,
         );
         $this->syncSchedules($feeTypeId, [
-            ['range_from' => 1, 'range_to' => 50, 'fee_per_unit' => 15],
-            ['range_from' => 51, 'range_to' => 100, 'fee_per_unit' => 10],
-            ['range_from' => 101, 'range_to' => 1000000, 'fee_per_unit' => 10, 'excess_threshold' => 100, 'excess_every' => 1, 'excess_fee' => 2.4],
+            ['range_from' => 0.01, 'range_to' => 10, 'fixed_fee' => 100],
+            ['range_from' => 10.01, 'range_to' => 10000000, 'fixed_fee' => 100, 'excess_threshold' => 10, 'excess_every' => 1, 'excess_fee' => 3],
         ]);
 
         // F.xii. Compressed air / gases
@@ -1626,19 +1616,20 @@ class FeeScheduleSeeder extends Seeder
         );
         $this->syncSchedules($feeTypeId, [['fee_per_unit' => 2]]);
 
-        // F.xiv. Gas meter testing range
+        // F.xv. Water, Sump and Sewage Pumps
         $feeTypeId = $this->upsertFeeType(
-            'ANN_INSP', 'AINSP_FXIV_GAS', 'Annual Mech Insp. - Gas Meter Range',
+            'ANN_INSP', 'AINSP_PUMP_WSS', 'Annual Mech Insp. - Water, Sump and Sewage Pumps (by kW)',
             'range_based', true, false, ++$order,
         );
         $this->syncSchedules($feeTypeId, [
-            ['range_from' => 1, 'range_to' => 10, 'fixed_fee' => 100],
-            ['range_from' => 11, 'range_to' => 1000000, 'fixed_fee' => 100, 'excess_threshold' => 10, 'excess_every' => 1, 'excess_fee' => 3],
+            ['range_from' => 0.01, 'range_to' => 5, 'fixed_fee' => 55],
+            ['range_from' => 5.01, 'range_to' => 10, 'fixed_fee' => 90],
+            ['range_from' => 10.01, 'range_to' => 10000000, 'fixed_fee' => 90, 'excess_threshold' => 10, 'excess_every' => 1, 'excess_fee' => 2],
         ]);
 
-        // F.xv. Water pumps range
+        // F.xv (Other Machinery). Numbers here already match the "Other Machinery" table.
         $feeTypeId = $this->upsertFeeType(
-            'ANN_INSP', 'AINSP_FXV_PUMP', 'Annual Mech Insp. - Water Pumps (by kW)',
+            'ANN_INSP', 'AINSP_FXV_PUMP', 'Annual Mech Insp. - Other Machinery (by kW)',
             'range_based', true, false, ++$order,
         );
         $this->syncSchedules($feeTypeId, [

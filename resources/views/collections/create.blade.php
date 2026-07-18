@@ -29,7 +29,7 @@
                 'DP' => route('collections.store.dp', $application),
                 'SGP' => route('collections.store.sgp', $application),
                 'FP' => route('collections.store.fp', $application),
-                'MP' => route('collections.store.mp', $application),
+                'AI' => route('collections.store.ai', $application),
                 default => route('collections.store', $application),
             };
             $payerName = $application->owner_name ?? trim(($application->applicant_last_name ?? '') . ', ' . ($application->applicant_first_name ?? ''), ', ');

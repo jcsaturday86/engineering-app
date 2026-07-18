@@ -143,6 +143,41 @@
 
 ---
 
+## Annual Inspection (AI) Module
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Application CRUD (walk-in) | DONE | `annual_inspection_applications` table + `AnnualInspectionApplication` model/controller; morph map `ai`; permit code `AI` (originally built + seeded as `MP`, renamed) |
+| Application numbering | DONE | AI-YYYY-MM-NNNNN |
+| AI form fields | DONE | Deliberately minimal: Name of Owner/Lessee, Location (Street + Barangay), New/Yearly application_kind toggle |
+| Status workflow (skips zoning) | DONE | Same 5-step shape as DP/SGP/FP: submitted → engineering_assessed → billed → paid → permit_generated → released |
+| Original build: 5 equipment tabs + multi-permit generation | SUPERSEDED | First shipped as "Mechanical Permit" with AC/Machinery/Escalator/Elevator/Generator-Set tabs (reusing BP's `MECH_*`/`INSP_*` codes) and multi-permit generation (1 bundled AC cert + 1 permit per other equipment item, via `AnnualInspectionPermitUnit`) — fully replaced by the official-schedule rebuild below |
+| Rebuilt around official Annual Inspection Fees schedule | DONE | Diffed the user's official rate document against 49 seeded `AINSP_*` rows; fixed a real bug (Floor Area's 2nd bracket + open-ended excess), rebuilt several rate tables as flat brackets or lump-sum-plus-excess, dropped 2 obsolete items, relabeled 1, added a new "Water, Sump and Sewage Pumps" code |
+| `range_based` excess-formula bug fix | DONE (fixed) | `addAnnualInspectionFeeItem()` ignored `excess_every`, multiplying raw excess directly by `excess_fee` — broke Floor Area's "every 1,000 sq.m or portion thereof" rule; fixed with a `ceil()`-based formula, no-op for every other `excess_every=1` row |
+| 4 official-schedule tabs (General/Electronics/Mechanical/Electrical) | DONE | `AINSP_GEN`/`AINSP_ELECTRONICS`/`AINSP_MECH` via `addAnnualInspectionFeeItem()`; `AINSP_ELEC` via `addAnnualInspectionElectricalItem()` (reuses BP's `ELEC_*` schedule) |
+| 5 original equipment tabs removed | DONE (fixed) | `AI_AC`/`AI_MACH`/`AI_ESC`/`AI_ELEV`/`AI_GENSET` categories deleted from seeder + DB; `addAnnualInspectionUnitItem()` deleted; equipment-tab Blade branch removed |
+| Permit Generation switched to single-permit | DONE | Removing the equipment tabs broke the old multi-permit grouping logic; `generateAi`/`revertGenerateAi`/`restoreRevokeAi` now thin-wrap the shared `doGenerate`/`doRevertGenerate`/`doRestoreRevoke`, matching every other permit type; `doGenerateAi()` (~115-line multi-permit builder) deleted |
+| Quantity (equipment count) field | DONE | 15 Mechanical + 3 Electrical measured-value fee codes (kW/ton/kVA/lineal meter/cu.m.) get a separate "Quantity" input; `amount = baseFee × quantity_count`, stored in `computation_details`; discrete-count codes (unit(s)/head(s)/etc.) unaffected |
+| Unit/Qty table columns split | DONE | Assessment items table for the 4 AI tabs shows separate Unit (measurement + label, or label-only for discrete-count codes) and Qty (equipment count) columns instead of one ambiguous combined column |
+| Assessment summary PDF | DONE | `pdf/assessment-summary-ai.blade.php` (filename retained) |
+| Final permit certificate PDF | DONE | `pdf/annual-inspection-permit.blade.php`, single itemized table + one grand total, QR verification code |
+| `AnnualInspectionPermitUnit` model/table | DORMANT | Kept per explicit "leave dormant, don't delete" decision — unused since the single-permit switch |
+| Sidebar entries | DONE | Main nav, Assessment flyout, Permits flyout — positioned last (after Fencing Permit) |
+| Excluded from online self-service | DONE | Same as DP/SGP/FP |
+
+---
+
+## Building Permit Inspection Fee Removal
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Remove ELEC/MECH inspection-fee computation | DONE | `addElectricalItem()`/`addMechanicalItem()` now always store `inspection_fee = 0`; `resolveInspectionFee()` itself untouched (still used by AI) |
+| Remove inspection-fee display | DONE | "Inspection" table columns dropped from both BP tabs; Summary tab's "Inspection Fees" row gated behind the AI-only flag; surcharge base-formula reference to `inspection_fee` simplified |
+| Remove inspection-fee line items from BP Assessment Summary PDF | DONE | Electrical/Mechanical/Electronics inspection-fee rows removed from `pdf/assessment-summary.blade.php` |
+| Retroactive backfill (`bp:remove-inspection-fees` Artisan command) | DONE | `--dry-run` mode + real run; zeroes existing `AssessmentItem.inspection_fee` for BP ELEC/MECH items and cascades the reduction through `Assessment.total_amount`, `Billing`/`BillingItem`, and (where safe) `Collection`/`CollectionDetail`, recomputing from source rather than delta-subtracting (incidentally fixing a pre-existing ELEC double-count bug) |
+
+---
+
 ## Zoning / Planning Module
 
 | Feature | Status | Notes |
@@ -174,11 +209,11 @@
 | All 6 computation methods | DONE | fixed, per_unit, range_based, cumulative_range, percentage (formula = PARTIAL) |
 | Excess/min/max | DONE | |
 | Construction fee data + tab | DONE | BOPMS-style: Part+Division+Area → auto lookup |
-| Electrical fee data + tab | DONE | BOPMS-style: 7 types, range kVA, auto inspection % |
-| Electrical inspection fee | DONE | `assessment.electrical_inspection_percentage` setting (default 10%) |
-| Mechanical fee data + tab | DONE | BOPMS-style: equipment type+unit → auto base + NBC inspection fee |
-| Mechanical NBC inspection fees | DONE | MECH_INSP category: 29 INSP_* types / 55 schedules from BOPMS ann_inspection_f* tables |
-| Mechanical inspection formulas | DONE | flat (range-band), per_unit (rate×count), tiered (cumulative for elevators) |
+| Electrical fee data + tab | DONE | BOPMS-style: 7 types, range kVA |
+| Electrical inspection fee (BP) | REMOVED | Was `assessment.electrical_inspection_percentage` setting (default 10%) — inspection fees no longer charged/displayed on the BP assessment; `inspection_fee` always stored as 0 for `ELEC` items now |
+| Mechanical fee data + tab | DONE | BOPMS-style: equipment type+unit → auto base fee only |
+| Mechanical NBC inspection fees (BP) | REMOVED | Was computed via `resolveInspectionFee()` against MECH_INSP's 29 INSP_* types / 55 schedules — no longer charged/displayed on the BP assessment; `inspection_fee` always stored as 0 for `MECH` items now. `resolveInspectionFee()` and the MECH_INSP schedule data themselves are untouched — still used by the Annual Inspection assessment |
+| Mechanical inspection formulas (still used by AI) | DONE | flat (range-band), per_unit (rate×count), tiered (cumulative for elevators) — via `resolveInspectionFee()`, now exclusively invoked by the Annual Inspection module, not BP |
 | BP assessment tab navigation | DONE | 8 tabs + Summary, badges, hidden MECH_INSP tab |
 | Plumbing fee data | DONE | Seeded |
 | Plumbing tab (BOPMS-style) | DONE | 22 PLUMB_* types, dynamic unit labels |

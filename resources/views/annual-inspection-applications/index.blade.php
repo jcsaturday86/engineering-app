@@ -1,20 +1,20 @@
 @extends('layouts.app')
 
-@section('title', 'Mechanical Permit Applications')
+@section('title', 'Annual Inspection Applications')
 
 @section('breadcrumbs')
     <a href="{{ route('dashboard') }}" class="text-gray-500 hover:text-gray-700">Dashboard</a>
     <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
-    <span class="text-gray-900 font-medium">Mechanical Permit Applications</span>
+    <span class="text-gray-900 font-medium">Annual Inspection Applications</span>
 @endsection
 
 @section('content')
 <div class="space-y-4">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h2 class="text-xl font-bold text-gray-900">Mechanical Permit Applications</h2>
+        <h2 class="text-xl font-bold text-gray-900">Annual Inspection Applications</h2>
         @can('create-applications')
-        <a href="{{ route('mechanical-applications.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition">
-            <i class="fas fa-plus"></i> New Mechanical Permit
+        <a href="{{ route('annual-inspection-applications.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition">
+            <i class="fas fa-plus"></i> New Annual Inspection
         </a>
         @endcan
     </div>
@@ -60,7 +60,7 @@
                 <i class="fas fa-search mr-1"></i> Filter
             </button>
             @if(request()->hasAny(['search', 'status']) || $dateFrom != now()->startOfYear()->toDateString() || $dateTo != now()->toDateString())
-                <a href="{{ route('mechanical-applications.index') }}" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Clear</a>
+                <a href="{{ route('annual-inspection-applications.index') }}" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Clear</a>
             @endif
         </form>
     </div>
@@ -82,7 +82,7 @@
                     @forelse($applications as $app)
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3">
-                            <a href="{{ route('mechanical-applications.show', $app) }}" class="font-mono text-teal-600 hover:text-teal-800 font-medium">
+                            <a href="{{ route('annual-inspection-applications.show', $app) }}" class="font-mono text-teal-600 hover:text-teal-800 font-medium">
                                 {{ $app->application_number }}
                             </a>
                         </td>
@@ -121,7 +121,7 @@
                         </td>
                         <td class="px-4 py-3 text-gray-500">{{ $app->created_at->format('M d, Y') }}</td>
                         <td class="px-4 py-3 text-right">
-                            <a href="{{ route('mechanical-applications.show', $app) }}" class="text-gray-400 hover:text-teal-600" title="View">
+                            <a href="{{ route('annual-inspection-applications.show', $app) }}" class="text-gray-400 hover:text-teal-600" title="View">
                                 <i class="fas fa-eye"></i>
                             </a>
                         </td>
@@ -130,7 +130,7 @@
                     <tr>
                         <td colspan="6" class="px-4 py-12 text-center text-gray-400">
                             <i class="fas fa-folder-open text-3xl mb-3"></i>
-                            <p>No mechanical permit applications found</p>
+                            <p>No annual inspection applications found</p>
                         </td>
                     </tr>
                     @endforelse

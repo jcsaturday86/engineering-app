@@ -1,20 +1,20 @@
 @extends('layouts.app')
 
-@section('title', 'Mechanical Permit Assessment')
+@section('title', 'Annual Inspection Assessment')
 
 @section('breadcrumbs')
     <a href="{{ route('dashboard') }}" class="text-gray-500 hover:text-gray-700">Dashboard</a>
     <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
     <a href="#" class="text-gray-500 hover:text-gray-700">Assessments</a>
     <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
-    <span class="text-gray-900 font-medium">Mechanical Permit</span>
+    <span class="text-gray-900 font-medium">Annual Inspection</span>
 @endsection
 
 @section('content')
 <div class="space-y-4">
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h2 class="text-xl font-bold text-gray-900">Mechanical Permit Assessment</h2>
+        <h2 class="text-xl font-bold text-gray-900">Annual Inspection Assessment</h2>
     </div>
 
     {{-- Table --}}
@@ -35,7 +35,7 @@
                     @forelse($applications as $app)
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3">
-                            <a href="{{ route('assessments.assess.mp', $app) }}" class="font-mono text-blue-600 hover:text-blue-800 font-medium">
+                            <a href="{{ route('assessments.assess.ai', $app) }}" class="font-mono text-blue-600 hover:text-blue-800 font-medium">
                                 {{ $app->application_number }}
                             </a>
                         </td>
@@ -76,12 +76,12 @@
                         <td class="px-4 py-3 text-right">
                             <div class="inline-flex items-center gap-2">
                                 @if(in_array($app->status, ['engineering_assessed', 'billed']))
-                                <a href="{{ route('assessments.print.mp', $app) }}" target="_blank"
+                                <a href="{{ route('assessments.print.ai', $app) }}" target="_blank"
                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition">
                                     <i class="fas fa-print"></i> Print
                                 </a>
                                 @endif
-                                <a href="{{ route('assessments.assess.mp', $app) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition">
+                                <a href="{{ route('assessments.assess.ai', $app) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition">
                                     <i class="fas fa-calculator"></i> Assess
                                 </a>
                             </div>

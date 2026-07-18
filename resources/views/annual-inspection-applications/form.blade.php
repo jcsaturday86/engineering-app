@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
-@section('title', $application ? 'Edit Mechanical Permit Application' : 'New Mechanical Permit Application')
+@section('title', $application ? 'Edit Annual Inspection Application' : 'New Annual Inspection Application')
 
 @section('breadcrumbs')
     <a href="{{ route('dashboard') }}" class="text-gray-500 hover:text-gray-700">Dashboard</a>
     <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
-    <a href="{{ route('mechanical-applications.index') }}" class="text-gray-500 hover:text-gray-700">Mechanical Applications</a>
+    <a href="{{ route('annual-inspection-applications.index') }}" class="text-gray-500 hover:text-gray-700">Annual Inspection Applications</a>
     <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
     <span class="text-gray-900 font-medium">{{ $application ? 'Edit ' . $application->application_number : 'New Application' }}</span>
 @endsection
@@ -13,7 +13,7 @@
 @section('content')
 <form
     method="POST"
-    action="{{ $application ? route('mechanical-applications.update', $application) : route('mechanical-applications.store') }}"
+    action="{{ $application ? route('annual-inspection-applications.update', $application) : route('annual-inspection-applications.store') }}"
     autocomplete="off"
 >
     @csrf
@@ -25,10 +25,10 @@
         {{-- Compact Form Header --}}
         <div class="bg-gray-50 rounded-xl border border-gray-200 px-5 py-4 flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <span class="inline-flex items-center justify-center px-2.5 py-1 text-xs font-bold rounded-md bg-teal-600 text-white">MP</span>
+                <span class="inline-flex items-center justify-center px-2.5 py-1 text-xs font-bold rounded-md bg-teal-600 text-white">AI</span>
                 <div>
                     <h2 class="text-lg font-bold text-gray-900">
-                        {{ $application ? 'Edit Application' : 'New Mechanical Permit Application' }}
+                        {{ $application ? 'Edit Application' : 'New Annual Inspection Application' }}
                     </h2>
                     @if($application)
                         <p class="text-xs text-gray-500">{{ $application->application_number }}</p>
@@ -141,7 +141,7 @@
     {{-- FORM ACTIONS --}}
     {{-- ================================================================== --}}
     <div class="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4">
-        <a href="{{ route('mechanical-applications.index') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition">
+        <a href="{{ route('annual-inspection-applications.index') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition">
             <i class="fas fa-times text-xs"></i> Cancel
         </a>
         <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-2.5 bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 transition">

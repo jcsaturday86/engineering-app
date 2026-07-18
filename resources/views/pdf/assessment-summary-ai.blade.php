@@ -70,7 +70,7 @@ table.ft .th { font-weight: normal; font-size: 10.5px; border-bottom: 1px solid 
     $location = collect([$application->location_street ?? '', $barangayName, ($settings['general.city'] ?? ''), ($settings['general.province'] ?? '')])
                 ->filter()->join(', ');
     $printDate = now()->format('m/d/Y');
-    $barcodeVal = 'MP-' . $application->app_year . '-' . str_pad($application->app_month,2,'0',STR_PAD_LEFT) . '-' . str_pad($application->app_counter,5,'0',STR_PAD_LEFT);
+    $barcodeVal = 'AI-' . $application->app_year . '-' . str_pad($application->app_month,2,'0',STR_PAD_LEFT) . '-' . str_pad($application->app_counter,5,'0',STR_PAD_LEFT);
 @endphp
 <table class="info-wrap" cellpadding="0" cellspacing="0">
     <tr>
@@ -105,18 +105,18 @@ table.ft .th { font-weight: normal; font-size: 10.5px; border-bottom: 1px solid 
 </table>
 
 {{-- ═══════════════ TITLE ═══════════════ --}}
-<div class="soc-title">MECHANICAL PERMIT ASSESSMENT</div>
+<div class="soc-title">ANNUAL INSPECTION ASSESSMENT</div>
 <div class="soc-subtitle">SUMMARY OF COMPUTATION</div>
 
 @php
 $grandTotal = 0;
 
 $mpSections = [
-    'MP_AC' => '1. AIR CONDITIONING / REFRIGERATION FEES',
-    'MP_MACH' => '2. MACHINERY FEES',
-    'MP_ESC' => '3. ESCALATOR / FUNICULAR / CABLE CAR FEES',
-    'MP_ELEV' => '4. ELEVATOR FEES',
-    'MP_GENSET' => '5. GENERATOR SET FEES',
+    'AI_AC' => '1. AIR CONDITIONING / REFRIGERATION FEES',
+    'AI_MACH' => '2. MACHINERY FEES',
+    'AI_ESC' => '3. ESCALATOR / FUNICULAR / CABLE CAR FEES',
+    'AI_ELEV' => '4. ELEVATOR FEES',
+    'AI_GENSET' => '5. GENERATOR SET FEES',
 ];
 @endphp
 

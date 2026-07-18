@@ -58,7 +58,7 @@ Standard hierarchical geo tables with `psgc_code`, `name`, `is_active`. ~42K bar
 ## Reference Tables
 
 ### `permit_types`
-`code` (BP, OP, FP, EP, DP, SGP, SP, ELP, MP, PP, ECP), `name`, `is_active`, `sort_order`. Active: BP, OP, DP, SGP. `SP` ("Sign Permit") is a separate, still-unbuilt placeholder — not to be confused with SGP (Signage Permit).
+`code` (BP, OP, FP, EP, DP, SGP, SP, ELP, AI, PP, ECP), `name`, `is_active`, `sort_order`. Active: BP, OP, DP, SGP, FP, AI. `SP` ("Sign Permit") is a separate, still-unbuilt placeholder — not to be confused with SGP (Signage Permit). `AI` ("Annual Inspection") was originally built and seeded as `MP` ("Mechanical Permit") — renamed via migration to `AI` once the module was rebuilt around the official Annual Inspection Fees schedule instead of the original equipment-based tabs (see `docs/PROJECT_CONTEXT.md`).
 
 ### `application_types`
 `permit_type_id`, `name` (New/Renewal/Amendatory for BP; Full/Partial for OP), `is_active`, `sort_order`
@@ -94,6 +94,8 @@ Standard hierarchical geo tables with `psgc_code`, `name`, `is_active`. ~42K bar
 > `MECH_INSP` is a hidden category (excluded from assessment tabs). It holds the NBC mechanical permit inspection fee rates (29 INSP_* fee types, 55 schedule rows) mirroring BOPMS `ann_inspection_f*` tables.
 
 > `DEMO_FEE` (Demolition Permit, `permit_type_id` scoped to DP) holds 6 real NBC demolition-fee types with seeded rates, each carrying a `unit_label`. `SGP_FEE` (Signage Permit, `permit_type_id` scoped to SGP) is a single empty category with no seeded `FeeType`/`FeeSchedule` rows — SGP assessment is manual-entry only via the generic fee-item fallback form. `FP_FEE` (name "Fencing Permit Fees", Fencing Permit, `permit_type_id` scoped to FP) is likewise empty of its own `FeeType`/`FeeSchedule` rows — it does not mint new fee types. Instead, `AssessmentItem` rows tagged `fee_category_id = FP_FEE` point their `fee_type_id` at existing `ACC_FEE`-scoped `FeeType` rows (`ASS_FENCE_MASONRY`, `ASS_FENCE_INDIG`, `ASS_LINE_GRADE`, `ASS_GP_INSPECT`, `ASS_GP_EXCAV`, `ASS_GP_ISSUANCE`, `ASS_GP_FOUND`, `ASS_GP_OTHER`, `ASS_GP_ENCROACH`) — reusing the ancillary/accessory fee schedule rather than duplicating it. `fee_category_id` and `fee_type_id` are independent, unenforced foreign keys, so this cross-category reference is intentional, not a data error.
+
+> **Annual Inspection (AI)** uses exactly 4 `FeeCategory` rows scoped to the `AI` permit type: `AINSP_GEN` (General/Occupancy/Electrical), `AINSP_ELECTRONICS`, `AINSP_MECH`, `AINSP_ELEC`. The first three source their `FeeType`/`FeeSchedule` rows from the `ANN_INSP` category's `AINSP_*` codes (49 rows, rebuilt against the official rate schedule); `AINSP_ELEC` reuses the existing BP `ELEC_*` rows by code (same decoupled `fee_category_id`/`fee_type_id` cross-reference pattern as FP above). Five earlier categories from this module's original build as "Mechanical Permit" — `AI_AC`/`AI_MACH`/`AI_ESC`/`AI_ELEV`/`AI_GENSET`, which reused BP's `MECH_*`/`INSP_*` codes for 5 equipment tabs — were deleted entirely once the module was rebuilt around the official schedule; they no longer exist in the schema.
 
 ### `fee_types`
 
@@ -255,6 +257,25 @@ Structurally closest to `demolition_applications` — has enterprise, design-pro
 
 > **History note:** `fencing_applications` originally shipped alongside a child table `fencing_inspectors` (one-to-many, with `is_primary`/`sort_order`, to support a repeatable "Add Inspector" UI). This was simplified in the same session before release — `fencing_inspectors` was dropped and replaced with the 8 flat `inspector_*` columns listed above, directly on `fencing_applications`, mirroring `design_professional_*` exactly. The `fencing_inspectors` table does not exist in the current schema.
 
+### `annual_inspection_applications` (Annual Inspection only)
+
+| Column Group | Columns |
+|-------------|---------|
+| **Identity** | id, application_type_id (FK), app_year, app_month, app_counter, application_number (unique, AI-YYYY-MM-NNNNN) |
+| **Status** | status (default: 'draft'), source (walk_in/online) |
+| **Application Kind** | application_kind (enum: new/yearly, default 'new') — Yearly = annual re-inspection; fee lookups otherwise identical between the two |
+| **Applicant** | owner_name (Name of Owner/Lessee — no separate first/middle/last split) |
+| **Location** | location_street (nullable), location_barangay_id (FK barangays) |
+| **Processing** | entered_by, assessed_by, approved_by, client_user_id (all FK → users), submitted/assessed/approved/paid/released/cancelled_at, cancellation_reason, issued_date |
+| **System** | deleted_at |
+
+**Indexes:** [status], [app_year, app_month]
+
+> **History note:** this table (and its model/controller) originally shipped as `mechanical_applications`/`MechanicalApplication`/`MechanicalApplicationController`, backing a 5-equipment-tab "Mechanical Permit" (MP) module with multi-permit generation. A later rename migration renamed the table, backfilled `PermitType.code` (`MP`→`AI`), and every route/morph/model reference to `AnnualInspectionApplication`/`AI`, once the module's fee tabs were rebuilt around the official Annual Inspection Fees schedule. The form is deliberately minimal (owner name + location only) — all equipment/quantity data lives in the Assessment, not the application record.
+
+### `annual_inspection_permit_units` (dormant)
+`mechanical_application_id` (FK, cascade — column name retained from the pre-rename schema), `group_code`, `description`, `quantity`, `amount`, `permit_id` (FK permits, nullable), `generated_at`, `deleted_at`. Built to support the original multi-permit-per-application generation (one row per generated `Permit`, grouped by equipment type). Left in place, unused, after Permit Generation was switched to single-permit-per-application to match every other permit type — no code writes to this table anymore, kept dormant rather than dropped.
+
 ### `application_occupancy_groups`
 Polymorphic (`applicationable_type` / `applicationable_id`), `occupancy_group_id`, `occupancy_sub_group_id`, `others_text`. BP and OP only — DP, SGP, and FP have no occupancy-group concept.
 
@@ -270,8 +291,8 @@ Polymorphic, `requirement_name`, `file_path`, `original_filename`, `status` (pen
 | Column | Type | Description |
 |--------|------|-------------|
 | id | bigint PK | |
-| applicationable_type / applicationable_id | varchar(10) / bigint | Polymorphic: 'bp', 'op', 'dp', 'sgp', or 'fp' |
-| assessment_type | string(30) | building, occupancy, demolition, signage, fencing, zoning |
+| applicationable_type / applicationable_id | varchar(10) / bigint | Polymorphic: 'bp', 'op', 'dp', 'sgp', 'fp', or 'ai' |
+| assessment_type | string(30) | building, occupancy, demolition, signage, fencing, zoning. AI's assessment_type is `'mechanical'` (retained from the pre-rename schema, not renamed) |
 | filing_fee / processing_fee / total_amount | decimal(15,2) | Default: 0 |
 | status | enum | draft, finalized |
 | assessed_by | FK → users | Yes |
@@ -288,16 +309,16 @@ Polymorphic, `requirement_name`, `file_path`, `original_filename`, `status` (pen
 | fee_category_id / fee_type_id | FK | Yes |
 | fee_code | string(50) | |
 | description | string | |
-| quantity | decimal(15,2) | |
+| quantity | decimal(15,2) | For AI's measured-value fee items (kW/ton/kVA/lineal meter/cu.m.) this is the physical measurement, not a count — see `computation_details.quantity_count` below |
 | unit_fee | decimal(15,2) | Base rate shown in table |
 | excess_fee | decimal(15,2) | Excess portion of base fee |
-| inspection_fee | decimal(15,2) | NBC inspection fee (ELEC: % of base; MECH: from INSP_* schedules) |
-| amount | decimal(15,2) | Base permit fee only (does NOT include inspection_fee) |
-| computation_details | json | Yes | Inputs/outputs for audit |
+| inspection_fee | decimal(15,2) | NBC inspection fee. **BP's `ELEC`/`MECH` categories always store 0** here now (inspection fees removed from the BP assessment — see `docs/PROJECT_CONTEXT.md`); Annual Inspection's own fee computation still uses this column/mechanism via `resolveInspectionFee()` |
+| amount | decimal(15,2) | Base permit fee only (does NOT include inspection_fee). For AI's Mechanical/Electrical tabs, `amount = baseFee × quantity_count` (see below) |
+| computation_details | json | Yes | Inputs/outputs for audit. AI's Mechanical/Electrical items store `quantity_count` (int, default 1) here — the equipment-count multiplier applied on top of the measured-value base fee, entered via a separate "Quantity" form field distinct from the measurement `quantity` column above |
 | is_active | boolean | Default: true |
 | deleted_at | timestamp | Yes |
 
-> **Grand total formula:** `sum(amount) + sum(inspection_fee) + filing_fee + processing_fee` — this is consistent across CONST, ELEC, and MECH categories.
+> **Grand total formula:** `sum(amount) + sum(inspection_fee) + filing_fee + processing_fee` — this is consistent across CONST, ELEC, and MECH categories (ELEC/MECH's `inspection_fee` term is always 0 on BP now, a no-op in the formula rather than a formula change).
 
 **Index:** [assessment_id, fee_code]
 
@@ -347,7 +368,9 @@ Registered in `AppServiceProvider`:
 | `op` | `App\Models\OccupancyApplication` |
 | `dp` | `App\Models\DemolitionApplication` |
 | `sgp` | `App\Models\SignageApplication` |
+| `fp` | `App\Models\FencingApplication` |
+| `ai` | `App\Models\AnnualInspectionApplication` (morph alias renamed from `mp` in the same migration that renamed the underlying table/model) |
 
-The 7 downstream tables (assessments, billings, collections, permits, documents, application_occupancy_groups, application_requirements) use `applicationable_type` + `applicationable_id` to reference BP, OP, DP, or SGP (DP/SGP never populate `application_occupancy_groups`/`application_requirements` — no occupancy-group or document-upload concept on either). Legacy `application_id` column is kept nullable for backward compatibility.
+The 7 downstream tables (assessments, billings, collections, permits, documents, application_occupancy_groups, application_requirements) use `applicationable_type` + `applicationable_id` to reference BP, OP, DP, SGP, FP, or AI (DP/SGP/FP/AI never populate `application_occupancy_groups`/`application_requirements` — no occupancy-group or document-upload concept on any of them). Legacy `application_id` column is kept nullable for backward compatibility.
 
-Every controller/service that branches on permit type by `match ($application->getPermitTypeCode()) { 'OP' => 'op', 'DP' => 'dp', 'SGP' => 'sgp', default => 'bp' }` (or the reverse) must include all 4 arms — several of these `match()` blocks were found missing an `SGP` arm (silently falling through to `'bp'`/the BP route) during the SGP build, including one that had already been missing a `DP` arm since DP was first built (`BillingService::generateFor()`, `collections/index.blade.php`, `permits/index.blade.php`, `verify/permit.blade.php`).
+Every controller/service that branches on permit type by `match ($application->getPermitTypeCode()) { 'OP' => 'op', 'DP' => 'dp', 'SGP' => 'sgp', 'FP' => 'fp', 'AI' => 'ai', default => 'bp' }` (or the reverse) must include all 6 arms — several of these `match()` blocks were found missing an `SGP` arm (silently falling through to `'bp'`/the BP route) during the SGP build, including one that had already been missing a `DP` arm since DP was first built (`BillingService::generateFor()`, `collections/index.blade.php`, `permits/index.blade.php`, `verify/permit.blade.php`); the same class of bug was proactively checked for and fixed when AI was added — `PermitController::doGenerate()`'s `$morphType` match had no `'AI'` arm at one point during the single-permit-generation switch, which would have silently created `Permit` rows pointing at the wrong parent table (`applicationable_type = 'bp'`) had it shipped.

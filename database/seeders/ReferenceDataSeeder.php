@@ -49,7 +49,7 @@ class ReferenceDataSeeder extends Seeder
             ['code' => 'SGP', 'name' => 'Signage Permit',      'sort_order' => 6,  'is_active' => true],
             ['code' => 'SP',  'name' => 'Sign Permit',         'sort_order' => 7,  'is_active' => false],
             ['code' => 'ELP', 'name' => 'Electrical Permit',   'sort_order' => 8,  'is_active' => false],
-            ['code' => 'MP',  'name' => 'Mechanical Permit',   'sort_order' => 9,  'is_active' => true],
+            ['code' => 'AI',  'name' => 'Annual Inspection',   'sort_order' => 9,  'is_active' => true],
             ['code' => 'PP',  'name' => 'Plumbing Permit',     'sort_order' => 10, 'is_active' => false],
             ['code' => 'ECP', 'name' => 'Electronics Permit',  'sort_order' => 11, 'is_active' => false],
         ];
@@ -441,7 +441,7 @@ class ReferenceDataSeeder extends Seeder
         $dpPermitType = PermitType::where('code', 'DP')->first();
         $sgpPermitType = PermitType::where('code', 'SGP')->first();
         $fpPermitType = PermitType::where('code', 'FP')->first();
-        $mpPermitType = PermitType::where('code', 'MP')->first();
+        $mpPermitType = PermitType::where('code', 'AI')->first();
 
         if (! $bpPermitType || ! $opPermitType) {
             return;
@@ -535,16 +535,15 @@ class ReferenceDataSeeder extends Seeder
             );
         }
 
-        // Mechanical Permit equipment-tab fee categories — each reuses the existing MECH_*/INSP_*
-        // FeeType/FeeSchedule rows (Settings > Fee Schedules > Mechanical, BP-scoped) by code; no
-        // new FeeType rows are seeded under these categories themselves.
+        // Annual Inspection Fees (NBC schedule, Settings > Fee Schedules > category 13 / ANN_INSP)
+        // — reuses the existing AINSP_*/ELEC_* FeeType/FeeSchedule rows (BP-scoped) by code across
+        // 4 tabs; no new FeeType rows are seeded under these categories.
         if ($mpPermitType) {
             $mpCategories = [
-                ['code' => 'MP_AC', 'name' => 'Air Conditioning / Refrigeration', 'sort_order' => 1],
-                ['code' => 'MP_MACH', 'name' => 'Machinery', 'sort_order' => 2],
-                ['code' => 'MP_ESC', 'name' => 'Escalators / Funiculars / Cable Cars', 'sort_order' => 3],
-                ['code' => 'MP_ELEV', 'name' => 'Elevators', 'sort_order' => 4],
-                ['code' => 'MP_GENSET', 'name' => 'Generator Set', 'sort_order' => 5],
+                ['code' => 'AINSP_GEN', 'name' => 'General, Occupancy & Electrical Annual Inspection', 'sort_order' => 6],
+                ['code' => 'AINSP_ELECTRONICS', 'name' => 'Electronics Annual Inspection', 'sort_order' => 7],
+                ['code' => 'AINSP_MECH', 'name' => 'Mechanical Annual Inspection', 'sort_order' => 8],
+                ['code' => 'AINSP_ELEC', 'name' => 'Electrical Annual Inspection', 'sort_order' => 9],
             ];
 
             foreach ($mpCategories as $category) {

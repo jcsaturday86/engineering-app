@@ -12,7 +12,7 @@ enum PermitTypeCode: string
     case SGP = 'SGP';
     case SP = 'SP';
     case ELP = 'ELP';
-    case MP = 'MP';
+    case AI = 'AI';
     case PP = 'PP';
     case ECP = 'ECP';
 
@@ -29,7 +29,7 @@ enum PermitTypeCode: string
             self::DP => 'Demolition Permit',
             self::SP => 'Sanitary/Plumbing Permit',
             self::ELP => 'Electronics Permit',
-            self::MP => 'Mechanical Permit',
+            self::AI => 'Annual Inspection',
             self::PP => 'Plumbing Permit',
             self::ECP => 'Excavation/Clearing Permit',
         };

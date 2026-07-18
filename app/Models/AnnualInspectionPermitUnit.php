@@ -6,12 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class MechanicalPermitUnit extends Model
+class AnnualInspectionPermitUnit extends Model
 {
     use SoftDeletes;
 
+    protected $table = 'annual_inspection_permit_units';
+
     protected $fillable = [
-        'mechanical_application_id',
+        'annual_inspection_application_id',
         'group_code',
         'description',
         'quantity',
@@ -29,9 +31,9 @@ class MechanicalPermitUnit extends Model
         ];
     }
 
-    public function mechanicalApplication(): BelongsTo
+    public function annualInspectionApplication(): BelongsTo
     {
-        return $this->belongsTo(MechanicalApplication::class);
+        return $this->belongsTo(AnnualInspectionApplication::class);
     }
 
     public function permit(): BelongsTo

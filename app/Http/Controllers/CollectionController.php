@@ -9,7 +9,7 @@ use App\Models\Collection;
 use App\Models\CollectionDetail;
 use App\Models\DemolitionApplication;
 use App\Models\FencingApplication;
-use App\Models\MechanicalApplication;
+use App\Models\AnnualInspectionApplication;
 use App\Models\OccupancyApplication;
 use App\Models\SignageApplication;
 use App\Models\VoidTransaction;
@@ -80,7 +80,7 @@ class CollectionController extends Controller
             ->latest()
             ->get();
 
-        $mpForPayment = MechanicalApplication::where('status', 'billed')
+        $mpForPayment = AnnualInspectionApplication::where('status', 'billed')
             ->whereDoesntHave('collections', fn ($q) => $q->where('status', 'active'))
             ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
                 ->where('application_number', 'like', "%{$search}%")
@@ -135,10 +135,10 @@ class CollectionController extends Controller
         return $this->doCreate($fencingApplication);
     }
 
-    // MP payment
-    public function createMp(MechanicalApplication $mechanicalApplication)
+    // AI payment
+    public function createAi(AnnualInspectionApplication $annualInspectionApplication)
     {
-        return $this->doCreate($mechanicalApplication);
+        return $this->doCreate($annualInspectionApplication);
     }
 
     private function doCreate(PermitApplicationContract $application)
@@ -186,10 +186,10 @@ class CollectionController extends Controller
         return $this->doStore($request, $fencingApplication);
     }
 
-    // MP store payment
-    public function storeMp(Request $request, MechanicalApplication $mechanicalApplication)
+    // AI store payment
+    public function storeAi(Request $request, AnnualInspectionApplication $annualInspectionApplication)
     {
-        return $this->doStore($request, $mechanicalApplication);
+        return $this->doStore($request, $annualInspectionApplication);
     }
 
     private function doStore(Request $request, PermitApplicationContract $application)
@@ -220,7 +220,7 @@ class CollectionController extends Controller
             'DP' => 'dp',
             'SGP' => 'sgp',
             'FP' => 'fp',
-            'MP' => 'mp',
+            'AI' => 'ai',
             default => 'bp',
         };
 

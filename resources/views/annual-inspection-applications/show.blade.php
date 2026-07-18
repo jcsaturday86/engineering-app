@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
-@section('title', 'MP Application Details')
+@section('title', 'AI Application Details')
 
 @section('breadcrumbs')
     <a href="{{ route('dashboard') }}" class="text-gray-500 hover:text-gray-700">Dashboard</a>
     <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
-    <a href="{{ route('mechanical-applications.index') }}" class="text-gray-500 hover:text-gray-700">Mechanical Applications</a>
+    <a href="{{ route('annual-inspection-applications.index') }}" class="text-gray-500 hover:text-gray-700">Annual Inspection Applications</a>
     <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
     <span class="text-gray-900 font-medium">{{ $application->application_number }}</span>
 @endsection
@@ -36,7 +36,7 @@
                     <h2 class="text-2xl font-bold text-gray-900 font-mono">{{ $application->application_number }}</h2>
                     <div class="flex items-center gap-2 mt-1">
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-teal-100 text-teal-700">
-                            {{ $application->getPermitTypeCode() }} &mdash; Mechanical Permit
+                            {{ $application->getPermitTypeCode() }} &mdash; Annual Inspection
                         </span>
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $application->application_kind === 'yearly' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">
                             {{ $application->application_kind === 'yearly' ? 'Yearly' : 'New' }}
@@ -49,7 +49,7 @@
             </div>
             <div class="flex flex-wrap items-center gap-2" x-data="{ showRevertSubmitModal: false, revertSubmitPassword: '', showSubmitModal: false, submitPassword: '' }">
                 @if($application->status === 'draft')
-                    <a href="{{ route('mechanical-applications.edit', $application) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
+                    <a href="{{ route('annual-inspection-applications.edit', $application) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
                         <i class="fas fa-edit"></i> Edit
                     </a>
                     <button type="button" @click="showSubmitModal = true; submitPassword = ''"
@@ -77,7 +77,7 @@
                                 </div>
                             @endif
 
-                            <form method="POST" action="{{ route('mechanical-applications.submit', $application) }}" autocomplete="off">
+                            <form method="POST" action="{{ route('annual-inspection-applications.submit', $application) }}" autocomplete="off">
                                 @csrf
                                 <div class="mb-4">
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
@@ -100,7 +100,7 @@
                     </div>
                 @endif
                 @if(!in_array($application->status, ['cancelled', 'paid', 'released', 'permit_generated']))
-                    <form method="POST" action="{{ route('mechanical-applications.cancel', $application) }}" class="inline" onsubmit="return confirm('Are you sure you want to cancel this application? This action cannot be undone.')" autocomplete="off">
+                    <form method="POST" action="{{ route('annual-inspection-applications.cancel', $application) }}" class="inline" onsubmit="return confirm('Are you sure you want to cancel this application? This action cannot be undone.')" autocomplete="off">
                         @csrf
                         <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition">
                             <i class="fas fa-times-circle"></i> Cancel
@@ -134,7 +134,7 @@
                                 </div>
                             @endif
 
-                            <form action="{{ route('mechanical-applications.revertSubmission', $application) }}" method="POST" autocomplete="off">
+                            <form action="{{ route('annual-inspection-applications.revertSubmission', $application) }}" method="POST" autocomplete="off">
                                 @csrf
                                 <div class="mb-4">
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
@@ -234,55 +234,6 @@
                 <span class="text-sm font-semibold text-gray-900">Grand Total</span>
                 <span class="text-lg font-bold text-teal-700">&#8369;{{ number_format($grandTotal, 2) }}</span>
             </div>
-        </div>
-    </div>
-    @endif
-
-    {{-- ================================================================== --}}
-    {{-- GENERATED PERMITS — MP-only: one application can have several permits --}}
-    {{-- ================================================================== --}}
-    @if($application->mechanicalPermitUnits && $application->mechanicalPermitUnits->count())
-    @php
-        $sectionNum++;
-        $activeCollection = $application->collections->firstWhere('status', 'active');
-    @endphp
-    <div class="bg-white rounded-xl border border-gray-200 p-5">
-        <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">
-            <span class="inline-flex items-center justify-center w-7 h-7 bg-teal-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Generated Permits ({{ $application->mechanicalPermitUnits->count() }})
-        </h3>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead class="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                        <th class="text-left px-3 py-2 font-medium text-gray-500">Permit No.</th>
-                        <th class="text-left px-3 py-2 font-medium text-gray-500">Group</th>
-                        <th class="text-left px-3 py-2 font-medium text-gray-500">Equipment</th>
-                        <th class="text-left px-3 py-2 font-medium text-gray-500">O.R. Number</th>
-                        <th class="text-left px-3 py-2 font-medium text-gray-500">Date Paid</th>
-                        <th class="text-right px-3 py-2 font-medium text-gray-500">Amount</th>
-                        <th class="text-right px-3 py-2 font-medium text-gray-500">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                    @foreach($application->mechanicalPermitUnits as $unit)
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-3 py-2 font-mono text-gray-900">{{ $unit->permit?->permit_number ?? '---' }}</td>
-                        <td class="px-3 py-2 text-gray-600">{{ $unit->group_code }}</td>
-                        <td class="px-3 py-2 text-gray-900">{{ $unit->description }}</td>
-                        <td class="px-3 py-2 text-gray-600">{{ $activeCollection?->or_number ?? '---' }}</td>
-                        <td class="px-3 py-2 text-gray-600">{{ $activeCollection?->or_date ? \Illuminate\Support\Carbon::parse($activeCollection->or_date)->format('M d, Y') : '---' }}</td>
-                        <td class="px-3 py-2 text-right text-gray-900">&#8369;{{ number_format($unit->amount, 2) }}</td>
-                        <td class="px-3 py-2 text-right">
-                            @if($unit->permit && $unit->permit->status !== 'revoked')
-                            <a href="{{ route('permits.print', $unit->permit) }}" target="_blank" class="text-gray-400 hover:text-teal-600" title="Print">
-                                <i class="fas fa-print"></i>
-                            </a>
-                            @endif
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
         </div>
     </div>
     @endif

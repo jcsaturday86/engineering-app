@@ -41,6 +41,8 @@ engineering-app/
 | DemolitionApplication | demolition_applications | DP only. Same contract/trait. getPermitTypeCode() = 'DP'. Overrides `buildingBarangay()` → `demolition_barangay_id` (aliased as `demolitionBarangay()`) |
 | SignageApplication | signage_applications | SGP only. Same contract/trait. getPermitTypeCode() = 'SGP'. Overrides `buildingBarangay()` → aliases `applicantBarangay()` (no separate site-location column) |
 | FencingApplication | fencing_applications | FP only. Same contract/trait. getPermitTypeCode() = 'FP'. Overrides `buildingBarangay()` → `construction_barangay_id` (aliased as `constructionBarangay()`) — the generic trait default targets `building_barangay_id`, a column this table doesn't have. Inspector data lives as 8 flat `inspector_*` columns on this table (a repeatable `FencingInspector` child-table/model was built then deleted this session in favor of this fixed-block shape, matching Design Professional) |
+| AnnualInspectionApplication | annual_inspection_applications | AI only. Same contract/trait. getPermitTypeCode() = 'AI'. Renamed from `MechanicalApplication` (table/model/every reference) once the module was rebuilt around the official Annual Inspection Fees schedule. Minimal field set: `owner_name`, `location_street`/`location_barangay_id`, `application_kind` (new/yearly). `mechanicalPermitUnits(): HasMany` relation retained (dormant — see `AnnualInspectionPermitUnit` below) |
+| AnnualInspectionPermitUnit | annual_inspection_permit_units | Dormant. `belongsTo(AnnualInspectionApplication)`, `belongsTo(Permit)`. Built for the module's original multi-permit-generation design; unused since Permit Generation was switched to single-permit-per-application — left in place rather than deleted |
 | ApplicationOccupancyGroup | application_occupancy_groups | morphTo: applicationable |
 | ApplicationRequirement | application_requirements | morphTo: applicationable |
 | Assessment | assessments | morphTo: applicationable. hasMany: assessmentItems. SoftDeletes, LogsActivity |
@@ -114,6 +116,11 @@ index, report, create, store, show, edit, update, submit, revertSubmission, canc
 
 Same shape as `DemolitionApplicationController`, with FP-specific fields (enterprise, address plus an `applicant_ctc_*` triplet, Location of Construction, Scope of Work, Design Professional, Full-Time Inspector or Supervisor, Consent of Lot Owner). `validateApplication()` marks every field `required` except `owned_by_enterprise` (optional checkbox) and its two dependents `enterprise_name`/`form_of_ownership_id` (`required_if:owned_by_enterprise,1`), plus `scope_of_work_detail` (`required_if:scope_of_work,repair,others`). Adds a dedicated `report()` method (`GET /fencing-applications/report`) streaming a landscape DomPDF via the shared `pdf/report.blade.php` template — no equivalent exists on DP/SGP's controllers. `printForm()` (route `fencing-applications.print`) mirrors `DemolitionApplicationController::printForm()`'s background-image-overlay approach, rendering `pdf/fencing-application-form.blade.php` over `public/images/forms/fencing-p1.jpg`/`fencing-p2.jpg` (JPEG, not PNG — see the PDF Print Performance note in `docs/TASK.md`); this was added after FP's initial build, so unlike DP/SGP the application-form print is not deferred. The final permit certificate print (`printFp()` on `PermitController`) is a separate, plain-HTML/CSS template.
 
+### AnnualInspectionApplicationController (AI only)
+index, create, store, show, edit, update, submit, revertSubmission, cancel
+
+Same shape as `FencingApplicationController` (minus its `report()`/`printForm()` extras) — trimmed to AI's minimal field set (owner name, location, `application_kind` new/yearly toggle, editable only while `draft`). No occupancy-group selection, no enterprise/CTC/inspector/lot-owner sections. Renamed from `MechanicalApplicationController` in the same rename pass as the model/table.
+
 ### GeoController
 `barangaysForCity(City $city)` — `GET /geo/barangays/{city}`, returns active barangays for a city as JSON (`id`, `name`). Used by the BP/OP application form's cascading address dropdowns instead of shipping the full ~42K-row barangay dataset to the page.
 
@@ -173,9 +180,17 @@ index, update, store, updateCert, updateOther, destroy
 | revertToDraftSgp | POST /assessments/sgp/{sgp}/revert-to-draft | SGP only; while `status = submitted`, deletes fee entries + Assessment, reverts to `draft` |
 | summarySgp | GET /assessments/sgp/{sgp}/summary | SGP summary |
 | printSgp | GET /assessments/sgp/{sgp}/print | SGP PDF (`assessment-summary-sgp` template) |
+| assessFp | GET /assessments/fp/{fp} | FP fee entry (FP_FEE tab, `addFenceItem()`) |
+| finalizeFp / revertEngineeringFp / revertToDraftFp | POST /assessments/fp/{fp}/... | FP finalize/revert lifecycle |
+| summaryFp / printFp | GET /assessments/fp/{fp}/summary\|print | FP summary/PDF (`assessment-summary-fp` template) |
+| assessAi | GET /assessments/ai/{ai} | AI fee entry — 4 tabs (AINSP_GEN/ELECTRONICS/MECH via `addAnnualInspectionFeeItem()`, AINSP_ELEC via `addAnnualInspectionElectricalItem()`) |
+| addInspItem | POST /assessments/ai/{ai}/insp-item | `addAnnualInspectionFeeItem()` — General/Electronics/Mechanical tabs, plus the Quantity (equipment-count) multiplier for 15 measured-value Mechanical codes |
+| addElecItem | POST /assessments/ai/{ai}/elec-item | `addAnnualInspectionElectricalItem()` — Electrical tab, reuses BP `ELEC_*` schedules, plus the Quantity multiplier for TCL/Trans/UPS |
+| finalizeAi / revertEngineeringAi / revertToDraftAi | POST /assessments/ai/{ai}/... | AI finalize/revert lifecycle |
+| summaryAi / printAi | GET /assessments/ai/{ai}/summary\|print | AI summary/PDF (`assessment-summary-ai` template — (renamed from assessment-summary-ai.blade.php)) |
 
 **Private helpers:**
-- `resolveInspectionFee(string $code, float $unit): array` — maps MECH_* code → INSP_* fee type (MECH_INSP category), does range or first-row lookup, returns {fee, excess_threshold, excess_fee, every, method}. Three methods: flat (range-band fixed), per_unit (rate × unit), tiered (cumulative for elevators).
+- `resolveInspectionFee(string $code, float $unit): array` — maps MECH_* code → INSP_* fee type (MECH_INSP category), does range or first-row lookup, returns {fee, excess_threshold, excess_fee, every, method}. Three methods: flat (range-band fixed), per_unit (rate × unit), tiered (cumulative for elevators). **No longer called by `addElectricalItem()`/`addMechanicalItem()`** (BP inspection fees removed — both now hardcode `inspection_fee = 0`); still used by the Annual Inspection assessment's own fee computation.
 - `calculateTotals(Assessment $assessment): array` — returns subtotal, inspection, filing, processing, total.
 - `redirectIfFinalized(Assessment, PermitApplicationContract): ?RedirectResponse` — called by every add/remove method; when assessment status = finalized, redirects to the assess page `?tab=SUMMARY` with an error flash.
 - `doPrint(PermitApplicationContract)` — dispatches by `getPermitTypeCode()`: BP renders `pdf.assessment-summary` (building + zoning sections); OP/DP/SGP each delegate to their own `doPrintOp()`/`doPrintDp()`/`doPrintSgp()`, rendering `pdf.assessment-summary-op`/`-dp`/`-sgp` with only that permit type's single fee-category section (no Zoning/Building/Other Fees/Filing/Processing). All four generate a Code 128 barcode (picqer BarcodeGeneratorPNG, base64) and load the `building_official` signatory.
@@ -189,7 +204,9 @@ print only. Billing is auto-generated on assessment finalize via `BillingService
 - `receipt` (renders the Official Receipt PDF with the dynamic city seal), `voidForm`, `processVoid`
 
 ### PermitController
-buildingIndex, occupancyIndex, demolitionIndex, signageIndex, generate (BP), revertGenerate (BP), restoreRevoke (BP), generateOp (OP), revertGenerateOp (OP), restoreRevokeOp (OP), generateDp (DP), revertGenerateDp (DP), restoreRevokeDp (DP), generateSgp (SGP), revertGenerateSgp (SGP), restoreRevokeSgp (SGP), print, zoningCertification, locationalClearance, evaluationReport
+buildingIndex, occupancyIndex, demolitionIndex, signageIndex, fencingIndex, annualInspectionIndex, generate (BP), revertGenerate (BP), restoreRevoke (BP), generateOp (OP), revertGenerateOp (OP), restoreRevokeOp (OP), generateDp (DP), revertGenerateDp (DP), restoreRevokeDp (DP), generateSgp (SGP), revertGenerateSgp (SGP), restoreRevokeSgp (SGP), generateFp (FP), revertGenerateFp (FP), restoreRevokeFp (FP), generateAi (AI), revertGenerateAi (AI), restoreRevokeAi (AI), print, zoningCertification, locationalClearance, evaluationReport
+
+`generateAi`/`revertGenerateAi`/`restoreRevokeAi` are thin wrappers around the shared `doGenerate()`/`doRevertGenerate()`/`doRestoreRevoke()` methods — the module's original `doGenerateAi()` (a ~115-line multi-permit builder grouping finalized items under 5 equipment categories into one bundled AC certificate + one permit per Machinery/Escalator/Elevator/Genset item, via `AnnualInspectionPermitUnit`) was deleted once the equipment tabs were replaced by the 4 official-schedule tabs and multi-permit generation no longer had a category structure to group by.
 
 `buildingIndex`/`occupancyIndex`/`demolitionIndex`/`signageIndex` accept `search`, `status` (including a `revoked` pseudo-status matched via `whereHas('permits', fn ($q) => $q->withTrashed()->where('status', 'revoked'))`), and `year` (defaults to current year) query params; all four share the same `permits/index.blade.php` view keyed by `$type`.
 
@@ -241,7 +258,7 @@ ApplicationDTO, OccupancyApplicationDTO, AssessmentItemDTO, CollectionDTO
 | AssessmentType | building, occupancy, zoning |
 | ComputationMethod | fixed, per_unit, range_based, cumulative_range, percentage, formula |
 | PaymentMode | cash, check, online |
-| PermitTypeCode | BP, OP, FP, EP, DP, SGP, SP, ELP, MP, PP, ECP |
+| PermitTypeCode | BP, OP, FP, EP, DP, SGP, SP, ELP, AI, PP, ECP (renamed from MP) |
 
 ---
 
@@ -255,10 +272,12 @@ BP: `applications/index`, `form`, `show`
 OP: `occupancy-applications/index`, `form`, `show`
 DP: `demolition-applications/index`, `form`, `show`
 SGP: `signage-applications/index`, `form`, `show`
+FP: `fencing-applications/index`, `form`, `show`
+AI: `annual-inspection-applications/index`, `form`, `show` (directory renamed from `mechanical-applications/`)
 
 ### Assessment Views
-`assessments/assess.blade.php` — tabbed: Construction, Electrical, Mechanical, Plumbing, Electronics, Accessories, Accessory, Surcharges, DEMO_FEE (DP), SGP_FEE (SGP, generic fallback form), Summary. Excluded from tabs: ZONING_LC, ZONING_CERT, ANN_INSP, VIOLATION, MECH_INSP. `$isOp`/`$isDp`/`$isSgp` flags thread through every route/visibility ternary.
-`assessments/demolition-index.blade.php`, `assessments/signage-index.blade.php` — the DP/SGP equivalents of `occupancy-index.blade.php`.
+`assessments/assess.blade.php` — tabbed: Construction, Electrical, Mechanical, Plumbing, Electronics, Accessories, Accessory, Surcharges, DEMO_FEE (DP), SGP_FEE (SGP, generic fallback form), FP_FEE (FP), AINSP_GEN/AINSP_ELECTRONICS/AINSP_MECH/AINSP_ELEC (AI — the module's original 5 equipment-tab branches, `AI_AC`/`AI_MACH`/`AI_ESC`/`AI_ELEV`/`AI_GENSET`, were removed once these 4 official-schedule tabs replaced them), Summary. Excluded from tabs: ZONING_LC, ZONING_CERT, ANN_INSP, VIOLATION, MECH_INSP. `$isOp`/`$isDp`/`$isSgp`/`$isFp`/`$isMp` flags thread through every route/visibility ternary (the AI flag variable name `$isMp` was kept from the pre-rename build). The AINSP_MECH/AINSP_ELEC branches additionally carry a per-fee-code `quantityEligible` list (Alpine, Mechanical tab) / reuse of the existing `showKva` computed property (Electrical tab) to conditionally show a second "Quantity" input, and a parallel PHP-side `$aiQuantityEligibleCodes`/`$aiUnitLabels` pair (declared fresh each `@foreach($tabCategories as $cat)` iteration, to avoid stale values leaking into an unrelated tab) driving the assessment-items table's split Unit/Qty columns.
+`assessments/demolition-index.blade.php`, `assessments/signage-index.blade.php` — the DP/SGP equivalents of `occupancy-index.blade.php`. FP and AI reuse the same generic index pattern.
 
 ### Other Views
 `zoning/`, `collections/`, `permits/`, `online/`, `dashboard/`, `settings/`, `reports/`, `auth/`. (`billing/` views removed — billing is print-only now, served via `pdf/billing-statement`.)
@@ -266,7 +285,9 @@ SGP: `signage-applications/index`, `form`, `show`
 `collections/create.blade.php` — POS-style single-screen payment form: Application No./Applicant + OR Number/Paid By rows, a 3-column Amount Due/Amount Received/Change strip (Alpine-live), a Cash/Check/Online segmented control, and a sticky bottom action bar so the collector doesn't scroll mid-transaction.
 
 ### PDF Templates (`resources/views/pdf/`)
-application-form (BP Unified Application Form — background-image overlay, see below), occupancy-application-form (OP Unified Application Form for Certificate of Occupancy — DomPDF, see below), demolition-application-form (DP application form, NBC Form No. B-08 — background-image overlay, see below), architectural-form (NBC Form A-01 Architectural Permit — background-image overlay, see below), structural-form (NBC Form A-07 Civil/Structural Permit — background-image overlay, see below), electrical-form (Form No. 77-001-S Electrical Permit — background-image overlay, see below), sanitary-form (Form No. 77-001-S Sanitary/Plumbing Permit — background-image overlay, see below), mechanical-form (NBC Form No. A-04 Mechanical Permit — background-image overlay, see below), electronics-form (NBC Form No. A-07 Electronics Permit — background-image overlay, see below), discipline-form (unused generic fallback), building-permit (NBC Form B-018 style, city seal + DPWH logo + QR code), occupancy-permit (DPWH Certificate of Occupancy style, DPWH logo + city seal + QR code), demolition-permit (bordered-frame landscape certificate style + QR code), signage-permit (same bordered-frame style, cloned from demolition-permit + QR code), assessment-summary (BP), assessment-summary-op (OP), assessment-summary-dp (DP), assessment-summary-sgp (SGP), billing-statement, official-receipt, zoning-certification, locational-clearance, evaluation-report, report
+application-form (BP Unified Application Form — background-image overlay, see below), occupancy-application-form (OP Unified Application Form for Certificate of Occupancy — DomPDF, see below), demolition-application-form (DP application form, NBC Form No. B-08 — background-image overlay, see below), fencing-application-form (FP application form, NBC Form No. B-03 — background-image overlay), architectural-form (NBC Form A-01 Architectural Permit — background-image overlay, see below), structural-form (NBC Form A-07 Civil/Structural Permit — background-image overlay, see below), electrical-form (Form No. 77-001-S Electrical Permit — background-image overlay, see below), sanitary-form (Form No. 77-001-S Sanitary/Plumbing Permit — background-image overlay, see below), mechanical-form (NBC Form No. A-04 Mechanical Permit — background-image overlay, see below), electronics-form (NBC Form No. A-07 Electronics Permit — background-image overlay, see below), discipline-form (unused generic fallback), building-permit (NBC Form B-018 style, city seal + DPWH logo + QR code), occupancy-permit (DPWH Certificate of Occupancy style, DPWH logo + city seal + QR code), demolition-permit (bordered-frame landscape certificate style + QR code), signage-permit (same bordered-frame style, cloned from demolition-permit + QR code), fencing-permit (2-page plain-CSS NBC Form B-03 reproduction + QR code), annual-inspection-permit (single itemized fee table across the 4 AINSP_* categories, one grand total + QR code — rewritten from the module's original per-equipment-unit multi-certificate design), assessment-summary (BP), assessment-summary-op (OP), assessment-summary-dp (DP), assessment-summary-sgp (SGP), assessment-summary-fp (FP), assessment-summary-ai (AI — (renamed from assessment-summary-ai.blade.php)), billing-statement, official-receipt, zoning-certification, locational-clearance, evaluation-report, report
+
+**Note on `mechanical-form.blade.php`**: this is NBC Form No. A-04, one of the 6 Building Permit **discipline** print forms (`ApplicationController::printDiscipline()`), unrelated to the separate Annual Inspection (AI, formerly "Mechanical Permit") application module — the naming overlap ("mechanical") is coincidental, the two features share no code.
 
 **SGP has no `signage-application-form.blade.php`** — unlike every other permit type, the application-form print is deliberately deferred (no scanned official form supplied yet). `SignageApplicationController` has no `printForm()` method or `print` route.
 
@@ -301,7 +322,7 @@ Every template above that carries an Official Seal / logo sources it dynamically
 
 | Provider | Purpose |
 |----------|---------|
-| AppServiceProvider | Morph map: bp → Application, op → OccupancyApplication, dp → DemolitionApplication, sgp → SignageApplication |
+| AppServiceProvider | Morph map: bp → Application, op → OccupancyApplication, dp → DemolitionApplication, sgp → SignageApplication, fp → FencingApplication, ai → AnnualInspectionApplication (renamed from mp → MechanicalApplication) |
 | SelfHealingServiceProvider | Auto DB + migrations + seeds on boot |
 
 `bootstrap/app.php` — `withExceptions()` renders any 419 `HttpException` (CSRF/session expiry) as a redirect to `login`/`staff.login` with a flash message. `routes/web.php` ends with `Route::fallback()`, redirecting any unmatched URL to the role-appropriate home or `login`.

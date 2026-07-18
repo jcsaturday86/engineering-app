@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Mechanical Permit {{ $permit->permit_number }}</title>
+    <title>Annual Inspection Permit {{ $permit->permit_number }}</title>
     <style>
         @page { size: letter portrait; margin: 0.45in; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -30,6 +30,8 @@
         table.equipment th, table.equipment td { border: 1px solid #000; padding: 3px 6px; }
         table.equipment th { font-weight: bold; background: #f0f0f0; text-align: center; }
         table.equipment td.amt { text-align: right; }
+        table.equipment .cat-row td { font-weight: bold; background: #f7f7f7; }
+        table.equipment .total-row td { font-weight: bold; border-top: 2px solid #000; }
 
         table.fees { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 8px; }
         table.fees th, table.fees td { border: 1px solid #000; padding: 4px 8px; }
@@ -46,7 +48,6 @@
 <body>
 
 @php
-    $groupLabels = ['AC' => 'Air Conditioning / Refrigeration', 'MACH' => 'Machinery', 'ESC' => 'Escalator / Funicular / Cable Car', 'ELEV' => 'Elevator', 'GENSET' => 'Generator Set'];
     $kindLabel = ($application->application_kind ?? 'new') === 'yearly' ? 'YEARLY (ANNUAL RE-INSPECTION)' : 'NEW';
     $collection = $application->collections->where('status', 'active')->first();
 @endphp
@@ -55,7 +56,7 @@
     <div class="repub">Republic of the Philippines</div>
     <div class="city">{{ $settings['general.city'] ?? 'City of San Fernando' }}</div>
     <div class="office">OFFICE OF THE BUILDING OFFICIAL</div>
-    <div class="title">MECHANICAL PERMIT</div>
+    <div class="title">ANNUAL INSPECTION PERMIT</div>
 </div>
 
 <div class="top-row">
@@ -82,28 +83,32 @@
 </div>
 
 <div class="box">
-    <div class="box-title">EQUIPMENT COVERED — {{ $groupLabels[$mechanicalUnit->group_code ?? ''] ?? '' }}</div>
-    @if(($mechanicalUnit->group_code ?? '') === 'AC' && $mechanicalAcItems && $mechanicalAcItems->count())
+    <div class="box-title">ITEMIZED ANNUAL INSPECTION FEES</div>
     <table class="equipment">
         <tr>
-            <th style="width:60%">Description</th>
-            <th style="width:20%">Quantity</th>
-            <th style="width:20%">Amount</th>
+            <th style="width:55%">Description</th>
+            <th style="width:15%">Qty</th>
+            <th style="width:30%">Amount</th>
         </tr>
-        @foreach($mechanicalAcItems as $item)
+        @forelse($aiItemsByCategory as $categoryName => $items)
+        <tr class="cat-row">
+            <td colspan="3">{{ $categoryName }}</td>
+        </tr>
+        @foreach($items as $item)
         <tr>
             <td>{{ $item->description }}</td>
             <td style="text-align:center;">{{ rtrim(rtrim(number_format($item->quantity, 2), '0'), '.') }}</td>
             <td class="amt">&#8369;{{ number_format($item->amount + $item->inspection_fee, 2) }}</td>
         </tr>
         @endforeach
+        @empty
+        <tr><td colspan="3" style="text-align:center;color:#666;">No assessed items.</td></tr>
+        @endforelse
+        <tr class="total-row">
+            <td colspan="2" style="text-align:right;">TOTAL</td>
+            <td class="amt">&#8369;{{ number_format($aiGrandTotal, 2) }}</td>
+        </tr>
     </table>
-    @else
-    <div class="field-row">
-        <div class="f" style="width:70%"><span class="lbl">Description</span><div class="val">{{ $mechanicalUnit->description ?? '' }}</div></div>
-        <div class="f" style="width:30%"><span class="lbl">Quantity</span><div class="val">{{ $mechanicalUnit->quantity !== null ? rtrim(rtrim(number_format($mechanicalUnit->quantity, 2), '0'), '.') : '' }}</div></div>
-    </div>
-    @endif
 </div>
 
 <table class="fees">
@@ -113,7 +118,7 @@
         <th>Date Paid</th>
     </tr>
     <tr>
-        <td class="amt">&#8369;{{ number_format($mechanicalUnit->amount ?? 0, 2) }}</td>
+        <td class="amt">&#8369;{{ number_format($aiGrandTotal, 2) }}</td>
         <td style="text-align:center;">{{ $collection->or_number ?? '' }}</td>
         <td style="text-align:center;">{{ $collection?->or_date ? \Carbon\Carbon::parse($collection->or_date)->format('m/d/Y') : '' }}</td>
     </tr>

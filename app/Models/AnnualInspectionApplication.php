@@ -10,11 +10,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Traits\LogsActivity;
 
-class MechanicalApplication extends Model implements PermitApplicationContract
+class AnnualInspectionApplication extends Model implements PermitApplicationContract
 {
     use HasPermitApplicationBehavior, LogsActivity, SoftDeletes;
 
-    protected $table = 'mechanical_applications';
+    protected $table = 'annual_inspection_applications';
 
     protected $fillable = [
         'app_year',
@@ -62,8 +62,8 @@ class MechanicalApplication extends Model implements PermitApplicationContract
 
     /**
      * Overrides HasPermitApplicationBehavior::buildingBarangay() and ::applicantBarangay(),
-     * which target columns that don't exist on this table. Mechanical applications only have
-     * one address concept — Location Address — so both generic relation names alias to it,
+     * which target columns that don't exist on this table. Annual Inspection applications only
+     * have one address concept — Location Address — so both generic relation names alias to it,
      * since generic code (e.g. PermitController::print()) eager-loads both by name.
      */
     public function buildingBarangay(): BelongsTo
@@ -81,13 +81,13 @@ class MechanicalApplication extends Model implements PermitApplicationContract
         return $this->buildingBarangay();
     }
 
-    public function mechanicalPermitUnits(): HasMany
+    public function annualInspectionPermitUnits(): HasMany
     {
-        return $this->hasMany(MechanicalPermitUnit::class);
+        return $this->hasMany(AnnualInspectionPermitUnit::class);
     }
 
     public function getPermitTypeCode(): string
     {
-        return 'MP';
+        return 'AI';
     }
 }

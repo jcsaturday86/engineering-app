@@ -10,8 +10,7 @@ use App\Models\Permit;
 use App\Models\PermitType;
 use App\Models\Signatory;
 use App\Models\FencingApplication;
-use App\Models\MechanicalApplication;
-use App\Models\MechanicalPermitUnit;
+use App\Models\AnnualInspectionApplication;
 use App\Models\SignageApplication;
 use App\Notifications\ApplicationApprovedNotification;
 use Illuminate\Http\Request;
@@ -101,9 +100,9 @@ class PermitController extends Controller
         return view('permits.index', compact('applications', 'type', 'year'));
     }
 
-    public function mechanicalIndex(Request $request)
+    public function annualInspectionIndex(Request $request)
     {
-        $query = MechanicalApplication::with('permits')
+        $query = AnnualInspectionApplication::with('permits')
             ->whereIn('status', ['paid', 'permit_generated', 'released']);
 
         if ($request->filled('search')) {
@@ -237,12 +236,9 @@ class PermitController extends Controller
         return $this->doGenerate($fencingApplication, 'FP');
     }
 
-    // MP permit generation — MP-only: one application can emit several Permit rows at once
-    // (all Air Conditioning items bundled into one, one permit per Machinery/Escalator/Elevator/
-    // Generator Set item), so it cannot reuse the shared single-permit doGenerate().
-    public function generateMp(MechanicalApplication $mechanicalApplication)
+    public function generateAi(AnnualInspectionApplication $annualInspectionApplication)
     {
-        return $this->doGenerateMp($mechanicalApplication);
+        return $this->doGenerate($annualInspectionApplication, 'AI');
     }
 
     private function doGenerate(PermitApplicationContract $application, string $permitCode)
@@ -261,6 +257,7 @@ class PermitController extends Controller
             'DP' => 'dp',
             'SGP' => 'sgp',
             'FP' => 'fp',
+            'AI' => 'ai',
             default => 'bp',
         };
         $buildingOfficial = Signatory::where('role', 'building_official')->where('is_active', true)->first();
@@ -310,121 +307,6 @@ class PermitController extends Controller
         return back()->with('success', 'Permit generated successfully.');
     }
 
-    private function doGenerateMp(MechanicalApplication $mechanicalApplication)
-    {
-        if ($mechanicalApplication->status !== 'paid') {
-            return back()->with('error', 'Application must be paid before generating permits.');
-        }
-
-        if ($mechanicalApplication->permits()->onlyTrashed()->where('status', 'revoked')->exists()) {
-            return back()->with('error', "This application's permits were revoked. Restore the previous permits instead of generating new ones.");
-        }
-
-        $permitType = PermitType::where('code', 'MP')->firstOrFail();
-        $buildingOfficial = Signatory::where('role', 'building_official')->where('is_active', true)->first();
-
-        $assessment = $mechanicalApplication->assessments()
-            ->where('assessment_type', 'mechanical')
-            ->where('status', 'finalized')
-            ->with(['assessmentItems' => fn ($q) => $q->where('is_active', true)->with('feeCategory')])
-            ->first();
-
-        $items = $assessment?->assessmentItems ?? collect();
-
-        if ($items->isEmpty()) {
-            return back()->with('error', 'No finalized mechanical assessment items found for this application.');
-        }
-
-        $byGroup = $items->groupBy(fn ($item) => $item->feeCategory?->code ?? 'OTHER');
-
-        // Build the list of units that will each become their own Permit: MP_AC items collapse
-        // into exactly one bundled unit; every other group's items each become their own unit.
-        $units = [];
-
-        if ($byGroup->has('MP_AC')) {
-            $acItems = $byGroup->get('MP_AC');
-            $units[] = [
-                'group_code' => 'AC',
-                'description' => 'Air Conditioning / Refrigeration — ' . $acItems->pluck('description')->implode(', '),
-                'quantity' => null,
-                'amount' => round($acItems->sum('amount') + $acItems->sum('inspection_fee'), 2),
-            ];
-        }
-
-        foreach (['MP_MACH' => 'MACH', 'MP_ESC' => 'ESC', 'MP_ELEV' => 'ELEV', 'MP_GENSET' => 'GENSET'] as $catCode => $groupCode) {
-            foreach ($byGroup->get($catCode, collect()) as $item) {
-                $units[] = [
-                    'group_code' => $groupCode,
-                    'description' => $item->description,
-                    'quantity' => $item->quantity,
-                    'amount' => round((float) $item->amount + (float) $item->inspection_fee, 2),
-                ];
-            }
-        }
-
-        if (empty($units)) {
-            return back()->with('error', 'No finalized mechanical assessment items found for this application.');
-        }
-
-        DB::transaction(function () use ($mechanicalApplication, $permitType, $buildingOfficial, $units) {
-            $counter = Permit::withTrashed()
-                ->where('permit_type_id', $permitType->id)
-                ->where('permit_year', now()->year)
-                ->count();
-
-            foreach ($units as $unit) {
-                $counter++;
-                $permitNumber = sprintf('MP-%s-%s-%05d', now()->format('Y'), now()->format('m'), $counter);
-
-                $permit = Permit::create([
-                    'applicationable_type' => 'mp',
-                    'applicationable_id' => $mechanicalApplication->id,
-                    'application_id' => $mechanicalApplication->id,
-                    'permit_type_id' => $permitType->id,
-                    'permit_year' => now()->year,
-                    'permit_month' => now()->month,
-                    'permit_counter' => $counter,
-                    'permit_number' => $permitNumber,
-                    'verification_token' => (string) \Illuminate\Support\Str::uuid(),
-                    'issued_date' => now()->toDateString(),
-                    'processed_by' => Auth::id(),
-                    'status' => 'generated',
-                    'building_official_name' => $buildingOfficial?->name,
-                    'building_official_title' => $buildingOfficial?->title,
-                    'building_official_designation' => $buildingOfficial?->designation,
-                    'building_official_license_no' => $buildingOfficial?->license_no,
-                ]);
-
-                MechanicalPermitUnit::create([
-                    'mechanical_application_id' => $mechanicalApplication->id,
-                    'group_code' => $unit['group_code'],
-                    'description' => $unit['description'],
-                    'quantity' => $unit['quantity'],
-                    'amount' => $unit['amount'],
-                    'permit_id' => $permit->id,
-                    'generated_at' => now(),
-                ]);
-            }
-
-            $mechanicalApplication->update([
-                'status' => 'permit_generated',
-                'issued_date' => now()->toDateString(),
-            ]);
-
-            activity()->causedBy(Auth::user())->performedOn($mechanicalApplication)
-                ->log('Mechanical permits generated (' . count($units) . ')');
-        });
-
-        if ($mechanicalApplication->client_user_id) {
-            $permit = Permit::where('applicationable_type', 'mp')
-                ->where('applicationable_id', $mechanicalApplication->id)
-                ->latest()->first();
-            $mechanicalApplication->clientUser->notify(new ApplicationApprovedNotification($mechanicalApplication, $permit));
-        }
-
-        return back()->with('success', count($units) . ' permit(s) generated successfully.');
-    }
-
     // BP revert permit generation
     public function revertGenerate(Request $request, Application $application)
     {
@@ -454,13 +336,9 @@ class PermitController extends Controller
         return $this->doRevertGenerate($request, $fencingApplication);
     }
 
-    // MP revert permit generation — reuses the shared doRevertGenerate() as-is: it already loops
-    // every permit on the application (`$application->permits()->get()->each(...)`), so it's
-    // multi-permit-safe without modification. mechanical_permit_units rows keep their permit_id
-    // untouched (only the Permit itself is revoked + soft-deleted), so restore needs no relinking.
-    public function revertGenerateMp(Request $request, MechanicalApplication $mechanicalApplication)
+    public function revertGenerateAi(Request $request, AnnualInspectionApplication $annualInspectionApplication)
     {
-        return $this->doRevertGenerate($request, $mechanicalApplication);
+        return $this->doRevertGenerate($request, $annualInspectionApplication);
     }
 
     private function doRevertGenerate(Request $request, PermitApplicationContract $application)
@@ -529,39 +407,9 @@ class PermitController extends Controller
         return $this->doRestoreRevoke($request, $fencingApplication);
     }
 
-    // MP restore revoked permits — MP-only: the shared doRestoreRevoke() restores exactly one
-    // trashed permit (`->latest('deleted_at')->first()`), which breaks when an application has
-    // several revoked permits at once. This restores all of them in a single action.
-    public function restoreRevokeMp(Request $request, MechanicalApplication $mechanicalApplication)
+    public function restoreRevokeAi(Request $request, AnnualInspectionApplication $annualInspectionApplication)
     {
-        $request->validate(['password' => 'required|string']);
-
-        if (! Hash::check($request->input('password'), Auth::user()->password)) {
-            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
-        }
-
-        $permits = $mechanicalApplication->permits()->onlyTrashed()->where('status', 'revoked')->get();
-
-        if ($permits->isEmpty()) {
-            return back()->with('error', 'No revoked permits found to restore.');
-        }
-
-        DB::transaction(function () use ($mechanicalApplication, $permits) {
-            $permits->each(function ($permit) {
-                $permit->restore();
-                $permit->update(['status' => 'generated']);
-            });
-
-            $mechanicalApplication->update([
-                'status' => 'permit_generated',
-                'issued_date' => $permits->first()->issued_date,
-            ]);
-        });
-
-        activity()->causedBy(Auth::user())->performedOn($mechanicalApplication)
-            ->log('Permit revocation reversed (' . $permits->count() . ' permits)');
-
-        return back()->with('success', $permits->count() . ' permit(s) restored successfully.');
+        return $this->doRestoreRevoke($request, $annualInspectionApplication);
     }
 
     private function doRestoreRevoke(Request $request, PermitApplicationContract $application)
@@ -618,20 +466,24 @@ class PermitController extends Controller
             $application->load('assessments.assessmentItems');
         }
 
-        // MP-specific: the specific equipment unit (and its assessed amount) this Permit
-        // certificate covers — one application can have several Permits, each backed by its own
-        // mechanical_permit_units row. For the bundled AC permit, also load the full itemized
-        // list of AC assessment items so every unit's amount is shown, not just the summed total.
-        $mechanicalUnit = null;
-        $mechanicalAcItems = null;
-        if ($application instanceof MechanicalApplication) {
-            $mechanicalUnit = MechanicalPermitUnit::where('permit_id', $permit->id)->first();
-            if ($mechanicalUnit && $mechanicalUnit->group_code === 'AC') {
-                $mechanicalAcItems = $application->assessments()
-                    ->where('assessment_type', 'mechanical')
-                    ->with(['assessmentItems' => fn ($q) => $q->where('is_active', true)->whereHas('feeCategory', fn ($c) => $c->where('code', 'MP_AC'))])
-                    ->first()?->assessmentItems ?? collect();
-            }
+        // AI-specific: full itemized fee breakdown across the finalized assessment's 4 Annual
+        // Inspection tabs (General/Electronics/Mechanical/Electrical), for the single certificate
+        // covering the whole application — mirrors AssessmentController::doPrintAi()'s grouping.
+        $aiItemsByCategory = collect();
+        $aiGrandTotal = 0;
+        if ($application instanceof AnnualInspectionApplication) {
+            $aiAssessment = $application->assessments()
+                ->where('assessment_type', 'mechanical')
+                ->with(['assessmentItems' => fn ($q) => $q->where('is_active', true)->with('feeCategory')])
+                ->first();
+
+            $aiItemsByCategory = $aiAssessment
+                ? $aiAssessment->assessmentItems->groupBy(fn ($i) => $i->feeCategory?->name ?? 'Other Fees')
+                : collect();
+
+            $aiGrandTotal = $aiAssessment
+                ? $aiAssessment->assessmentItems->sum('amount') + $aiAssessment->assessmentItems->sum('inspection_fee')
+                : 0;
         }
 
         $signatories = Signatory::where('is_active', true)->get()->keyBy('role');
@@ -668,11 +520,11 @@ class PermitController extends Controller
             'DP' => 'pdf.demolition-permit',
             'SGP' => 'pdf.signage-permit',
             'FP' => 'pdf.fencing-permit',
-            'MP' => 'pdf.mechanical-permit',
+            'AI' => 'pdf.annual-inspection-permit',
             default => 'pdf.building-permit',
         };
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($template, compact('permit', 'application', 'signatories', 'settings', 'sealImage', 'dpwhLogo', 'qrImage', 'mechanicalUnit', 'mechanicalAcItems'));
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($template, compact('permit', 'application', 'signatories', 'settings', 'sealImage', 'dpwhLogo', 'qrImage', 'aiItemsByCategory', 'aiGrandTotal'));
         $pdf->setPaper('a4', 'landscape');
 
         return $pdf->stream("permit_{$permit->permit_number}.pdf");

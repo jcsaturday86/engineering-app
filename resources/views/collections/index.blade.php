@@ -77,7 +77,7 @@
                                     'DP' => 'bg-red-100 text-red-700',
                                     'SGP' => 'bg-purple-100 text-purple-700',
                                     'FP' => 'bg-teal-100 text-teal-700',
-                                    'MP' => 'bg-cyan-100 text-cyan-700',
+                                    'AI' => 'bg-cyan-100 text-cyan-700',
                                     default => 'bg-gray-100 text-gray-700',
                                 };
                             @endphp
@@ -96,7 +96,7 @@
                                     'DP' => route('collections.create.dp', $app),
                                     'SGP' => route('collections.create.sgp', $app),
                                     'FP' => route('collections.create.fp', $app),
-                                    'MP' => route('collections.create.mp', $app),
+                                    'AI' => route('collections.create.ai', $app),
                                     default => route('collections.create', $app),
                                 };
                             @endphp

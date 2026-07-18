@@ -121,6 +121,32 @@ No online self-service application for FP — `OnlineApplicationController` expl
 
 ---
 
+## Annual Inspection (AI) Workflow
+
+```
+draft → submitted → engineering_assessed → billed → paid → permit_generated → released
+```
+
+Same 5-step shape as DP/SGP/FP — no zoning stage. `AnnualInspectionApplicationController` (create/store/show/edit/update/submit/revertSubmission/cancel) plus parallel `*Ai()` methods in `AssessmentController`/`CollectionController`/`PermitController`, all delegating to the shared generic private methods (single-permit generation via `doGenerate()`/`doRevertGenerate()`/`doRestoreRevoke()`, same as every other type). This module originally shipped as "Mechanical Permit" (`MP`) with a 5-equipment-tab assessment and multi-permit generation; it was rebuilt around the official Annual Inspection Fees rate schedule and renamed to `AI` — see `docs/PROJECT_CONTEXT.md` for the full history.
+
+**Application Form** (`annual-inspection-applications/form.blade.php`): deliberately minimal — Name of Owner/Lessee, Location (Street + Barangay FK), and a New/Yearly `application_kind` toggle (editable only while `draft`). No equipment/quantity fields on the application itself; all of that lives in the Assessment.
+
+**Assessment** (`AssessmentController::assessAi()`, `assess.blade.php`): exactly 4 tabs, all sourced from the official schedule — **General, Occupancy & Electrical** (`AINSP_GEN`, `addAnnualInspectionFeeItem()`), **Electronics** (`AINSP_ELECTRONICS`, same method), **Mechanical** (`AINSP_MECH`, same method), **Electrical** (`AINSP_ELEC`, `addAnnualInspectionElectricalItem()`, reuses the BP `ELEC_*` fee schedule). All fee computation happens server-side against seeded `FeeType`/`FeeSchedule` rows (fixed/per_unit/range_based, same computation methods as everywhere else) — no manual entry.
+
+**Quantity (equipment count) multiplier**: 15 Mechanical + 3 Electrical fee codes priced by a continuous physical measurement (kW, ton(s), kVA, lineal meter(s), cu.m.) get a second "Quantity" form field, separate from the "Unit" measurement field — `amount = baseFee(measurement) × quantity_count`. Codes already priced as a discrete count (unit(s), head(s), outlet(s), pole(s), attachment(s)) don't get this field; their existing single input still functions as the count. The assessment items table for these 4 tabs shows this split as separate **Unit** and **Qty** columns: quantity-eligible rows show "50.00 kW" / "3"; discrete-count rows show just the unit label ("unit(s)") in the Unit column and the real count in Qty.
+
+**Print Assessment**: `pdf/assessment-summary-ai.blade.php` ((renamed from assessment-summary-ai.blade.php)), route `assessments.print.ai`.
+
+**Collection of Payment**: standard generic collection flow (`CollectionController::createAi`/`storeAi`), route prefix `collections/ai/*`.
+
+**Release Permit**: `PermitController::generateAi()` → `doGenerate($application, 'AI')`, single `Permit` row, number format `AI-YYYY-MM-NNNNN`. `pdf/annual-inspection-permit.blade.php` renders one itemized fee table (grouped by the 4 `AINSP_*` categories, from the active assessment's items) with a single grand total — not the original per-equipment-unit multi-certificate output from the module's "Mechanical Permit" build.
+
+No online self-service application for AI — excluded from `OnlineApplicationController` same as DP/SGP/FP.
+
+**Sidebar navigation**: Annual Inspection sits last (after Fencing Permit) in all 3 locations (main nav, Assessment flyout, Permits flyout).
+
+---
+
 ## State Machine
 
 ### ApplicationStatus Enum (`app/Enums/ApplicationStatus.php`)
@@ -165,11 +191,9 @@ Select Part of Building + Division (filtered by occupancy groups) + Area
 #### Electrical Tab
 ```
 Select fee type (TCL / Transformer / UPS / Pole / Guying / Meter / Wiring)
-→ kVA types: base = fixed_fee + (kva × fee_per_unit)   [range lookup]
-→ fixed types: base = fixed_fee
-→ inspection_fee = base × electrical_inspection_percentage (setting, default 10%)
-→ amount = base (inspection_fee stored separately)
-→ grand total = sum(amount) + sum(inspection_fee)
+→ kVA types: amount = fixed_fee + (kva × fee_per_unit)   [range lookup]
+→ fixed types: amount = fixed_fee
+→ inspection_fee = 0 (always — inspection fees were removed from the BP assessment entirely, see below)
 ```
 
 #### Mechanical Tab
@@ -179,13 +203,10 @@ Select mechanical equipment type (MECH_*) + unit count
   · per_unit:   amount = quantity × fee_per_unit
   · fixed:      amount = quantity × fixed_fee
   · range_based: lookup range → flat fixed_fee or fee_per_unit × qty (with optional excess)
-→ NBC Inspection fee: resolveInspectionFee() maps MECH_REFRIG → INSP_REFRIG
-  · flat:    insp = range-band fixed_fee (+ excess if unit > threshold)
-  · per_unit: insp = unit × fee_per_unit (+ excess if unit > threshold)
-  · tiered:  insp = min(unit,threshold)×fee + max(0,unit-threshold)×excess_fee
-→ amount = base fee only; inspection_fee stored separately
-→ grand total = sum(amount) + sum(inspection_fee)
+→ inspection_fee = 0 (always — see below)
 ```
+
+> **BP inspection fees removed (Electrical & Mechanical):** the BP assessment's ELEC/MECH tabs used to compute an inspection fee on top of the base permit fee (ELEC: a settings-configurable percentage; MECH: via `resolveInspectionFee()` against the `MECH_INSP`/`INSP_*` schedules) — both now always store `inspection_fee = 0`, and the "Inspection" table columns / Summary row / PDF line items were removed for BP. `resolveInspectionFee()` itself is untouched — the Annual Inspection assessment's Mechanical/Electrical tabs still use the same NBC-inspection-fee computation mechanism for their own (differently-purposed) fees. Existing affected BP applications were retroactively corrected via a one-off `php artisan bp:remove-inspection-fees` command, cascading the reduction through `Assessment`/`Billing`/`Collection` records where safe to do so automatically.
 
 #### Plumbing Tab
 ```
@@ -264,19 +285,19 @@ Every forward step below has a corresponding backward action, each requiring pas
 | Send back to Engineering (from Planning) | `ZoningController::sendBackForEditing()` | `revert-submission` | BP zoning screen; sends application from Planning back to Engineering for edits |
 | Revert zoning finalize | `ZoningController::revertZoning()` | `revert-zoning` | Un-finalizes a zoning assessment |
 | Return to Zoning (from Engineering) | `AssessmentController::returnToZoning()` | `return-to-zoning` | BP assessment screen; deletes the BP engineering assessment items, sends application back to Planning |
-| Revert engineering finalize | `AssessmentController::revertEngineering()` / `revertEngineeringOp()` / `revertEngineeringDp()` / `revertEngineeringSgp()` | `revert-assessments` | Un-finalizes an engineering assessment; DP/SGP revert to `submitted` (no zoning stage) instead of `zoning_assessed` |
+| Revert engineering finalize | `AssessmentController::revertEngineering()` / `revertEngineeringOp()` / `revertEngineeringDp()` / `revertEngineeringSgp()` / `revertEngineeringFp()` / `revertEngineeringAi()` | `revert-assessments` | Un-finalizes an engineering assessment; DP/SGP/FP/AI revert to `submitted` (no zoning stage) instead of `zoning_assessed` |
 | Revert OP assessment to draft | `AssessmentController::revertToDraftOp()` | `revert-submission` | OP-only; only while `status = zoning_assessed` (not yet finalized); deletes all occupancy fee entries and the occupancy Assessment, sets status back to `draft` |
-| Revert DP/SGP assessment to draft | `AssessmentController::revertToDraftDp()` / `revertToDraftSgp()` | `revert-submission` | Same shape as `revertToDraftOp()`, but the pre-assessment status is `submitted` (no zoning stage) rather than `zoning_assessed` |
-| Revoke generated permit | `PermitController::revertGenerate()` / `revertGenerateOp()` / `revertGenerateDp()` / `revertGenerateSgp()` | `revert-permits` | Tags the `Permit` as `status = 'revoked'` (with a required reason) and soft-deletes it — the permit number is retained, never reused; rolls application status back to `paid`. `doGenerate()` refuses to create a new permit for an application with a revoked permit on file. |
-| Restore revoked permit | `PermitController::restoreRevoke()` / `restoreRevokeOp()` / `restoreRevokeDp()` / `restoreRevokeSgp()` | `revert-permits` | Un-trashes the same `Permit` row, sets `status` back to `generated`, application back to `permit_generated`. Password-confirm only (no reason). |
+| Revert DP/SGP/FP/AI assessment to draft | `AssessmentController::revertToDraftDp()` / `revertToDraftSgp()` / `revertToDraftFp()` / `revertToDraftAi()` | `revert-submission` | Same shape as `revertToDraftOp()`, but the pre-assessment status is `submitted` (no zoning stage) rather than `zoning_assessed` |
+| Revoke generated permit | `PermitController::revertGenerate()` / `revertGenerateOp()` / `revertGenerateDp()` / `revertGenerateSgp()` / `revertGenerateFp()` / `revertGenerateAi()` | `revert-permits` | Tags the `Permit` as `status = 'revoked'` (with a required reason) and soft-deletes it — the permit number is retained, never reused; rolls application status back to `paid`. `doGenerate()` refuses to create a new permit for an application with a revoked permit on file. |
+| Restore revoked permit | `PermitController::restoreRevoke()` / `restoreRevokeOp()` / `restoreRevokeDp()` / `restoreRevokeSgp()` / `restoreRevokeFp()` / `restoreRevokeAi()` | `revert-permits` | Un-trashes the same `Permit` row, sets `status` back to `generated`, application back to `permit_generated`. Password-confirm only (no reason). |
 
 All "Return to Zoning" / "Revert to Draft" buttons live in the page **header** of `assessments/assess.blade.php`, not inside the Summary tab's content — a tab-gated location would leave them invisible on default page load (the assess screen lands on the first fee-entry tab, not Summary).
 
 ---
 
-## Permits List (`/permits/building`, `/permits/occupancy`, `/permits/demolition`, `/permits/signage`)
+## Permits List (`/permits/building`, `/permits/occupancy`, `/permits/demolition`, `/permits/signage`, `/permits/fencing`, `/permits/annual-inspection`)
 
-`PermitController::buildingIndex()` / `occupancyIndex()` / `demolitionIndex()` / `signageIndex()` list applications at `paid`, `permit_generated`, or `released`, sharing the single `permits/index.blade.php` view keyed by a `$type` variable (`building`/`occupancy`/`demolition`/`signage`), with:
+`PermitController::buildingIndex()` / `occupancyIndex()` / `demolitionIndex()` / `signageIndex()` / `fencingIndex()` / `annualInspectionIndex()` list applications at `paid`, `permit_generated`, or `released`, sharing the single `permits/index.blade.php` view keyed by a `$type` variable (`building`/`occupancy`/`demolition`/`signage`/`fencing`/`mechanical` — the AI type's internal `$type` value was kept as `mechanical` from the pre-rename build, not renamed), with:
 - **Filters** — Search (app number/applicant/project title), Status (Paid, Permit generated, Released, **Revoked** — matched as `status = 'paid'` + a trashed permit tagged `revoked`), Year (defaults to current year).
 - **Permit No.** as the primary (first) column — links to the correct application Show route per type (`applications.show`/`occupancy-applications.show`/`demolition-applications.show`/`signage-applications.show`), red-strikethrough for a revoked permit's number, `-` if never generated.
 - **Project Title column** — hidden for `demolition` and `signage` (neither application table has a `project_title` field).
@@ -359,10 +380,14 @@ The `/collections` Payment History table is scoped to the **logged-in collector 
 | occupancy-permit | PermitController::print (OP) — DPWH Certificate of Occupancy style, A4 landscape, DPWH logo + city seal, QR verification code |
 | demolition-permit | PermitController::print (DP) — bordered-frame landscape A4 certificate style (same technique as building-permit/occupancy-permit), QR verification code |
 | signage-permit | PermitController::print (SGP) — same bordered-frame landscape A4 certificate style, cloned from demolition-permit; Scope of Work/Wordings/Premises-Of fields, QR verification code |
-| assessment-summary | AssessmentController::print (BP only) — city seal header; Code 128 barcode above BP number; Approved By = building_official signatory; no Fire Code Fees section |
+| fencing-permit | PermitController::print (FP) — 2-page plain-CSS reproduction of NBC Form B-03, itemized Assessed-Fees table, QR verification code |
+| annual-inspection-permit | PermitController::print (AI) — single itemized fee table grouped by the 4 AINSP_* categories with one grand total (rewritten from an earlier per-equipment-unit multi-certificate design when the module switched to single-permit generation), QR verification code |
+| assessment-summary | AssessmentController::print (BP only) — city seal header; Code 128 barcode above BP number; Approved By = building_official signatory; no Fire Code Fees section; no Electrical/Mechanical/Electronics inspection-fee line items (removed) |
 | assessment-summary-op | AssessmentController::printOp (OP only) — city seal header; titled "OCCUPANCY PERMIT ASSESSMENT"; only an Occupancy Fees section (no Zoning/Building/Electrical/Mechanical/Other Fees/Filing/Processing) |
 | assessment-summary-dp | AssessmentController::printDp (DP only) — city seal header; titled "DEMOLITION PERMIT ASSESSMENT"; only a Demolition/Moving Fees section |
 | assessment-summary-sgp | AssessmentController::printSgp (SGP only) — city seal header; titled "SIGNAGE PERMIT ASSESSMENT"; only a Signage Permit Fees section |
+| assessment-summary-fp | AssessmentController::printFp (FP only) — titled "FENCING PERMIT ASSESSMENT"; only a Fencing Permit Fees section |
+| assessment-summary-ai | AssessmentController::printAi (AI only, (renamed from assessment-summary-ai.blade.php)) — Annual Inspection Fees sections grouped by the 4 AINSP_* categories |
 | billing-statement | BillingController::print — city seal + city/province from settings |
 | official-receipt | CollectionController::receipt — city seal header |
 | zoning-certification | PermitController::zoningCertification |

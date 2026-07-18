@@ -16,11 +16,11 @@
     $isDp = $isDp ?? false;
     $isSgp = $isSgp ?? false;
     $isFp = $isFp ?? false;
-    $isMp = $isMp ?? false;
-    $addItemRoute = $isDp ? route('assessments.addItem.dp', $application) : ($isSgp ? route('assessments.addItem.sgp', $application) : ($isFp ? route('assessments.addItem.fp', $application) : ($isMp ? route('assessments.addMechItem.mp', $application) : ($isOp ? route('assessments.addItem.op', $application) : route('assessments.addItem', $application)))));
-    $finalizeRoute = $isDp ? route('assessments.finalize.dp', $application) : ($isSgp ? route('assessments.finalize.sgp', $application) : ($isFp ? route('assessments.finalize.fp', $application) : ($isMp ? route('assessments.finalize.mp', $application) : ($isOp ? route('assessments.finalize.op', $application) : route('assessments.finalize', $application)))));
-    $revertRoute = $isDp ? route('assessments.revertFinalize.dp', $application) : ($isSgp ? route('assessments.revertFinalize.sgp', $application) : ($isFp ? route('assessments.revertFinalize.fp', $application) : ($isMp ? route('assessments.revertFinalize.mp', $application) : ($isOp ? route('assessments.revertFinalize.op', $application) : route('assessments.revertFinalize', $application)))));
-    $backRoute = $isDp ? route('assessments.demolition') : ($isSgp ? route('assessments.signage') : ($isFp ? route('assessments.fencing') : ($isMp ? route('assessments.mechanical') : ($isOp ? route('assessments.occupancy') : route('assessments.index')))));
+    $isAi = $isAi ?? false;
+    $addItemRoute = $isDp ? route('assessments.addItem.dp', $application) : ($isSgp ? route('assessments.addItem.sgp', $application) : ($isFp ? route('assessments.addItem.fp', $application) : ($isAi ? route('assessments.addInspItem.ai', $application) : ($isOp ? route('assessments.addItem.op', $application) : route('assessments.addItem', $application)))));
+    $finalizeRoute = $isDp ? route('assessments.finalize.dp', $application) : ($isSgp ? route('assessments.finalize.sgp', $application) : ($isFp ? route('assessments.finalize.fp', $application) : ($isAi ? route('assessments.finalize.ai', $application) : ($isOp ? route('assessments.finalize.op', $application) : route('assessments.finalize', $application)))));
+    $revertRoute = $isDp ? route('assessments.revertFinalize.dp', $application) : ($isSgp ? route('assessments.revertFinalize.sgp', $application) : ($isFp ? route('assessments.revertFinalize.fp', $application) : ($isAi ? route('assessments.revertFinalize.ai', $application) : ($isOp ? route('assessments.revertFinalize.op', $application) : route('assessments.revertFinalize', $application)))));
+    $backRoute = $isDp ? route('assessments.demolition') : ($isSgp ? route('assessments.signage') : ($isFp ? route('assessments.fencing') : ($isAi ? route('assessments.annualInspection') : ($isOp ? route('assessments.occupancy') : route('assessments.index')))));
     $tabCategories = $tabCategories ?? $feeCategories;
     $activeTab = $activeTab ?? ($tabCategories->first()?->code ?? 'CONST');
     $itemsByCategory = $itemsByCategory ?? $assessmentItems->groupBy('fee_category_id');
@@ -86,7 +86,7 @@
 
             {{-- Revert to Draft Button + Password Modal (OP/DP only, ongoing/not-yet-finalized assessment) --}}
             @can('revert-submission')
-            @if(($isOp && $application->status === 'zoning_assessed') || (($isDp || $isSgp || $isFp || $isMp) && $application->status === 'submitted'))
+            @if(($isOp && $application->status === 'zoning_assessed') || (($isDp || $isSgp || $isFp || $isAi) && $application->status === 'submitted'))
             <div x-data="{ open: false, pw: '' }" class="inline-block">
                 <button @click="open = true; pw = ''"
                     class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition">
@@ -109,7 +109,7 @@
                             </div>
                         </div>
 
-                        <form action="{{ $isDp ? route('assessments.revertToDraft.dp', $application) : ($isSgp ? route('assessments.revertToDraft.sgp', $application) : ($isFp ? route('assessments.revertToDraft.fp', $application) : ($isMp ? route('assessments.revertToDraft.mp', $application) : route('assessments.revertToDraft.op', $application)))) }}" method="POST" autocomplete="off">
+                        <form action="{{ $isDp ? route('assessments.revertToDraft.dp', $application) : ($isSgp ? route('assessments.revertToDraft.sgp', $application) : ($isFp ? route('assessments.revertToDraft.fp', $application) : ($isAi ? route('assessments.revertToDraft.ai', $application) : route('assessments.revertToDraft.op', $application)))) }}" method="POST" autocomplete="off">
                             @csrf
                             <div class="mb-4">
                                 <label class="block text-xs font-medium text-gray-600 mb-1">
@@ -204,6 +204,33 @@
         @php
             $catItems = $itemsByCategory[$cat->id] ?? collect();
             $catFeeTypes = $cat->feeTypes;
+            $aiUnitLabels = [
+                'AINSP_A' => 'service(s)', 'AINSP_BI_APPEND' => 'appendage(s)', 'AINSP_BI_FLOOR' => 'sq.m',
+                'AINSP_C_FIRST' => 'theater(s)', 'AINSP_C_SECOND' => 'theater(s)', 'AINSP_C_THIRD' => 'theater(s)',
+                'AINSP_C_GRAND' => 'unit(s)', 'AINSP_D_PLUMB' => 'plumbing unit(s)',
+                'AINSP_EI_ELEC' => 'pesos (total electrical fees)',
+                'AINSP_ELEC_SWITCH' => 'unit(s)', 'AINSP_ELEC_BCAST' => 'unit(s)', 'AINSP_ELEC_ATM' => 'unit(s)',
+                'AINSP_ELEC_OUTLET' => 'outlet(s)', 'AINSP_ELEC_SECUR' => 'unit(s)', 'AINSP_ELEC_STUDIO' => 'unit(s)',
+                'AINSP_ELEC_TOWER' => 'unit(s)', 'AINSP_ELEC_SIGN' => 'unit(s)', 'AINSP_ELEC_POLE' => 'pole(s)',
+                'AINSP_ELEC_ATTACH' => 'attachment(s)', 'AINSP_ELEC_OTHER' => 'unit(s)',
+                'AINSP_FI_REFRIG' => 'ton(s)', 'AINSP_FII_WINAC' => 'unit(s)', 'AINSP_FIII_CENAC' => 'ton(s)',
+                'AINSP_FV_ESC' => 'unit(s)', 'AINSP_FV_FUNIC' => 'kW',
+                'AINSP_FV_FUNIC_LM' => 'lineal meter(s)', 'AINSP_FV_CABLE' => 'kW', 'AINSP_FV_CABLE_LM' => 'lineal meter(s)',
+                'AINSP_FVI_PASS' => 'unit(s)', 'AINSP_FVI_FRT' => 'unit(s)', 'AINSP_FVI_DUMB' => 'unit(s)',
+                'AINSP_FVI_CONST' => 'unit(s)', 'AINSP_FVI_CAR' => 'unit(s)', 'AINSP_FVII_BOILER' => 'kW',
+                'AINSP_FVIII_WHT' => 'unit(s)', 'AINSP_FIX_FIRE' => 'head(s)', 'AINSP_FX_DIESEL' => 'kW',
+                'AINSP_FXI_INTCOMB' => 'kW', 'AINSP_FXII_COMP' => 'outlet(s)', 'AINSP_FXIII_PIPE' => 'lineal meter(s)',
+                'AINSP_PUMP_WSS' => 'kW', 'AINSP_FXV_PUMP' => 'kW', 'AINSP_FXVI_PRESS' => 'cu.m.',
+                'AINSP_FXVII_PNEU' => 'lineal meter(s)', 'AINSP_FXVIII_WEIGH' => 'ton(s)', 'AINSP_FXIX_CALIB' => 'unit(s)',
+                'AINSP_FXIX_GASM' => 'unit(s)', 'AINSP_FXX_RIDE' => 'unit(s)',
+                'ELEC_TCL' => 'kVA', 'ELEC_TRANS' => 'kVA', 'ELEC_UPS' => 'kVA',
+            ];
+            $aiQuantityEligibleCodes = [
+                'AINSP_FV_FUNIC', 'AINSP_FV_CABLE', 'AINSP_FVII_BOILER', 'AINSP_FX_DIESEL', 'AINSP_FXI_INTCOMB',
+                'AINSP_PUMP_WSS', 'AINSP_FXV_PUMP', 'AINSP_FI_REFRIG', 'AINSP_FIII_CENAC', 'AINSP_FXVIII_WEIGH',
+                'AINSP_FV_FUNIC_LM', 'AINSP_FV_CABLE_LM', 'AINSP_FXIII_PIPE', 'AINSP_FXVII_PNEU', 'AINSP_FXVI_PRESS',
+                'ELEC_TCL', 'ELEC_TRANS', 'ELEC_UPS',
+            ];
         @endphp
         <div x-show="activeTab === '{{ $cat->code }}'" x-cloak class="p-5 space-y-4">
             @if($isFinalized)
@@ -990,118 +1017,129 @@
                 </form>
             </div>
             @endif
-            @elseif(in_array($cat->code, ['MP_AC', 'MP_MACH', 'MP_ESC', 'MP_ELEV', 'MP_GENSET']))
-            {{-- Mechanical Permit equipment tabs — each reuses the existing MECH_*/INSP_* rates
-                 from Settings > Fee Schedules > Mechanical. New applications post MECH_* codes
-                 (plus a separate inspection-fee line computed server-side); Yearly applications
-                 post the matching INSP_* codes directly as the primary fee. --}}
+            @elseif(in_array($cat->code, ['AINSP_GEN', 'AINSP_ELECTRONICS', 'AINSP_MECH']))
+            {{-- Annual Inspection Fees (NBC schedule) — reuses the existing AINSP_* FeeType/FeeSchedule
+                 rows from Settings > Fee Schedules > Annual Inspection Fees (category 13, BP-scoped). --}}
             @php
-                $mpGroupCode = substr($cat->code, 3); // MP_AC -> AC, MP_MACH -> MACH, etc.
-                $mpIsYearly = ($application->application_kind ?? 'new') === 'yearly';
-                $mpOptionGroups = [
-                    'AC' => [
-                        'label' => 'Air Conditioning / Refrigeration',
+                $aiInspGroups = [
+                    'AINSP_GEN' => [
+                        'group' => 'GEN',
+                        'label' => 'General, Occupancy & Electrical Annual Inspection',
                         'options' => [
-                            'MECH_REFRIG' => 'Refrigeration (Cold Storage), per ton',
-                            'MECH_ICE' => 'Ice Plants, per ton',
-                            'MECH_WINDOW_AC' => 'Window Type Air Conditioners, per unit',
-                            'MECH_VENT' => 'Mechanical Ventilation, per kW',
-                            'MECH_CENTRAL_AC' => 'Packaged/Centralized Air Conditioning Systems',
+                            'AINSP_A' => 'Annual Building Inspection (per service, if requested)',
+                            'AINSP_BI_APPEND' => 'Annual Inspection - Appendage (by number)',
+                            'AINSP_BI_FLOOR' => 'Annual Inspection - Floor Area (sq.m)',
+                            'AINSP_C_FIRST' => 'Annual Inspection - First Class Cinematograph/Theater',
+                            'AINSP_C_SECOND' => 'Annual Inspection - Second Class Cinematograph/Theater',
+                            'AINSP_C_THIRD' => 'Annual Inspection - Third Class Cinematograph/Theater',
+                            'AINSP_C_GRAND' => 'Annual Inspection - Grandstands/Bleachers/Gymnasia',
+                            'AINSP_D_PLUMB' => 'Annual Plumbing Inspection (per plumbing unit)',
+                            'AINSP_EI_ELEC' => 'Annual Electrical Inspection (10% of Total Electrical Fees)',
                         ],
                         'units' => [
-                            'REFRIG' => 'ton(s)', 'ICE' => 'ton(s)', 'WINDOW_AC' => 'unit(s)',
-                            'VENT' => 'kW', 'CENTRAL_AC' => 'ton(s) TR',
+                            'AINSP_A' => 'service(s)', 'AINSP_BI_APPEND' => 'appendage(s)', 'AINSP_BI_FLOOR' => 'sq.m',
+                            'AINSP_C_FIRST' => 'theater(s)', 'AINSP_C_SECOND' => 'theater(s)', 'AINSP_C_THIRD' => 'theater(s)',
+                            'AINSP_C_GRAND' => 'unit(s)', 'AINSP_D_PLUMB' => 'plumbing unit(s)',
+                            'AINSP_EI_ELEC' => 'pesos (total electrical fees)',
                         ],
                     ],
-                    'MACH' => [
-                        'label' => 'Machinery',
+                    'AINSP_ELECTRONICS' => [
+                        'group' => 'ELECTRONICS',
+                        'label' => 'Electronics Annual Inspection',
                         'options' => [
-                            'MECH_BOILER' => 'Boilers, per rated capacity in kW',
-                            'MECH_DIESEL' => 'Diesel/Gasoline Engines, per kW',
-                            'MECH_INT_COMB' => 'Other Internal Combustion Engines, per kW',
-                            'MECH_WATER_HEATER' => 'Pressurized Water Heaters, per unit',
-                            'MECH_WATER_PUMP' => 'Water/Sump/Sewage Pumps, per kW',
-                            'MECH_SPRINKLER' => 'Automatic Fire Sprinkler System, per head',
-                            'MECH_COMPRESSED' => 'Compressed Air/Vacuum/Industrial Gases, per outlet',
-                            'MECH_GAS_METER' => 'Gas Meter, per unit',
-                            'MECH_POWER_PIPE' => 'Power Piping, per lineal meter',
-                            'MECH_PRESSURE_V' => 'Pressure Vessels, per cu. meter',
-                            'MECH_OTHER_EQUIP' => 'Other Machinery/Equipment, per kW',
-                            'MECH_PNEUMATIC' => 'Pneumatic Tubes/Conveyors/Monorails, per lineal meter',
-                            'MECH_WEIGH_SCALE' => 'Weighing Scale Structure, per ton',
+                            'AINSP_ELEC_SWITCH' => 'Electronics Insp. - Switching/Communications Equipment',
+                            'AINSP_ELEC_BCAST' => 'Electronics Insp. - Broadcast Station/Cell Sites',
+                            'AINSP_ELEC_ATM' => 'Electronics Insp. - ATM/Vending/Medical Equipment',
+                            'AINSP_ELEC_OUTLET' => 'Electronics Insp. - Communications Outlets',
+                            'AINSP_ELEC_SECUR' => 'Electronics Insp. - Security/Alarm Systems',
+                            'AINSP_ELEC_STUDIO' => 'Electronics Insp. - Studios/Auditoriums',
+                            'AINSP_ELEC_TOWER' => 'Electronics Insp. - Antenna Towers/Masts',
+                            'AINSP_ELEC_SIGN' => 'Electronics Insp. - Electronic Signage',
+                            'AINSP_ELEC_POLE' => 'Electronics Insp. - Per Pole',
+                            'AINSP_ELEC_ATTACH' => 'Electronics Insp. - Per Attachment',
+                            'AINSP_ELEC_OTHER' => 'Electronics Insp. - Other Electronics Devices',
                         ],
                         'units' => [
-                            'BOILER' => 'kW', 'DIESEL' => 'kW', 'INT_COMB' => 'kW',
-                            'WATER_HEATER' => 'unit(s)', 'WATER_PUMP' => 'kW', 'SPRINKLER' => 'head(s)',
-                            'COMPRESSED' => 'outlet(s)', 'GAS_METER' => 'unit(s)', 'POWER_PIPE' => 'lineal meter(s)',
-                            'PRESSURE_V' => 'cu. meter(s)', 'OTHER_EQUIP' => 'kW', 'PNEUMATIC' => 'lineal meter(s)',
-                            'WEIGH_SCALE' => 'ton(s)',
+                            'AINSP_ELEC_SWITCH' => 'unit(s)', 'AINSP_ELEC_BCAST' => 'unit(s)', 'AINSP_ELEC_ATM' => 'unit(s)',
+                            'AINSP_ELEC_OUTLET' => 'outlet(s)', 'AINSP_ELEC_SECUR' => 'unit(s)', 'AINSP_ELEC_STUDIO' => 'unit(s)',
+                            'AINSP_ELEC_TOWER' => 'unit(s)', 'AINSP_ELEC_SIGN' => 'unit(s)', 'AINSP_ELEC_POLE' => 'pole(s)',
+                            'AINSP_ELEC_ATTACH' => 'attachment(s)', 'AINSP_ELEC_OTHER' => 'unit(s)',
                         ],
                     ],
-                    'ESC' => [
-                        'label' => 'Escalators / Funiculars / Cable Cars',
+                    'AINSP_MECH' => [
+                        'group' => 'MECH',
+                        'label' => 'Mechanical Annual Inspection',
                         'options' => [
-                            'MECH_ESC_KW' => 'Escalator/Moving Walk, per kW',
-                            'MECH_ESC_RANGE' => 'Escalator/Moving Walk, per lineal meter travel',
-                            'MECH_FUNIC_KW' => 'Funicular, per kW',
-                            'MECH_FUNIC_LM' => 'Funicular, per lineal meter travel',
-                            'MECH_CABLE_KW' => 'Cable Car, per kW',
-                            'MECH_CABLE_LM' => 'Cable Car, per lineal meter travel',
+                            'AINSP_FI_REFRIG' => 'Refrigeration and Ice Plant (per ton)',
+                            'AINSP_FII_WINAC' => 'Window Type AC (per unit)',
+                            'AINSP_FIII_CENAC' => 'Packaged/Centralized Air Conditioning (by ton)',
+                            'AINSP_FV_ESC' => 'Escalator and Moving Walks (per unit)',
+                            'AINSP_FV_FUNIC' => 'Funiculars (per kW)',
+                            'AINSP_FV_FUNIC_LM' => 'Funicular per lineal meter travel',
+                            'AINSP_FV_CABLE' => 'Cable Car (per kW)',
+                            'AINSP_FV_CABLE_LM' => 'Cable Car per lineal meter travel',
+                            'AINSP_FVI_PASS' => 'Passenger Elevator',
+                            'AINSP_FVI_FRT' => 'Freight Elevator',
+                            'AINSP_FVI_DUMB' => 'Motor Driven Dumbwaiter',
+                            'AINSP_FVI_CONST' => 'Construction Elevator for Materials',
+                            'AINSP_FVI_CAR' => 'Car Elevator',
+                            'AINSP_FVII_BOILER' => 'Boilers (by kW)',
+                            'AINSP_FVIII_WHT' => 'Pressurized Water Heaters (per unit)',
+                            'AINSP_FIX_FIRE' => 'Automatic Fire Extinguisher (per sprinkler head)',
+                            'AINSP_FX_DIESEL' => 'Diesel/Gasoline Internal Combustion Engine, Gas Turbine, Hydro, Nuclear or Solar Generating Units (by kW)',
+                            'AINSP_FXI_INTCOMB' => 'Internal Combustion Engines (by kW)',
+                            'AINSP_FXII_COMP' => 'Compressed Air/Gases (per outlet)',
+                            'AINSP_FXIII_PIPE' => 'Power Piping (per lineal meter)',
+                            'AINSP_PUMP_WSS' => 'Water, Sump and Sewage Pumps (by kW)',
+                            'AINSP_FXV_PUMP' => 'Other Machinery (by kW)',
+                            'AINSP_FXVI_PRESS' => 'Pressure Vessels (per cu.m)',
+                            'AINSP_FXVII_PNEU' => 'Pneumatic Tubes/Conveyors (per lineal meter)',
+                            'AINSP_FXVIII_WEIGH' => 'Weighing Scale (per ton)',
+                            'AINSP_FXIX_CALIB' => 'Pressure Gauge Calibration (per unit)',
+                            'AINSP_FXIX_GASM' => 'Gas Meter (tested/proved/sealed)',
+                            'AINSP_FXX_RIDE' => 'Mechanical Rides (per unit)',
                         ],
                         'units' => [
-                            'ESC_KW' => 'kW', 'ESC_RANGE' => 'lineal meter(s)', 'FUNIC_KW' => 'kW',
-                            'FUNIC_LM' => 'lineal meter(s)', 'CABLE_KW' => 'kW', 'CABLE_LM' => 'lineal meter(s)',
+                            'AINSP_FI_REFRIG' => 'ton(s)', 'AINSP_FII_WINAC' => 'unit(s)', 'AINSP_FIII_CENAC' => 'ton(s)',
+                            'AINSP_FV_ESC' => 'unit(s)', 'AINSP_FV_FUNIC' => 'kW',
+                            'AINSP_FV_FUNIC_LM' => 'lineal meter(s)', 'AINSP_FV_CABLE' => 'kW', 'AINSP_FV_CABLE_LM' => 'lineal meter(s)',
+                            'AINSP_FVI_PASS' => 'unit(s)', 'AINSP_FVI_FRT' => 'unit(s)', 'AINSP_FVI_DUMB' => 'unit(s)',
+                            'AINSP_FVI_CONST' => 'unit(s)', 'AINSP_FVI_CAR' => 'unit(s)', 'AINSP_FVII_BOILER' => 'kW',
+                            'AINSP_FVIII_WHT' => 'unit(s)', 'AINSP_FIX_FIRE' => 'head(s)', 'AINSP_FX_DIESEL' => 'kW',
+                            'AINSP_FXI_INTCOMB' => 'kW', 'AINSP_FXII_COMP' => 'outlet(s)', 'AINSP_FXIII_PIPE' => 'lineal meter(s)',
+                            'AINSP_PUMP_WSS' => 'kW', 'AINSP_FXV_PUMP' => 'kW', 'AINSP_FXVI_PRESS' => 'cu.m.',
+                            'AINSP_FXVII_PNEU' => 'lineal meter(s)', 'AINSP_FXVIII_WEIGH' => 'ton(s)', 'AINSP_FXIX_CALIB' => 'unit(s)',
+                            'AINSP_FXIX_GASM' => 'unit(s)', 'AINSP_FXX_RIDE' => 'unit(s)',
                         ],
                     ],
-                    'ELEV' => [
-                        'label' => 'Elevators',
-                        'options' => [
-                            'MECH_ELEV_DUMB' => 'Motor Driven Dumbwaiters',
-                            'MECH_ELEV_CONST' => 'Construction Elevators for Material',
-                            'MECH_ELEV_PASS' => 'Passenger Elevators',
-                            'MECH_ELEV_FRT' => 'Freight Elevators',
-                            'MECH_ELEV_CAR' => 'Car Elevators',
-                        ],
-                        'units' => [
-                            'ELEV_DUMB' => 'unit(s)', 'ELEV_CONST' => 'unit(s)', 'ELEV_PASS' => 'unit(s)',
-                            'ELEV_FRT' => 'unit(s)', 'ELEV_CAR' => 'unit(s)',
-                        ],
-                    ],
-                    'GENSET' => [
-                        'label' => 'Generator Set',
-                        'options' => [
-                            'MECH_GENSET' => 'Generator Set, per kVA',
-                        ],
-                        'units' => [
-                            'GENSET' => 'kVA',
-                        ],
-                    ],
-                ][$mpGroupCode];
+                ][$cat->code];
             @endphp
             @if(!$isFinalized)
             <div x-data="{
                 feeCode: '',
                 unitLabels: {
-                    @foreach($mpOptionGroups['units'] as $suffix => $label)
-                    {{ $mpIsYearly ? 'INSP_' . $suffix : 'MECH_' . $suffix }}: '{{ $label }}',
+                    @foreach($aiInspGroups['units'] as $code => $label)
+                    {{ $code }}: '{{ $label }}',
                     @endforeach
                 },
-                get unitLabel() { return this.unitLabels[this.feeCode] || 'unit'; }
+                quantityEligibleCodes: ['AINSP_FV_FUNIC', 'AINSP_FV_CABLE', 'AINSP_FVII_BOILER', 'AINSP_FX_DIESEL', 'AINSP_FXI_INTCOMB', 'AINSP_PUMP_WSS', 'AINSP_FXV_PUMP', 'AINSP_FI_REFRIG', 'AINSP_FIII_CENAC', 'AINSP_FXVIII_WEIGH', 'AINSP_FV_FUNIC_LM', 'AINSP_FV_CABLE_LM', 'AINSP_FXIII_PIPE', 'AINSP_FXVII_PNEU', 'AINSP_FXVI_PRESS'],
+                get unitLabel() { return this.unitLabels[this.feeCode] || 'unit'; },
+                get quantityEligible() { return this.quantityEligibleCodes.includes(this.feeCode); }
             }">
                 <h4 class="text-sm font-semibold text-gray-700 mb-3">
-                    <i class="fas fa-plus-circle text-blue-500 mr-1"></i> Add {{ $mpOptionGroups['label'] }} Item
+                    <i class="fas fa-plus-circle text-blue-500 mr-1"></i> Add {{ $aiInspGroups['label'] }} Item
                 </h4>
-                <form action="{{ route('assessments.addMechItem.mp', $application) }}" method="POST" autocomplete="off">
+                <form action="{{ route('assessments.addInspItem.ai', $application) }}" method="POST" autocomplete="off">
                     @csrf
-                    <input type="hidden" name="mechanical_group" value="{{ $mpGroupCode }}">
-                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <input type="hidden" name="annual_insp_group" value="{{ $aiInspGroups['group'] }}">
+                    <div class="grid grid-cols-1 sm:grid-cols-5 gap-3">
                         <div class="sm:col-span-2">
-                            <label class="block text-xs font-medium text-gray-500 mb-1">{{ $mpOptionGroups['label'] }} Fee <span class="text-red-500">*</span></label>
-                            <select name="mechanical_fee_type" @change="feeCode = $event.target.value" required
+                            <label class="block text-xs font-medium text-gray-500 mb-1">{{ $aiInspGroups['label'] }} Fee <span class="text-red-500">*</span></label>
+                            <select name="annual_insp_fee_type" @change="feeCode = $event.target.value" required
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">-- Select --</option>
-                                @foreach($mpOptionGroups['options'] as $code => $label)
-                                <option value="{{ $mpIsYearly ? 'INSP_' . substr($code, 5) : $code }}">{{ $label }}</option>
+                                @foreach($aiInspGroups['options'] as $code => $label)
+                                <option value="{{ $code }}">{{ $label }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -1114,15 +1152,98 @@
                             <input type="number" name="unit" step="0.01" min="0.01" required
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         </div>
+                        <div x-show="quantityEligible" x-cloak>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Quantity (no. of units)</label>
+                            <input type="number" name="quantity_count" step="1" min="1" value="1"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
                         <div class="flex items-end">
                             <button type="submit" class="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
                                 <i class="fas fa-plus"></i> Add
                             </button>
                         </div>
                     </div>
-                    <p class="text-xs text-gray-400 mt-2">
-                        {{ $mpIsYearly ? 'Annual inspection fee, auto-computed based on the Mechanical inspection fee schedule.' : 'Permit fee (plus inspection fee), auto-computed based on the Mechanical fee schedule.' }}
-                    </p>
+                    <p class="text-xs text-gray-400 mt-2">Fee auto-computed based on the Annual Inspection fee schedule (Settings &gt; Fee Schedules &gt; Annual Inspection Fees).</p>
+                </form>
+            </div>
+            @endif
+            @elseif($cat->code === 'AINSP_ELEC')
+            {{-- Electrical Annual Inspection — reuses the existing BP ELEC_* FeeType/FeeSchedule
+                 rows (Total Connected Load / Transformer / UPS / Pole / Misc. Meter & Wiring). --}}
+            @if(!$isFinalized)
+            <div x-data="{
+                selected: '',
+                feeTypeCode: '',
+                poleType: '',
+                occupancyType: '',
+                kva: '',
+                get showKva() { return ['tcl','trans','ups'].includes(this.selected); },
+                get showOccupancy() { return ['meter','wiring'].includes(this.selected); },
+                setSelection(val) {
+                    this.selected = val;
+                    this.kva = '';
+                    this.poleType = '';
+                    this.occupancyType = '';
+                    const map = {
+                        tcl: 'ELEC_TCL', trans: 'ELEC_TRANS', ups: 'ELEC_UPS',
+                        pole_supply: 'ELEC_POLE', pole_guying: 'ELEC_POLE',
+                        meter: 'ELEC_MISC_METER', wiring: 'ELEC_MISC_WIRING'
+                    };
+                    this.feeTypeCode = map[val] || '';
+                    if (val === 'pole_supply') this.poleType = 'Power Supply Pole Location';
+                    if (val === 'pole_guying') this.poleType = 'Guying Attachment';
+                }
+            }">
+                <h4 class="text-sm font-semibold text-gray-700 mb-3">
+                    <i class="fas fa-plus-circle text-blue-500 mr-1"></i> Add Electrical Annual Inspection Item
+                </h4>
+                <form action="{{ route('assessments.addElecItem.ai', $application) }}" method="POST" autocomplete="off">
+                    @csrf
+                    <input type="hidden" name="electrical_fee_type" :value="feeTypeCode">
+                    <input type="hidden" name="pole_type" :value="poleType">
+                    <input type="hidden" name="occupancy_type" :value="occupancyType">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Electrical Fee Type <span class="text-red-500">*</span></label>
+                            <select x-model="selected" @change="setSelection($event.target.value)" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">-- Select --</option>
+                                <option value="tcl">Total Connected Load (kVA)</option>
+                                <option value="trans">Total Transformer/UPS/Generator Capacity (kVA)</option>
+                                <option value="ups">Total UPS/Generator Capacity (kVA)</option>
+                                <option value="pole_supply">Power Supply Pole Location</option>
+                                <option value="pole_guying">Guying Attachment</option>
+                                <option value="meter">Electric Meter Fee</option>
+                                <option value="wiring">Wiring Permit Issuance</option>
+                            </select>
+                        </div>
+                        <div x-show="showKva" x-cloak>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Capacity (kVA) <span class="text-red-500">*</span></label>
+                            <input type="number" name="kva" x-model="kva" step="0.01" min="0.01" :required="showKva"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div x-show="showKva" x-cloak>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Quantity (no. of units)</label>
+                            <input type="number" name="quantity_count" step="1" min="1" value="1"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div x-show="showOccupancy" x-cloak>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Use or Character of Occupancy <span class="text-red-500">*</span></label>
+                            <select x-model="occupancyType" :required="showOccupancy"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">-- Select --</option>
+                                <option value="Residential">Residential</option>
+                                <option value="Commercial/Industrial">Commercial/Industrial</option>
+                                <option value="Institutional">Institutional</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit" class="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">Fee auto-computed based on the Electrical fee schedule (Settings &gt; Fee Schedules &gt; Electrical).</p>
                 </form>
             </div>
             @endif
@@ -1263,6 +1384,13 @@
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Fee/Unit</th>
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Excess/Add.</th>
                             <th class="text-right px-4 py-3 font-medium text-gray-500">Amount</th>
+                            @elseif(in_array($cat->code, ['AINSP_GEN', 'AINSP_ELECTRONICS', 'AINSP_MECH', 'AINSP_ELEC']))
+                            <th class="text-left px-4 py-3 font-medium text-gray-500">Fee Code</th>
+                            <th class="text-left px-4 py-3 font-medium text-gray-500">Description</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Unit</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Qty</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Fee per Unit</th>
+                            <th class="text-right px-4 py-3 font-medium text-gray-500">Amount</th>
                             @else
                             <th class="text-left px-4 py-3 font-medium text-gray-500">Fee Code</th>
                             <th class="text-left px-4 py-3 font-medium text-gray-500">Description</th>
@@ -1333,6 +1461,22 @@
                             <td class="px-4 py-3 text-right text-gray-700">@if($item->unit_fee > 0)&#8369;{{ number_format($item->unit_fee, 2) }}@else-@endif</td>
                             <td class="px-4 py-3 text-right text-gray-700">@if($item->excess_fee > 0)&#8369;{{ number_format($item->excess_fee, 2) }}@else-@endif</td>
                             <td class="px-4 py-3 text-right font-medium text-gray-900">&#8369;{{ number_format($item->amount, 2) }}</td>
+                            @elseif(in_array($cat->code, ['AINSP_GEN', 'AINSP_ELECTRONICS', 'AINSP_MECH', 'AINSP_ELEC']))
+                            @php
+                                $compDetails = is_array($item->computation_details) ? $item->computation_details : json_decode($item->computation_details ?? '{}', true);
+                                $isQuantityEligible = in_array($item->fee_code, $aiQuantityEligibleCodes, true);
+                            @endphp
+                            <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ $item->fee_code }}</td>
+                            <td class="px-4 py-3 text-gray-900">{{ $item->description }}</td>
+                            @if($isQuantityEligible)
+                            <td class="px-4 py-3 text-right text-gray-700">{{ number_format($item->quantity, 2) }} {{ $aiUnitLabels[$item->fee_code] ?? '' }}</td>
+                            <td class="px-4 py-3 text-right text-gray-700">{{ $compDetails['quantity_count'] ?? 1 }}</td>
+                            @else
+                            <td class="px-4 py-3 text-right text-gray-700">{{ $aiUnitLabels[$item->fee_code] ?? '' }}</td>
+                            <td class="px-4 py-3 text-right text-gray-700">{{ number_format($item->quantity, 2) }}</td>
+                            @endif
+                            <td class="px-4 py-3 text-right text-gray-700">&#8369;{{ number_format($item->unit_fee, 2) }}</td>
+                            <td class="px-4 py-3 text-right font-medium text-gray-900">&#8369;{{ number_format($item->amount, 2) }}</td>
                             @else
                             <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ $item->fee_code }}</td>
                             <td class="px-4 py-3 text-gray-900">{{ $item->description }}</td>
@@ -1389,6 +1533,10 @@
                             <td></td>
                             @elseif($cat->code === 'MECH')
                             <td colspan="4" class="px-4 py-3 text-right font-semibold text-gray-700">Subtotal</td>
+                            <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('amount'), 2) }}</td>
+                            <td></td>
+                            @elseif(in_array($cat->code, ['AINSP_GEN', 'AINSP_ELECTRONICS', 'AINSP_MECH', 'AINSP_ELEC']))
+                            <td colspan="6" class="px-4 py-3 text-right font-semibold text-gray-700">Subtotal</td>
                             <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('amount'), 2) }}</td>
                             <td></td>
                             @else
@@ -1461,7 +1609,7 @@
                         <span class="text-gray-600">Items Subtotal</span>
                         <span class="font-medium text-gray-900">&#8369;{{ number_format($totals['subtotal'], 2) }}</span>
                     </div>
-                    @if($isMp)
+                    @if($isAi)
                     <div class="flex justify-between text-sm">
                         <span class="text-gray-600">Inspection Fees</span>
                         <span class="font-medium text-gray-900">&#8369;{{ number_format($totals['inspection'], 2) }}</span>
@@ -1486,7 +1634,7 @@
             {{-- Print Button (finalized only) --}}
             @if($assessment && $assessment->status === 'finalized')
             <div class="flex justify-end gap-2">
-                <a href="{{ $isDp ? route('assessments.print.dp', $application) : ($isSgp ? route('assessments.print.sgp', $application) : ($isFp ? route('assessments.print.fp', $application) : ($isMp ? route('assessments.print.mp', $application) : ($isOp ? route('assessments.print.op', $application) : route('assessments.print', $application))))) }}"
+                <a href="{{ $isDp ? route('assessments.print.dp', $application) : ($isSgp ? route('assessments.print.sgp', $application) : ($isFp ? route('assessments.print.fp', $application) : ($isAi ? route('assessments.print.ai', $application) : ($isOp ? route('assessments.print.op', $application) : route('assessments.print', $application))))) }}"
                    target="_blank"
                    class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition shadow-sm">
                     <i class="fas fa-print"></i> Print Summary of Computation

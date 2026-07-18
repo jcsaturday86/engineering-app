@@ -49,7 +49,7 @@ class BillingService
                 'DP' => 'dp',
                 'SGP' => 'sgp',
                 'FP' => 'fp',
-                'MP' => 'mp',
+                'AI' => 'ai',
                 default => 'bp',
             };
 
