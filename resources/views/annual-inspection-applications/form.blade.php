@@ -135,6 +135,68 @@
                 </div>
             </div>
         </div>
+
+        {{-- ================================================================== --}}
+        {{-- 4. EQUIPMENT / ITEMS TO BE INSPECTED --}}
+        {{-- ================================================================== --}}
+        @php
+            $existingEquipmentData = old('equipment', $application
+                ? $application->equipmentItems->map(fn ($e) => [
+                    'fee_code' => $e->fee_code,
+                    'quantity' => $e->quantity,
+                    'specification' => $e->specification,
+                ])->values()->all()
+                : []);
+        @endphp
+        <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3" x-data="{
+            equipment: {{ json_encode(array_values($existingEquipmentData)) }}
+        }">
+            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-1 flex items-center">
+                <span class="inline-flex items-center justify-center w-7 h-7 bg-teal-600 text-white text-xs font-bold rounded-full mr-2">4</span>Equipment / Items to be Inspected
+            </h3>
+            <p class="text-xs text-gray-500 mb-3">This list is the declared basis for Engineering Assessment — staff will reference it when adding fee items.</p>
+
+            <template x-for="(row, index) in equipment" :key="index">
+                <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 items-start border border-gray-100 rounded-lg p-3">
+                    <div class="sm:col-span-5">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Equipment <span class="text-red-500">*</span></label>
+                        <select :name="'equipment[' + index + '][fee_code]'" x-model="row.fee_code" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                            <option value="">-- Select equipment --</option>
+                            @foreach($equipmentCategories as $groupLabel => $codes)
+                            <optgroup label="{{ $groupLabel }}">
+                                @foreach($codes as $code => $label)
+                                <option value="{{ $code }}">{{ $label }}</option>
+                                @endforeach
+                            </optgroup>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Quantity <span class="text-red-500">*</span></label>
+                        <input type="number" :name="'equipment[' + index + '][quantity]'" x-model="row.quantity" min="1" value="1" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    </div>
+                    <div class="sm:col-span-4">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Specification</label>
+                        <input type="text" :name="'equipment[' + index + '][specification]'" x-model="row.specification" placeholder="e.g. 50 kW, 3rd Floor unit"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    </div>
+                    <div class="sm:col-span-1 flex sm:justify-end">
+                        <button type="button" @click="equipment.splice(index, 1)"
+                            class="mt-6 sm:mt-6 inline-flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 text-gray-400 hover:text-red-600 hover:border-red-300 transition" title="Remove">
+                            <i class="fas fa-times text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            </template>
+
+            <button type="button" @click="equipment.push({ fee_code: '', quantity: 1, specification: '' })"
+                class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-teal-700 border border-teal-200 rounded-lg hover:bg-teal-50 transition">
+                <i class="fas fa-plus text-xs"></i> Add Equipment/Item
+            </button>
+            @error('equipment')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
+        </div>
     </div>
 
     {{-- ================================================================== --}}

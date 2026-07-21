@@ -273,8 +273,11 @@ Structurally closest to `demolition_applications` — has enterprise, design-pro
 
 > **History note:** this table (and its model/controller) originally shipped as `mechanical_applications`/`MechanicalApplication`/`MechanicalApplicationController`, backing a 5-equipment-tab "Mechanical Permit" (MP) module with multi-permit generation. A later rename migration renamed the table, backfilled `PermitType.code` (`MP`→`AI`), and every route/morph/model reference to `AnnualInspectionApplication`/`AI`, once the module's fee tabs were rebuilt around the official Annual Inspection Fees schedule. The form is deliberately minimal (owner name + location only) — all equipment/quantity data lives in the Assessment, not the application record.
 
-### `annual_inspection_permit_units` (dormant)
-`mechanical_application_id` (FK, cascade — column name retained from the pre-rename schema), `group_code`, `description`, `quantity`, `amount`, `permit_id` (FK permits, nullable), `generated_at`, `deleted_at`. Built to support the original multi-permit-per-application generation (one row per generated `Permit`, grouped by equipment type). Left in place, unused, after Permit Generation was switched to single-permit-per-application to match every other permit type — no code writes to this table anymore, kept dormant rather than dropped.
+### `annual_inspection_permit_units`
+`mechanical_application_id` (FK, cascade — column name retained from the pre-rename schema), `assessment_item_id` (FK → assessment_items, nullable — set only for per-unit Elevator/Escalator certificates, so print-time lookup never has to re-derive "which unit is this"), `group_code` (`GE`, `ELN`, `MACH`, `ACREF`, `ELEV`, or `ESC`), `description`, `quantity`, `amount`, `permit_id` (FK permits, nullable), `generated_at`, `deleted_at`. Originally built for the module's first multi-permit-per-application design, then left dormant when Permit Generation was switched to single-permit-per-application — since **reactivated**: AI generation now produces up to 6 certificates per application (one row per certificate here, one `Permit` each), grouped by inspection discipline rather than the original equipment-tab categories. Bundle-type certificates (`GE`/`ELN`/`MACH`/`ACREF`) leave `assessment_item_id` null; per-unit certificates (`ELEV`/`ESC`) set it to the specific elevator/escalator `AssessmentItem`.
+
+### `annual_inspection_equipment_items`
+`annual_inspection_application_id` (FK, cascade), `fee_code` (one of the ~24 equipment-count fee codes defined in `AnnualInspectionEquipmentItem::CATEGORIES`), `quantity` (unsigned int, default 1), `specification` (string, nullable — renamed from `remarks` via raw `ALTER TABLE ... RENAME COLUMN`, no data loss), `sort_order`. A declared checklist captured on the AI application form ("Equipment / Items to be Inspected") — the reference basis for Engineering Assessment, not a mechanism that auto-generates `AssessmentItem` rows. `fee_code` and `quantity` are effectively required whenever a row exists (enforced via `required_with:equipment` since the app deliberately never submits a phantom empty row — the Alpine repeater starts with zero rows). Optional section: an application can declare no equipment at all.
 
 ### `application_occupancy_groups`
 Polymorphic (`applicationable_type` / `applicationable_id`), `occupancy_group_id`, `occupancy_sub_group_id`, `others_text`. BP and OP only — DP, SGP, and FP have no occupancy-group concept.
@@ -332,7 +335,7 @@ Polymorphic, `requirement_name`, `file_path`, `original_filename`, `status` (pen
 ### `billings`
 Polymorphic, `billing_number` (BL-YYYY-MM-NNNNN), `total_amount`, `status` (unpaid/partial/paid/void), `generated_by`.
 
-> Rows are created automatically by `BillingService::generateFor()` when an assessment is finalized — there is no manual billing-generation UI.
+> Rows are created automatically by `BillingService::generateFor()` when an assessment is finalized — there is no manual billing-generation UI. The next `billing_number` is derived from the max existing number for the current year/month prefix (not a row count) — a row-count-based counter could collide with an existing (possibly soft-deleted) number whenever the sequence had a gap, which happened in practice and left one application's finalize stuck mid-transaction (assessment finalized, billing generation failed and rolled back separately).
 
 ### `billing_items`
 `billing_id`, `category`, `description`, `amount`, `sort_order`.

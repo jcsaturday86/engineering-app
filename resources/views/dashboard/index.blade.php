@@ -121,12 +121,7 @@
             <h3 class="text-sm font-semibold text-gray-900 mb-4">Recent Applications</h3>
             <div class="space-y-3">
                 @forelse($recentApplications as $app)
-                @php
-                    $appRoute = $app->type === 'op'
-                        ? route('occupancy-applications.show', $app->id)
-                        : route('applications.show', $app->id);
-                @endphp
-                <a href="{{ $appRoute }}" class="block p-3 rounded-lg hover:bg-gray-50 transition border border-gray-100">
+                <a href="{{ $app->route }}" class="block p-3 rounded-lg hover:bg-gray-50 transition border border-gray-100">
                     <div class="flex items-center justify-between">
                         <span class="text-xs font-mono text-gray-500">{{ $app->application_number }}</span>
                         <span class="text-xs px-2 py-0.5 rounded-full
@@ -210,6 +205,34 @@ new Chart(transactionsCtx, {
                 label: 'Occupancy Permit',
                 data: @json($opTransactionData),
                 backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                borderRadius: 6,
+                borderSkipped: false,
+            },
+            {
+                label: 'Demolition Permit',
+                data: @json($extraTransactionData['dp']),
+                backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                borderRadius: 6,
+                borderSkipped: false,
+            },
+            {
+                label: 'Fencing Permit',
+                data: @json($extraTransactionData['fp']),
+                backgroundColor: 'rgba(249, 115, 22, 0.8)',
+                borderRadius: 6,
+                borderSkipped: false,
+            },
+            {
+                label: 'Signage Permit',
+                data: @json($extraTransactionData['sgp']),
+                backgroundColor: 'rgba(168, 85, 247, 0.8)',
+                borderRadius: 6,
+                borderSkipped: false,
+            },
+            {
+                label: 'Annual Inspection',
+                data: @json($extraTransactionData['ai']),
+                backgroundColor: 'rgba(20, 184, 166, 0.8)',
                 borderRadius: 6,
                 borderSkipped: false,
             }

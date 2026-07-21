@@ -199,6 +199,35 @@
             </nav>
         </div>
 
+        @if($isAi && $application->equipmentItems && $application->equipmentItems->count())
+        {{-- Declared Equipment — read-only reference from the application form, the basis for assessment --}}
+        <div class="mx-5 mt-4 border border-amber-200 bg-amber-50 rounded-lg p-4">
+            <h4 class="text-sm font-semibold text-amber-900 mb-2 flex items-center">
+                <i class="fas fa-clipboard-list mr-2"></i>Declared Equipment (Basis of Assessment)
+            </h4>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-amber-700">
+                            <th class="pr-4 py-1 font-medium">Equipment</th>
+                            <th class="pr-4 py-1 font-medium">Qty</th>
+                            <th class="pr-4 py-1 font-medium">Specification</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($application->equipmentItems as $equip)
+                        <tr class="text-amber-900">
+                            <td class="pr-4 py-1">{{ \App\Models\AnnualInspectionEquipmentItem::labelFor($equip->fee_code) }}</td>
+                            <td class="pr-4 py-1">{{ $equip->quantity }}</td>
+                            <td class="pr-4 py-1">{{ $equip->specification ?: '—' }}</td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @endif
+
         {{-- Per-Category Tab Content --}}
         @foreach($tabCategories as $cat)
         @php
@@ -1555,7 +1584,37 @@
         {{-- Summary Tab Content --}}
         <div x-show="activeTab === 'SUMMARY'" x-cloak class="p-5 space-y-4">
             @foreach($tabCategories as $cat)
-            @php $catItems = $itemsByCategory[$cat->id] ?? collect(); @endphp
+            @php
+                $catItems = $itemsByCategory[$cat->id] ?? collect();
+                $isAiCat = in_array($cat->code, ['AINSP_GEN', 'AINSP_ELECTRONICS', 'AINSP_MECH', 'AINSP_ELEC']);
+                $aiUnitLabels = [
+                    'AINSP_A' => 'service(s)', 'AINSP_BI_APPEND' => 'appendage(s)', 'AINSP_BI_FLOOR' => 'sq.m',
+                    'AINSP_C_FIRST' => 'theater(s)', 'AINSP_C_SECOND' => 'theater(s)', 'AINSP_C_THIRD' => 'theater(s)',
+                    'AINSP_C_GRAND' => 'unit(s)', 'AINSP_D_PLUMB' => 'plumbing unit(s)',
+                    'AINSP_EI_ELEC' => 'pesos (total electrical fees)',
+                    'AINSP_ELEC_SWITCH' => 'unit(s)', 'AINSP_ELEC_BCAST' => 'unit(s)', 'AINSP_ELEC_ATM' => 'unit(s)',
+                    'AINSP_ELEC_OUTLET' => 'outlet(s)', 'AINSP_ELEC_SECUR' => 'unit(s)', 'AINSP_ELEC_STUDIO' => 'unit(s)',
+                    'AINSP_ELEC_TOWER' => 'unit(s)', 'AINSP_ELEC_SIGN' => 'unit(s)', 'AINSP_ELEC_POLE' => 'pole(s)',
+                    'AINSP_ELEC_ATTACH' => 'attachment(s)', 'AINSP_ELEC_OTHER' => 'unit(s)',
+                    'AINSP_FI_REFRIG' => 'ton(s)', 'AINSP_FII_WINAC' => 'unit(s)', 'AINSP_FIII_CENAC' => 'ton(s)',
+                    'AINSP_FV_ESC' => 'unit(s)', 'AINSP_FV_FUNIC' => 'kW',
+                    'AINSP_FV_FUNIC_LM' => 'lineal meter(s)', 'AINSP_FV_CABLE' => 'kW', 'AINSP_FV_CABLE_LM' => 'lineal meter(s)',
+                    'AINSP_FVI_PASS' => 'unit(s)', 'AINSP_FVI_FRT' => 'unit(s)', 'AINSP_FVI_DUMB' => 'unit(s)',
+                    'AINSP_FVI_CONST' => 'unit(s)', 'AINSP_FVI_CAR' => 'unit(s)', 'AINSP_FVII_BOILER' => 'kW',
+                    'AINSP_FVIII_WHT' => 'unit(s)', 'AINSP_FIX_FIRE' => 'head(s)', 'AINSP_FX_DIESEL' => 'kW',
+                    'AINSP_FXI_INTCOMB' => 'kW', 'AINSP_FXII_COMP' => 'outlet(s)', 'AINSP_FXIII_PIPE' => 'lineal meter(s)',
+                    'AINSP_PUMP_WSS' => 'kW', 'AINSP_FXV_PUMP' => 'kW', 'AINSP_FXVI_PRESS' => 'cu.m.',
+                    'AINSP_FXVII_PNEU' => 'lineal meter(s)', 'AINSP_FXVIII_WEIGH' => 'ton(s)', 'AINSP_FXIX_CALIB' => 'unit(s)',
+                    'AINSP_FXIX_GASM' => 'unit(s)', 'AINSP_FXX_RIDE' => 'unit(s)',
+                    'ELEC_TCL' => 'kVA', 'ELEC_TRANS' => 'kVA', 'ELEC_UPS' => 'kVA',
+                ];
+                $aiQuantityEligibleCodes = [
+                    'AINSP_FV_FUNIC', 'AINSP_FV_CABLE', 'AINSP_FVII_BOILER', 'AINSP_FX_DIESEL', 'AINSP_FXI_INTCOMB',
+                    'AINSP_PUMP_WSS', 'AINSP_FXV_PUMP', 'AINSP_FI_REFRIG', 'AINSP_FIII_CENAC', 'AINSP_FXVIII_WEIGH',
+                    'AINSP_FV_FUNIC_LM', 'AINSP_FV_CABLE_LM', 'AINSP_FXIII_PIPE', 'AINSP_FXVII_PNEU', 'AINSP_FXVI_PRESS',
+                    'ELEC_TCL', 'ELEC_TRANS', 'ELEC_UPS',
+                ];
+            @endphp
             @if($catItems->count())
             <div class="border border-gray-200 rounded-lg overflow-hidden">
                 <div class="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
@@ -1567,8 +1626,14 @@
                         <tr>
                             <th class="text-left px-4 py-2 font-medium text-gray-500 text-xs">Fee Code</th>
                             <th class="text-left px-4 py-2 font-medium text-gray-500 text-xs">Description</th>
+                            @if($isAiCat)
+                            <th class="text-right px-4 py-2 font-medium text-gray-500 text-xs">Unit</th>
+                            <th class="text-right px-4 py-2 font-medium text-gray-500 text-xs">Qty</th>
+                            <th class="text-right px-4 py-2 font-medium text-gray-500 text-xs">Fee per Unit</th>
+                            @else
                             <th class="text-right px-4 py-2 font-medium text-gray-500 text-xs">Qty</th>
                             <th class="text-right px-4 py-2 font-medium text-gray-500 text-xs">Unit Fee</th>
+                            @endif
                             <th class="text-right px-4 py-2 font-medium text-gray-500 text-xs">Amount</th>
                         </tr>
                     </thead>
@@ -1577,15 +1642,30 @@
                         <tr>
                             <td class="px-4 py-2 font-mono text-xs text-gray-600">{{ $item->fee_code }}</td>
                             <td class="px-4 py-2 text-gray-900">{{ $item->description }}</td>
+                            @if($isAiCat)
+                            @php
+                                $compDetails = is_array($item->computation_details) ? $item->computation_details : json_decode($item->computation_details ?? '{}', true);
+                                $isQuantityEligible = in_array($item->fee_code, $aiQuantityEligibleCodes, true);
+                            @endphp
+                            @if($isQuantityEligible)
+                            <td class="px-4 py-2 text-right text-gray-700">{{ number_format($item->quantity, 2) }} {{ $aiUnitLabels[$item->fee_code] ?? '' }}</td>
+                            <td class="px-4 py-2 text-right text-gray-700">{{ $compDetails['quantity_count'] ?? 1 }}</td>
+                            @else
+                            <td class="px-4 py-2 text-right text-gray-700">{{ $aiUnitLabels[$item->fee_code] ?? '' }}</td>
+                            <td class="px-4 py-2 text-right text-gray-700">{{ number_format($item->quantity, 2) }}</td>
+                            @endif
+                            <td class="px-4 py-2 text-right text-gray-700">&#8369;{{ number_format($item->unit_fee, 2) }}</td>
+                            @else
                             <td class="px-4 py-2 text-right text-gray-700">{{ number_format($item->quantity, 2) }}</td>
                             <td class="px-4 py-2 text-right text-gray-700">&#8369;{{ number_format($item->unit_fee, 2) }}</td>
+                            @endif
                             <td class="px-4 py-2 text-right font-medium text-gray-900">&#8369;{{ number_format($item->amount, 2) }}</td>
                         </tr>
                         @endforeach
                     </tbody>
                     <tfoot class="bg-gray-50 border-t border-gray-200">
                         <tr>
-                            <td colspan="4" class="px-4 py-2 text-right font-semibold text-gray-600 text-xs">{{ $cat->name }} Subtotal</td>
+                            <td colspan="{{ $isAiCat ? 5 : 4 }}" class="px-4 py-2 text-right font-semibold text-gray-600 text-xs">{{ $cat->name }} Subtotal</td>
                             <td class="px-4 py-2 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('amount'), 2) }}</td>
                         </tr>
                     </tfoot>

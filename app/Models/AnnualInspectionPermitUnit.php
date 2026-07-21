@@ -14,6 +14,7 @@ class AnnualInspectionPermitUnit extends Model
 
     protected $fillable = [
         'annual_inspection_application_id',
+        'assessment_item_id',
         'group_code',
         'description',
         'quantity',
@@ -39,5 +40,10 @@ class AnnualInspectionPermitUnit extends Model
     public function permit(): BelongsTo
     {
         return $this->belongsTo(Permit::class);
+    }
+
+    public function assessmentItem(): BelongsTo
+    {
+        return $this->belongsTo(AssessmentItem::class);
     }
 }

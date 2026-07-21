@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AnnualInspectionApplication;
+use App\Models\AnnualInspectionEquipmentItem;
 use App\Models\Barangay;
 use App\Models\City;
 use App\Models\PermitType;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\Rule;
 
 class AnnualInspectionApplicationController extends Controller
 {
@@ -72,6 +74,9 @@ class AnnualInspectionApplicationController extends Controller
             $nextCounter = ($counter ?? 0) + 1;
             $appNumber = sprintf('AI-%s-%s-%05d', now()->format('Y'), now()->format('m'), $nextCounter);
 
+            $equipment = $validated['equipment'] ?? [];
+            unset($validated['equipment']);
+
             $application = AnnualInspectionApplication::create(array_merge($validated, [
                 'app_year' => now()->year,
                 'app_month' => now()->month,
@@ -81,6 +86,8 @@ class AnnualInspectionApplicationController extends Controller
                 'source' => 'walk_in',
                 'entered_by' => Auth::id(),
             ]));
+
+            $this->syncEquipmentItems($application, $equipment);
 
             DB::commit();
 
@@ -97,7 +104,7 @@ class AnnualInspectionApplicationController extends Controller
         $annualInspectionApplication->load([
             'locationBarangay',
             'assessments.assessmentItems', 'billings', 'collections', 'permits',
-            'annualInspectionPermitUnits.permit',
+            'annualInspectionPermitUnits.permit', 'equipmentItems',
         ]);
 
         $application = $annualInspectionApplication;
@@ -118,9 +125,14 @@ class AnnualInspectionApplicationController extends Controller
     {
         $validated = $this->validateApplication($request);
 
+        $equipment = $validated['equipment'] ?? [];
+        unset($validated['equipment']);
+
         DB::beginTransaction();
         try {
             $annualInspectionApplication->update($validated);
+
+            $this->syncEquipmentItems($annualInspectionApplication, $equipment);
 
             DB::commit();
 
@@ -208,6 +220,7 @@ class AnnualInspectionApplicationController extends Controller
 
         return [
             'sfcBarangays' => Barangay::where('city_id', $sfcCityId)->where('is_active', true)->orderBy('name')->get(),
+            'equipmentCategories' => AnnualInspectionEquipmentItem::CATEGORIES,
         ];
     }
 
@@ -218,6 +231,29 @@ class AnnualInspectionApplicationController extends Controller
             'owner_name' => 'required|string|max:255',
             'location_street' => 'required|string|max:255',
             'location_barangay_id' => 'required|exists:barangays,id',
+            'equipment' => 'nullable|array',
+            'equipment.*.fee_code' => ['required_with:equipment', 'string', Rule::in(AnnualInspectionEquipmentItem::allCodes())],
+            'equipment.*.quantity' => 'required_with:equipment|integer|min:1',
+            'equipment.*.specification' => 'nullable|string|max:255',
         ]);
+    }
+
+    private function syncEquipmentItems(AnnualInspectionApplication $application, array $equipment): void
+    {
+        $application->equipmentItems()->delete();
+
+        $sortOrder = 0;
+        foreach ($equipment as $row) {
+            if (empty($row['fee_code'])) {
+                continue;
+            }
+
+            $application->equipmentItems()->create([
+                'fee_code' => $row['fee_code'],
+                'quantity' => $row['quantity'] ?? 1,
+                'specification' => $row['specification'] ?? null,
+                'sort_order' => $sortOrder++,
+            ]);
+        }
     }
 }

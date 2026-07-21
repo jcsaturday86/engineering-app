@@ -216,6 +216,10 @@ class AssessmentController extends Controller
         $isFp = $permitCode === 'FP';
         $isAi = $permitCode === 'AI';
 
+        if ($isAi) {
+            $application->load('equipmentItems');
+        }
+
         return view('assessments.assess', compact(
             'application', 'assessment', 'feeCategories', 'tabCategories',
             'totals', 'assessmentItems', 'itemsByCategory', 'activeTab', 'isOp', 'isDp', 'isSgp', 'isFp', 'isAi',

@@ -93,10 +93,15 @@
                     @forelse($applications as $app)
                     @php
                         $isMechanical = $type === 'mechanical';
-                        $revokedPermit = $app->status === 'paid' && $app->permits->isEmpty()
-                            ? $app->permits()->onlyTrashed()->where('status', 'revoked')->latest('deleted_at')->first()
-                            : null;
-                        $wasRevoked = (bool) $revokedPermit;
+                        $revokedPermits = $isMechanical
+                            ? ($app->status === 'paid' ? $app->permits()->onlyTrashed()->where('status', 'revoked')->get() : collect())
+                            : collect();
+                        $revokedPermit = $isMechanical
+                            ? $revokedPermits->first()
+                            : ($app->status === 'paid' && $app->permits->isEmpty()
+                                ? $app->permits()->onlyTrashed()->where('status', 'revoked')->latest('deleted_at')->first()
+                                : null);
+                        $wasRevoked = $isMechanical ? $revokedPermits->isNotEmpty() : (bool) $revokedPermit;
                         $showRoute = match($type) {
                             'occupancy' => route('occupancy-applications.show', $app),
                             'demolition' => route('demolition-applications.show', $app),
@@ -108,9 +113,19 @@
                     @endphp
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3">
+                            @if($isMechanical)
+                                @if($wasRevoked)
+                                    <a href="{{ $showRoute }}" class="font-mono font-medium text-red-600 line-through hover:underline" title="Revoked">{{ $revokedPermits->count() }} permit(s) revoked</a>
+                                @elseif($app->permits->isNotEmpty())
+                                    <a href="{{ $showRoute }}" class="font-mono font-medium text-blue-600 hover:text-blue-800 hover:underline">{{ $app->permits->count() }} permit(s) generated</a>
+                                @else
+                                    <a href="{{ $showRoute }}" class="font-mono font-medium text-gray-500 hover:underline">-</a>
+                                @endif
+                            @else
                             <a href="{{ $showRoute }}" class="font-mono font-medium hover:underline {{ $revokedPermit ? 'text-red-600 line-through' : 'text-blue-600 hover:text-blue-800' }}" @if($revokedPermit) title="Revoked" @endif>
                                 {{ $app->permits->first()->permit_number ?? ($revokedPermit->permit_number ?? '-') }}
                             </a>
+                            @endif
                         </td>
                         <td class="px-4 py-3 text-gray-900">{{ $isMechanical ? $app->owner_name : $app->applicant_last_name . ', ' . $app->applicant_first_name }}</td>
                         @unless(in_array($type, ['demolition', 'signage', 'fencing', 'mechanical']))
@@ -168,7 +183,7 @@
                                                 </div>
                                                 <div>
                                                     <h3 class="text-lg font-semibold text-gray-900">Confirm Restore</h3>
-                                                    <p class="text-sm text-gray-500">This will restore the revoked permit (same permit number) and set the application back to Permit Generated.</p>
+                                                    <p class="text-sm text-gray-500">{{ $isMechanical ? 'This will restore all ' . $revokedPermits->count() . ' revoked permit(s) (same permit numbers) and set the application back to Permit Generated.' : 'This will restore the revoked permit (same permit number) and set the application back to Permit Generated.' }}</p>
                                                 </div>
                                             </div>
 
@@ -230,7 +245,11 @@
                                 </form>
                             @else
                                 <div class="inline-flex items-center gap-1.5" x-data="{ showRevokeModal: false, revokePassword: '', revokeReason: '' }">
-                                    @if(!in_array($type, ['demolition', 'fencing']))
+                                    @if($isMechanical)
+                                    <a href="{{ $showRoute }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition">
+                                        <i class="fas fa-print"></i> View Permits
+                                    </a>
+                                    @elseif(!in_array($type, ['demolition', 'fencing']))
                                     <a href="{{ route('permits.print', $app->permits->first()) }}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition">
                                         <i class="fas fa-print"></i> Print
                                     </a>
@@ -253,7 +272,7 @@
                                                     </div>
                                                     <div>
                                                         <h3 class="text-lg font-semibold text-gray-900">Confirm Revoke</h3>
-                                                        <p class="text-sm text-gray-500">This will delete the generated permit and revert to Paid.</p>
+                                                        <p class="text-sm text-gray-500">{{ $isMechanical ? 'This will delete all ' . $app->permits->count() . ' generated permit(s) and revert to Paid.' : 'This will delete the generated permit and revert to Paid.' }}</p>
                                                     </div>
                                                 </div>
 

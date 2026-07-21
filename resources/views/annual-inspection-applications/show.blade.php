@@ -198,6 +198,38 @@
     </div>
 
     {{-- ================================================================== --}}
+    {{-- EQUIPMENT / ITEMS TO BE INSPECTED --}}
+    {{-- ================================================================== --}}
+    @if($application->equipmentItems && $application->equipmentItems->count())
+    @php $sectionNum++ @endphp
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+        <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">
+            <span class="inline-flex items-center justify-center w-7 h-7 bg-teal-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Equipment / Items to be Inspected
+        </h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                        <th class="text-left px-3 py-2 font-medium text-gray-500">Equipment</th>
+                        <th class="text-left px-3 py-2 font-medium text-gray-500">Quantity</th>
+                        <th class="text-left px-3 py-2 font-medium text-gray-500">Specification</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @foreach($application->equipmentItems as $equip)
+                    <tr>
+                        <td class="px-3 py-2 text-gray-900">{{ \App\Models\AnnualInspectionEquipmentItem::labelFor($equip->fee_code) }}</td>
+                        <td class="px-3 py-2 text-gray-600">{{ $equip->quantity }}</td>
+                        <td class="px-3 py-2 text-gray-600">{{ $equip->specification ?: '---' }}</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
+
+    {{-- ================================================================== --}}
     {{-- ASSESSMENT SUMMARY --}}
     {{-- ================================================================== --}}
     @if($application->assessments && $application->assessments->count())
@@ -234,6 +266,63 @@
                 <span class="text-sm font-semibold text-gray-900">Grand Total</span>
                 <span class="text-lg font-bold text-teal-700">&#8369;{{ number_format($grandTotal, 2) }}</span>
             </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- ================================================================== --}}
+    {{-- GENERATED PERMITS — one application can have several certificates --}}
+    {{-- ================================================================== --}}
+    @if($application->annualInspectionPermitUnits && $application->annualInspectionPermitUnits->count())
+    @php
+        $sectionNum++;
+        $activeCollection = $application->collections->firstWhere('status', 'active');
+        $aiGroupLabels = [
+            'GE' => 'General, Occupancy & Electrical',
+            'ELN' => 'Electronics',
+            'MACH' => 'Machinery',
+            'ACREF' => 'Aircon & Refrigeration',
+            'ELEV' => 'Elevator',
+            'ESC' => 'Escalator/Funicular/Cable Car',
+        ];
+    @endphp
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+        <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">
+            <span class="inline-flex items-center justify-center w-7 h-7 bg-teal-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Generated Permits ({{ $application->annualInspectionPermitUnits->count() }})
+        </h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                        <th class="text-left px-3 py-2 font-medium text-gray-500">Permit No.</th>
+                        <th class="text-left px-3 py-2 font-medium text-gray-500">Certificate Type</th>
+                        <th class="text-left px-3 py-2 font-medium text-gray-500">Description</th>
+                        <th class="text-left px-3 py-2 font-medium text-gray-500">O.R. Number</th>
+                        <th class="text-left px-3 py-2 font-medium text-gray-500">Date Paid</th>
+                        <th class="text-right px-3 py-2 font-medium text-gray-500">Amount</th>
+                        <th class="text-right px-3 py-2 font-medium text-gray-500">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @foreach($application->annualInspectionPermitUnits as $unit)
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-3 py-2 font-mono {{ $unit->permit && $unit->permit->status === 'revoked' ? 'text-red-600 line-through' : 'text-gray-900' }}">{{ $unit->permit?->permit_number ?? '---' }}</td>
+                        <td class="px-3 py-2 text-gray-600">{{ $aiGroupLabels[$unit->group_code] ?? $unit->group_code }}</td>
+                        <td class="px-3 py-2 text-gray-900">{{ $unit->description }}</td>
+                        <td class="px-3 py-2 text-gray-600">{{ $activeCollection?->or_number ?? '---' }}</td>
+                        <td class="px-3 py-2 text-gray-600">{{ $activeCollection?->or_date ? \Illuminate\Support\Carbon::parse($activeCollection->or_date)->format('M d, Y') : '---' }}</td>
+                        <td class="px-3 py-2 text-right text-gray-900">&#8369;{{ number_format($unit->amount, 2) }}</td>
+                        <td class="px-3 py-2 text-right">
+                            @if($unit->permit && $unit->permit->status !== 'revoked')
+                            <a href="{{ route('permits.print', $unit->permit) }}" target="_blank" class="text-gray-400 hover:text-teal-600" title="Print">
+                                <i class="fas fa-print"></i>
+                            </a>
+                            @endif
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
         </div>
     </div>
     @endif

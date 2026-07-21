@@ -11,6 +11,7 @@ use App\Models\PermitType;
 use App\Models\Signatory;
 use App\Models\FencingApplication;
 use App\Models\AnnualInspectionApplication;
+use App\Models\AnnualInspectionPermitUnit;
 use App\Models\SignageApplication;
 use App\Notifications\ApplicationApprovedNotification;
 use Illuminate\Http\Request;
@@ -238,7 +239,167 @@ class PermitController extends Controller
 
     public function generateAi(AnnualInspectionApplication $annualInspectionApplication)
     {
-        return $this->doGenerate($annualInspectionApplication, 'AI');
+        return $this->doGenerateAi($annualInspectionApplication);
+    }
+
+    // AI certificate group definitions: General+Electrical / Electronics / Machinery (minus
+    // Elevators, Escalators, Aircon-Refrigeration) are bundled into one certificate each;
+    // Aircon/Refrigeration bundles ALL units into one certificate; Elevators and
+    // Escalators/Funiculars/Cable Cars each get one certificate PER unit.
+    private const AI_GROUP_LABELS = [
+        'GE' => 'General, Occupancy & Electrical Annual Inspection',
+        'ELN' => 'Electronics Annual Inspection',
+        'MACH' => 'Machinery Annual Inspection',
+        'ACREF' => 'Air Conditioning & Refrigeration Annual Inspection',
+        'ELEV' => 'Elevator Annual Inspection',
+        'ESC' => 'Escalator/Funicular/Cable Car Annual Inspection',
+    ];
+
+    private const AI_ACREF_CODES = ['AINSP_FI_REFRIG', 'AINSP_FII_WINAC', 'AINSP_FIII_CENAC'];
+    private const AI_ELEV_CODES = ['AINSP_FVI_PASS', 'AINSP_FVI_FRT', 'AINSP_FVI_DUMB', 'AINSP_FVI_CONST', 'AINSP_FVI_CAR'];
+    private const AI_ESC_CODES = ['AINSP_FV_ESC', 'AINSP_FV_FUNIC', 'AINSP_FV_FUNIC_LM', 'AINSP_FV_CABLE', 'AINSP_FV_CABLE_LM'];
+
+    /**
+     * Partition an AI application's finalized assessment items into certificate groups.
+     * Returns an ordered list of ['group_code', 'label', 'items', 'amount', 'per_unit'].
+     */
+    private function buildAiCertificateGroups(AnnualInspectionApplication $application): array
+    {
+        $assessment = $application->assessments()
+            ->where('assessment_type', 'mechanical')
+            ->with(['assessmentItems' => fn ($q) => $q->where('is_active', true)->with('feeCategory')])
+            ->first();
+
+        $items = $assessment ? $assessment->assessmentItems : collect();
+
+        $geItems = $items->filter(fn ($i) => in_array($i->feeCategory?->code, ['AINSP_GEN', 'AINSP_ELEC'], true));
+        $elnItems = $items->filter(fn ($i) => $i->feeCategory?->code === 'AINSP_ELECTRONICS');
+        $mechItems = $items->filter(fn ($i) => $i->feeCategory?->code === 'AINSP_MECH');
+
+        $acrefItems = $mechItems->filter(fn ($i) => in_array($i->fee_code, self::AI_ACREF_CODES, true));
+        $elevItems = $mechItems->filter(fn ($i) => in_array($i->fee_code, self::AI_ELEV_CODES, true));
+        $escItems = $mechItems->filter(fn ($i) => in_array($i->fee_code, self::AI_ESC_CODES, true));
+        $machItems = $mechItems->reject(fn ($i) => in_array($i->fee_code, [...self::AI_ACREF_CODES, ...self::AI_ELEV_CODES, ...self::AI_ESC_CODES], true));
+
+        $groups = [];
+
+        $bundle = function (string $code, $bundleItems) use (&$groups) {
+            if ($bundleItems->isEmpty()) {
+                return;
+            }
+            $groups[] = [
+                'group_code' => $code,
+                'label' => self::AI_GROUP_LABELS[$code],
+                'items' => $bundleItems->values(),
+                'amount' => round($bundleItems->sum('amount') + $bundleItems->sum('inspection_fee'), 2),
+                'per_unit' => false,
+            ];
+        };
+
+        $bundle('GE', $geItems);
+        $bundle('ELN', $elnItems);
+        $bundle('MACH', $machItems);
+        $bundle('ACREF', $acrefItems);
+
+        foreach ($elevItems as $item) {
+            $groups[] = [
+                'group_code' => 'ELEV',
+                'label' => self::AI_GROUP_LABELS['ELEV'],
+                'items' => collect([$item]),
+                'amount' => round($item->amount + $item->inspection_fee, 2),
+                'per_unit' => true,
+            ];
+        }
+
+        foreach ($escItems as $item) {
+            $groups[] = [
+                'group_code' => 'ESC',
+                'label' => self::AI_GROUP_LABELS['ESC'],
+                'items' => collect([$item]),
+                'amount' => round($item->amount + $item->inspection_fee, 2),
+                'per_unit' => true,
+            ];
+        }
+
+        return $groups;
+    }
+
+    private function doGenerateAi(AnnualInspectionApplication $application)
+    {
+        if ($application->status !== 'paid') {
+            return back()->with('error', 'Application must be paid before generating permit.');
+        }
+
+        if ($application->permits()->onlyTrashed()->where('status', 'revoked')->exists()) {
+            return back()->with('error', "This application's permit was revoked. Restore the previous permit instead of generating a new one.");
+        }
+
+        $groups = $this->buildAiCertificateGroups($application);
+
+        if (empty($groups)) {
+            return back()->with('error', 'No assessed items found to generate certificates from.');
+        }
+
+        $permitType = PermitType::where('code', 'AI')->firstOrFail();
+        $buildingOfficial = Signatory::where('role', 'building_official')->where('is_active', true)->first();
+
+        DB::transaction(function () use ($application, $permitType, $buildingOfficial, $groups) {
+            $counter = Permit::withTrashed()
+                ->where('permit_type_id', $permitType->id)
+                ->where('permit_year', now()->year)
+                ->count();
+
+            foreach ($groups as $group) {
+                $counter++;
+                $permitNumber = sprintf('AI-%s-%s-%05d', now()->format('Y'), now()->format('m'), $counter);
+
+                $permit = Permit::create([
+                    'applicationable_type' => 'ai',
+                    'applicationable_id' => $application->id,
+                    'application_id' => $application->id,
+                    'permit_type_id' => $permitType->id,
+                    'permit_year' => now()->year,
+                    'permit_month' => now()->month,
+                    'permit_counter' => $counter,
+                    'permit_number' => $permitNumber,
+                    'verification_token' => (string) \Illuminate\Support\Str::uuid(),
+                    'issued_date' => now()->toDateString(),
+                    'processed_by' => Auth::id(),
+                    'status' => 'generated',
+                    'building_official_name' => $buildingOfficial?->name,
+                    'building_official_title' => $buildingOfficial?->title,
+                    'building_official_designation' => $buildingOfficial?->designation,
+                    'building_official_license_no' => $buildingOfficial?->license_no,
+                ]);
+
+                AnnualInspectionPermitUnit::create([
+                    'annual_inspection_application_id' => $application->id,
+                    'assessment_item_id' => $group['per_unit'] ? $group['items']->first()->id : null,
+                    'group_code' => $group['group_code'],
+                    'description' => $group['per_unit'] ? $group['items']->first()->description : $group['label'],
+                    'quantity' => $group['items']->count(),
+                    'amount' => $group['amount'],
+                    'permit_id' => $permit->id,
+                    'generated_at' => now(),
+                ]);
+            }
+
+            $application->update([
+                'status' => 'permit_generated',
+                'issued_date' => now()->toDateString(),
+            ]);
+
+            activity()->causedBy(Auth::user())->performedOn($application)->log('Permit generated');
+        });
+
+        if ($application->client_user_id) {
+            $permit = Permit::where('applicationable_type', 'ai')
+                ->where('applicationable_id', $application->id)
+                ->latest()->first();
+            $application->clientUser->notify(new ApplicationApprovedNotification($application, $permit));
+        }
+
+        return back()->with('success', 'Permit certificates generated successfully.');
     }
 
     private function doGenerate(PermitApplicationContract $application, string $permitCode)
@@ -338,7 +499,39 @@ class PermitController extends Controller
 
     public function revertGenerateAi(Request $request, AnnualInspectionApplication $annualInspectionApplication)
     {
-        return $this->doRevertGenerate($request, $annualInspectionApplication);
+        $request->validate([
+            'password' => 'required|string',
+            'reason' => 'required|string|max:500',
+        ]);
+
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
+        if ($annualInspectionApplication->status !== 'permit_generated') {
+            return back()->with('error', 'Only applications with generated permits can have them revoked.');
+        }
+
+        DB::transaction(function () use ($annualInspectionApplication, $request) {
+            $annualInspectionApplication->permits()->get()->each(function ($permit) use ($request) {
+                $permit->update([
+                    'status' => 'revoked',
+                    'revoke_reason' => $request->input('reason'),
+                ]);
+                $permit->delete();
+            });
+
+            $annualInspectionApplication->update([
+                'status' => 'paid',
+                'issued_date' => null,
+            ]);
+        });
+
+        activity()->causedBy(Auth::user())->performedOn($annualInspectionApplication)
+            ->withProperties(['reason' => $request->input('reason')])
+            ->log('Permit generation reverted');
+
+        return back()->with('success', 'Permit generation reverted.');
     }
 
     private function doRevertGenerate(Request $request, PermitApplicationContract $application)
@@ -409,7 +602,35 @@ class PermitController extends Controller
 
     public function restoreRevokeAi(Request $request, AnnualInspectionApplication $annualInspectionApplication)
     {
-        return $this->doRestoreRevoke($request, $annualInspectionApplication);
+        $request->validate(['password' => 'required|string']);
+
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
+        $revokedPermits = $annualInspectionApplication->permits()->onlyTrashed()->where('status', 'revoked')->get();
+
+        if ($revokedPermits->isEmpty()) {
+            return back()->with('error', 'No revoked permits found to restore.');
+        }
+
+        DB::transaction(function () use ($annualInspectionApplication, $revokedPermits) {
+            $latestIssuedDate = null;
+            foreach ($revokedPermits as $permit) {
+                $permit->restore();
+                $permit->update(['status' => 'generated']);
+                $latestIssuedDate = $permit->issued_date;
+            }
+
+            $annualInspectionApplication->update([
+                'status' => 'permit_generated',
+                'issued_date' => $latestIssuedDate,
+            ]);
+        });
+
+        activity()->causedBy(Auth::user())->performedOn($annualInspectionApplication)->log('Permit revocation reversed');
+
+        return back()->with('success', 'Permit certificates restored successfully.');
     }
 
     private function doRestoreRevoke(Request $request, PermitApplicationContract $application)
@@ -466,24 +687,21 @@ class PermitController extends Controller
             $application->load('assessments.assessmentItems');
         }
 
-        // AI-specific: full itemized fee breakdown across the finalized assessment's 4 Annual
-        // Inspection tabs (General/Electronics/Mechanical/Electrical), for the single certificate
-        // covering the whole application — mirrors AssessmentController::doPrintAi()'s grouping.
-        $aiItemsByCategory = collect();
-        $aiGrandTotal = 0;
+        // AI-specific: each Permit corresponds to one certificate group (see
+        // buildAiCertificateGroups()) — load its bridge-table unit and, for bundle
+        // certificates, the full itemized list of items belonging to that same group.
+        $aiUnit = null;
+        $aiGroupItems = collect();
+        $aiGroupLabel = '';
         if ($application instanceof AnnualInspectionApplication) {
-            $aiAssessment = $application->assessments()
-                ->where('assessment_type', 'mechanical')
-                ->with(['assessmentItems' => fn ($q) => $q->where('is_active', true)->with('feeCategory')])
-                ->first();
+            $aiUnit = AnnualInspectionPermitUnit::where('permit_id', $permit->id)->with('assessmentItem')->first();
+            $aiGroupLabel = self::AI_GROUP_LABELS[$aiUnit->group_code ?? ''] ?? '';
 
-            $aiItemsByCategory = $aiAssessment
-                ? $aiAssessment->assessmentItems->groupBy(fn ($i) => $i->feeCategory?->name ?? 'Other Fees')
-                : collect();
-
-            $aiGrandTotal = $aiAssessment
-                ? $aiAssessment->assessmentItems->sum('amount') + $aiAssessment->assessmentItems->sum('inspection_fee')
-                : 0;
+            if ($aiUnit && ! $aiUnit->assessment_item_id) {
+                $groups = $this->buildAiCertificateGroups($application);
+                $matchedGroup = collect($groups)->first(fn ($g) => $g['group_code'] === $aiUnit->group_code && ! $g['per_unit']);
+                $aiGroupItems = $matchedGroup['items'] ?? collect();
+            }
         }
 
         $signatories = Signatory::where('is_active', true)->get()->keyBy('role');
@@ -524,7 +742,7 @@ class PermitController extends Controller
             default => 'pdf.building-permit',
         };
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($template, compact('permit', 'application', 'signatories', 'settings', 'sealImage', 'dpwhLogo', 'qrImage', 'aiItemsByCategory', 'aiGrandTotal'));
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($template, compact('permit', 'application', 'signatories', 'settings', 'sealImage', 'dpwhLogo', 'qrImage', 'aiUnit', 'aiGroupItems', 'aiGroupLabel'));
         $pdf->setPaper('a4', 'landscape');
 
         return $pdf->stream("permit_{$permit->permit_number}.pdf");

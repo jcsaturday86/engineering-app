@@ -86,6 +86,11 @@ class AnnualInspectionApplication extends Model implements PermitApplicationCont
         return $this->hasMany(AnnualInspectionPermitUnit::class);
     }
 
+    public function equipmentItems(): HasMany
+    {
+        return $this->hasMany(AnnualInspectionEquipmentItem::class)->orderBy('sort_order');
+    }
+
     public function getPermitTypeCode(): string
     {
         return 'AI';

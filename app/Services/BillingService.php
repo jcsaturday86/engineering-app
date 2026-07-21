@@ -37,12 +37,14 @@ class BillingService
                 ->where('status', 'finalized')
                 ->get();
 
-            $counter = Billing::withTrashed()
-                    ->whereYear('created_at', now()->year)
-                    ->whereMonth('created_at', now()->month)
-                    ->count() + 1;
+            $prefix = sprintf('BL-%s-%s-', now()->format('Y'), now()->format('m'));
+            $lastNumber = Billing::withTrashed()
+                    ->where('billing_number', 'like', $prefix . '%')
+                    ->orderByDesc('billing_number')
+                    ->value('billing_number');
+            $counter = $lastNumber ? ((int) substr($lastNumber, -5)) + 1 : 1;
 
-            $billingNumber = sprintf('BL-%s-%s-%05d', now()->format('Y'), now()->format('m'), $counter);
+            $billingNumber = sprintf('%s%05d', $prefix, $counter);
 
             $morphType = match ($application->getPermitTypeCode()) {
                 'OP' => 'op',

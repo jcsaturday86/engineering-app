@@ -156,12 +156,15 @@
 | `range_based` excess-formula bug fix | DONE (fixed) | `addAnnualInspectionFeeItem()` ignored `excess_every`, multiplying raw excess directly by `excess_fee` — broke Floor Area's "every 1,000 sq.m or portion thereof" rule; fixed with a `ceil()`-based formula, no-op for every other `excess_every=1` row |
 | 4 official-schedule tabs (General/Electronics/Mechanical/Electrical) | DONE | `AINSP_GEN`/`AINSP_ELECTRONICS`/`AINSP_MECH` via `addAnnualInspectionFeeItem()`; `AINSP_ELEC` via `addAnnualInspectionElectricalItem()` (reuses BP's `ELEC_*` schedule) |
 | 5 original equipment tabs removed | DONE (fixed) | `AI_AC`/`AI_MACH`/`AI_ESC`/`AI_ELEV`/`AI_GENSET` categories deleted from seeder + DB; `addAnnualInspectionUnitItem()` deleted; equipment-tab Blade branch removed |
-| Permit Generation switched to single-permit | DONE | Removing the equipment tabs broke the old multi-permit grouping logic; `generateAi`/`revertGenerateAi`/`restoreRevokeAi` now thin-wrap the shared `doGenerate`/`doRevertGenerate`/`doRestoreRevoke`, matching every other permit type; `doGenerateAi()` (~115-line multi-permit builder) deleted |
+| Permit Generation switched to single-permit (interim) | SUPERSEDED | Removing the equipment tabs broke the old multi-permit grouping logic; briefly thin-wrapped the shared `doGenerate`/`doRevertGenerate`/`doRestoreRevoke` like every other permit type — since replaced by the multi-certificate scheme below |
 | Quantity (equipment count) field | DONE | 15 Mechanical + 3 Electrical measured-value fee codes (kW/ton/kVA/lineal meter/cu.m.) get a separate "Quantity" input; `amount = baseFee × quantity_count`, stored in `computation_details`; discrete-count codes (unit(s)/head(s)/etc.) unaffected |
-| Unit/Qty table columns split | DONE | Assessment items table for the 4 AI tabs shows separate Unit (measurement + label, or label-only for discrete-count codes) and Qty (equipment count) columns instead of one ambiguous combined column |
-| Assessment summary PDF | DONE | `pdf/assessment-summary-ai.blade.php` (filename retained) |
-| Final permit certificate PDF | DONE | `pdf/annual-inspection-permit.blade.php`, single itemized table + one grand total, QR verification code |
-| `AnnualInspectionPermitUnit` model/table | DORMANT | Kept per explicit "leave dormant, don't delete" decision — unused since the single-permit switch |
+| Unit/Qty table columns split | DONE | Assessment items table for the 4 AI tabs shows separate Unit (measurement + label, or label-only for discrete-count codes) and Qty (equipment count) columns instead of one ambiguous combined column; the same split was later extended to the shared Summary tab's per-category tables, which had been showing AI items with the old ambiguous single column |
+| Assessment summary PDF | DONE (fixed) | `pdf/assessment-summary-ai.blade.php` — was still grouping sections by the module's original, since-deleted equipment categories (showed ₱0.00 everywhere); fixed to group by the 4 real `AINSP_*` categories |
+| Multi-certificate permit generation | DONE | Reactivated from the original design: up to 6 certificates per application (General+Electrical, Electronics, Machinery, Aircon/Refrigeration — each 1 bundled cert — plus 1 cert per Elevator unit and 1 cert per Escalator/Funicular/Cable-Car unit), only generated for groups with assessed items. New `buildAiCertificateGroups()` derivation helper; `doGenerateAi()`/`revertGenerateAi()`/`restoreRevokeAi()` act on all-or-one-per-group rather than the shared single-permit methods |
+| Final permit certificate PDF | DONE | `pdf/annual-inspection-permit.blade.php`, one certificate per print (parameterized by `AnnualInspectionPermitUnit`) — itemized table for bundle certs, single equipment line for per-unit certs, QR verification code |
+| `AnnualInspectionPermitUnit` model/table | DONE (reactivated) | Was left dormant after the single-permit interim; now the active bridge table for the multi-certificate scheme, with a new `assessment_item_id` FK for per-unit certificates |
+| Generated Permits panel restored | DONE | `annual-inspection-applications/show.blade.php` regained its multi-row Generated Permits panel; `permits/index.blade.php`'s `mechanical` type regained its multi-permit-aware UI ("N permit(s) generated", "View Permits") — both had been reverted to single-permit display during the interim single-permit period |
+| "Equipment / Items to be Inspected" checklist | DONE | New optional section on the application form — a declared reference list (Elevators/Escalators/Aircon-Refrigeration/Other Machinery/Electronics Equipment, each row = fee code + Quantity + optional Specification) shown on the show page and as a read-only panel on the Assessment page; does not auto-generate assessment items. New `annual_inspection_equipment_items` table/`AnnualInspectionEquipmentItem` model; first live repeatable-row Alpine.js UI in the codebase (starts with zero rows so Equipment+Quantity can be `required` per row without blocking a no-equipment submission) |
 | Sidebar entries | DONE | Main nav, Assessment flyout, Permits flyout — positioned last (after Fencing Permit) |
 | Excluded from online self-service | DONE | Same as DP/SGP/FP |
 
@@ -254,6 +257,7 @@
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Billing auto-generation | DONE | Auto on assessment finalize (BillingService::generateFor); BL-YYYY-MM-NNNNN; Billing menu/page removed |
+| Billing number counter bug fix | DONE (fixed) | Counter was `count(billings this month) + 1` — collided with an existing (soft-deleted) number whenever the sequence had a gap, blocking finalize mid-transaction; now derived from the actual max existing number for the year/month prefix |
 | Billing statement PDF | DONE | billing.print route kept; city seal + city/province from Settings |
 | Billing status tracking | DONE | unpaid, partial, paid, void |
 
@@ -318,10 +322,10 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| KPI cards | DONE | Applications, pending, revenue — always reflect the live/current period |
+| KPI cards | DONE | Applications, pending, revenue — always reflect the live/current period; now aggregate all 6 permit types (BP/OP/DP/SGP/FP/AI), not just BP/OP |
 | Monthly revenue chart | DONE | Chart.js; year-navigable via `?year=` (prev/next arrows, clamped to current year) |
-| Monthly transactions chart | DONE | Grouped bar, BP vs OP, from `Collection.applicationable_type`; shares the same year navigator |
-| Recent applications + daily count | DONE | |
+| Monthly transactions chart | DONE | Grouped bar across all 6 permit types (was BP vs OP only), from `Collection.applicationable_type`; shares the same year navigator |
+| Recent applications + daily count | DONE | Merges all 6 permit types' latest records into one combined, timestamp-sorted list with correct per-type links |
 
 ---
 
@@ -331,5 +335,4 @@
 |---------|--------|
 | BFP module (fire-safety assessment/inspection workflow) | Not included in this system. FSEC No./Date (BP, OP) and FSIC No. (OP) exist only as reference fields shown on printed permits — no BFP validation, workflow, or integration |
 | DB-level encryption | Not required |
-| Annual inspection (non-mechanical) | Future scope |
 | BFP partial payment | BFP excluded |
