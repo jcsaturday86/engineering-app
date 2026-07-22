@@ -429,6 +429,31 @@ class ReferenceDataSeeder extends Seeder
                 $signatory
             );
         }
+
+        $annualInspectionSignatories = [
+            'ai_locational_zoning' => 'Locational Zoning of Land Use',
+            'ai_line_and_grade' => 'Line and Grade (Geodetic)',
+            'ai_architectural' => 'Architectural',
+            'ai_civil_structural' => 'Civil/Structural',
+            'ai_electrical' => 'Electrical',
+            'ai_mechanical' => 'Mechanical',
+            'ai_sanitary' => 'Sanitary',
+            'ai_plumbing' => 'Plumbing',
+            'ai_electronics' => 'Electronics',
+            'ai_interior_design' => 'Interior Design',
+            'ai_accessibility' => 'Accessibility',
+            'ai_fire_safety' => 'Fire Safety',
+            'ai_chief_inspection_enforcement' => 'Chief, Inspection and Enforcement Division',
+            'ai_chief_processing_evaluation' => 'Chief, Processing and Evaluation Division',
+            'ai_city_engineer' => 'City Engineer',
+        ];
+
+        foreach ($annualInspectionSignatories as $role => $title) {
+            Signatory::updateOrCreate(
+                ['role' => $role],
+                ['title' => $title, 'name' => '', 'is_active' => true]
+            );
+        }
     }
 
     /**

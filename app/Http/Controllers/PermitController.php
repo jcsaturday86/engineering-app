@@ -733,17 +733,25 @@ class PermitController extends Controller
         );
         $qrImage = (new \Endroid\QrCode\Writer\PngWriter())->write($qrCode)->getDataUri();
 
-        $template = match ($permit->permitType->code) {
-            'OP' => 'pdf.occupancy-permit',
-            'DP' => 'pdf.demolition-permit',
-            'SGP' => 'pdf.signage-permit',
-            'FP' => 'pdf.fencing-permit',
-            'AI' => 'pdf.annual-inspection-permit',
+        $isAiGe = $permit->permitType->code === 'AI' && ($aiUnit->group_code ?? '') === 'GE';
+
+        $template = match (true) {
+            $isAiGe => 'pdf.annual-inspection-permit-ge',
+            $permit->permitType->code === 'OP' => 'pdf.occupancy-permit',
+            $permit->permitType->code === 'DP' => 'pdf.demolition-permit',
+            $permit->permitType->code === 'SGP' => 'pdf.signage-permit',
+            $permit->permitType->code === 'FP' => 'pdf.fencing-permit',
+            $permit->permitType->code === 'AI' => 'pdf.annual-inspection-permit',
             default => 'pdf.building-permit',
         };
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($template, compact('permit', 'application', 'signatories', 'settings', 'sealImage', 'dpwhLogo', 'qrImage', 'aiUnit', 'aiGroupItems', 'aiGroupLabel'));
-        $pdf->setPaper('a4', 'landscape');
+
+        if ($isAiGe) {
+            $pdf->setOption('dpi', 200);
+        } else {
+            $pdf->setPaper('a4', 'landscape');
+        }
 
         return $pdf->stream("permit_{$permit->permit_number}.pdf");
     }

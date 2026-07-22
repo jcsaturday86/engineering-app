@@ -6,6 +6,8 @@ use App\Models\AnnualInspectionApplication;
 use App\Models\AnnualInspectionEquipmentItem;
 use App\Models\Barangay;
 use App\Models\City;
+use App\Models\OccupancyGroup;
+use App\Models\OccupancySubGroup;
 use App\Models\PermitType;
 use App\Models\User;
 use App\Notifications\ApplicationSubmittedNotification;
@@ -61,6 +63,12 @@ class AnnualInspectionApplicationController extends Controller
 
     public function store(Request $request)
     {
+        $request->validate([
+            'occupancy_sub_group' => 'required|exists:occupancy_sub_groups,id',
+        ], [
+            'occupancy_sub_group.required' => 'Please select a Character of Occupancy.',
+        ]);
+
         $validated = $this->validateApplication($request);
 
         DB::beginTransaction();
@@ -88,6 +96,7 @@ class AnnualInspectionApplicationController extends Controller
             ]));
 
             $this->syncEquipmentItems($application, $equipment);
+            $this->saveOccupancyGroups($application, $request);
 
             DB::commit();
 
@@ -105,6 +114,7 @@ class AnnualInspectionApplicationController extends Controller
             'locationBarangay',
             'assessments.assessmentItems', 'billings', 'collections', 'permits',
             'annualInspectionPermitUnits.permit', 'equipmentItems',
+            'applicationOccupancyGroups.occupancyGroup', 'applicationOccupancyGroups.occupancySubGroup',
         ]);
 
         $application = $annualInspectionApplication;
@@ -116,13 +126,19 @@ class AnnualInspectionApplicationController extends Controller
     {
         $aiPermitType = PermitType::where('code', 'AI')->where('is_active', true)->firstOrFail();
         $data = $this->getFormData();
-        $data['application'] = $annualInspectionApplication;
+        $data['application'] = $annualInspectionApplication->load('applicationOccupancyGroups');
 
         return view('annual-inspection-applications.form', $data);
     }
 
     public function update(Request $request, AnnualInspectionApplication $annualInspectionApplication)
     {
+        $request->validate([
+            'occupancy_sub_group' => 'required|exists:occupancy_sub_groups,id',
+        ], [
+            'occupancy_sub_group.required' => 'Please select a Character of Occupancy.',
+        ]);
+
         $validated = $this->validateApplication($request);
 
         $equipment = $validated['equipment'] ?? [];
@@ -133,6 +149,9 @@ class AnnualInspectionApplicationController extends Controller
             $annualInspectionApplication->update($validated);
 
             $this->syncEquipmentItems($annualInspectionApplication, $equipment);
+
+            $annualInspectionApplication->applicationOccupancyGroups()->delete();
+            $this->saveOccupancyGroups($annualInspectionApplication, $request);
 
             DB::commit();
 
@@ -221,6 +240,7 @@ class AnnualInspectionApplicationController extends Controller
         return [
             'sfcBarangays' => Barangay::where('city_id', $sfcCityId)->where('is_active', true)->orderBy('name')->get(),
             'equipmentCategories' => AnnualInspectionEquipmentItem::CATEGORIES,
+            'occupancyGroups' => OccupancyGroup::with('subGroups')->where('is_active', true)->orderBy('sort_order')->get(),
         ];
     }
 
@@ -255,5 +275,27 @@ class AnnualInspectionApplicationController extends Controller
                 'sort_order' => $sortOrder++,
             ]);
         }
+    }
+
+    private function saveOccupancyGroups(AnnualInspectionApplication $application, Request $request): void
+    {
+        $selectedId = $request->input('occupancy_sub_group');
+
+        if (empty($selectedId)) {
+            return;
+        }
+
+        $subGroup = OccupancySubGroup::find($selectedId);
+
+        if (! $subGroup) {
+            return;
+        }
+
+        $application->applicationOccupancyGroups()->create([
+            'application_id' => null,
+            'occupancy_group_id' => $subGroup->occupancy_group_id,
+            'occupancy_sub_group_id' => $subGroup->id,
+            'others_text' => $request->input("sub_group_{$subGroup->id}_others"),
+        ]);
     }
 }

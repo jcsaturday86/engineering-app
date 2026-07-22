@@ -63,8 +63,8 @@
         </aside>
 
         {{-- Mobile sidebar --}}
-        <aside x-show="mobileMenuOpen" x-cloak class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 lg:hidden">
-            <div class="flex items-center justify-between h-16 px-4 border-b border-gray-200">
+        <aside x-show="mobileMenuOpen" x-cloak class="fixed inset-y-0 left-0 z-50 flex flex-col w-64 bg-white border-r border-gray-200 lg:hidden">
+            <div class="flex items-center justify-between h-16 px-4 border-b border-gray-200 shrink-0">
                 <div class="flex items-center gap-3">
                     <div class="flex items-center justify-center w-10 h-10 bg-primary-600 rounded-lg">
                         <i class="fas fa-building text-white"></i>
@@ -75,7 +75,7 @@
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <nav class="px-3 py-4 space-y-1 overflow-y-auto">
+            <nav class="flex-1 min-h-0 px-3 py-4 space-y-1 overflow-y-auto">
                 @include('partials.sidebar-nav')
             </nav>
         </aside>

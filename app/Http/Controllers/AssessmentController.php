@@ -17,6 +17,7 @@ use App\Models\Setting;
 use App\Models\Signatory;
 use App\Models\FencingApplication;
 use App\Models\AnnualInspectionApplication;
+use App\Models\AnnualInspectionEquipmentItem;
 use App\Models\SignageApplication;
 use App\Models\User;
 use App\Notifications\AssessmentCompleteNotification;
@@ -1415,6 +1416,57 @@ class AssessmentController extends Controller
             return back()->with('error', 'Invalid fee type for this inspection group.');
         }
 
+        $feeTypeCodeForSpecs = $validated['annual_insp_fee_type'];
+        $specs = [];
+
+        if (in_array($feeTypeCodeForSpecs, AnnualInspectionEquipmentItem::elevatorCodes(), true)) {
+            $specValidated = $request->validate([
+                'spec_workload_kg' => 'required|numeric|min:0.01',
+                'spec_no_of_passengers' => 'required|integer|min:1',
+            ]);
+            $specs = [
+                'workload_kg' => $specValidated['spec_workload_kg'],
+                'no_of_passengers' => $specValidated['spec_no_of_passengers'],
+            ];
+        } elseif (in_array($feeTypeCodeForSpecs, AnnualInspectionEquipmentItem::acRefCodes(), true)) {
+            $specValidated = $request->validate([
+                'spec_equipment_description' => 'required|string|max:255',
+                'spec_tons_or_hp' => 'required|string|max:50',
+            ]);
+            $specs = [
+                'equipment_description' => $specValidated['spec_equipment_description'],
+                'tons_or_hp' => $specValidated['spec_tons_or_hp'],
+            ];
+        } elseif (in_array($feeTypeCodeForSpecs, AnnualInspectionEquipmentItem::escalatorCodes(), true)) {
+            $specValidated = $request->validate([
+                'spec_rated_load' => 'required|string|max:50',
+                'spec_capacity_per_hour' => 'required|string|max:50',
+                'spec_speed' => 'required|string|max:50',
+                'spec_effective_width' => 'required|string|max:50',
+                'spec_tread_width' => 'required|string|max:50',
+                'spec_floors_served' => 'required|string|max:50',
+                'spec_floor_height' => 'required|string|max:50',
+                'spec_motor_hp' => 'required|string|max:50',
+            ]);
+            $specs = [
+                'rated_load' => $specValidated['spec_rated_load'],
+                'capacity_per_hour' => $specValidated['spec_capacity_per_hour'],
+                'speed' => $specValidated['spec_speed'],
+                'effective_width' => $specValidated['spec_effective_width'],
+                'tread_width' => $specValidated['spec_tread_width'],
+                'floors_served' => $specValidated['spec_floors_served'],
+                'floor_height' => $specValidated['spec_floor_height'],
+                'motor_hp' => $specValidated['spec_motor_hp'],
+            ];
+        } elseif (in_array($feeTypeCodeForSpecs, AnnualInspectionEquipmentItem::otherMachineryCodes(), true)) {
+            $specValidated = $request->validate([
+                'spec_machinery_description' => 'required|string|max:255',
+            ]);
+            $specs = [
+                'equipment_description' => $specValidated['spec_machinery_description'],
+            ];
+        }
+
         $assessment = Assessment::firstOrCreate(
             [
                 'applicationable_type' => 'ai',
@@ -1504,14 +1556,15 @@ class AssessmentController extends Controller
             'excess_fee' => $excessFee,
             'inspection_fee' => 0,
             'amount' => $amount,
-            'computation_details' => [
+            'computation_details' => array_filter([
                 'group' => $group,
                 'fee_type_code' => $feeTypeCode,
                 'fee_schedule_id' => $schedule->id,
                 'input_unit' => $unit,
                 'computation_method' => $feeType->computation_method,
                 'quantity_count' => $quantityCount,
-            ],
+                'specs' => $specs ?: null,
+            ]),
             'is_active' => true,
         ]);
 

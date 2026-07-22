@@ -11,9 +11,16 @@
 @endsection
 
 @section('content')
+@php
+    $selectedSubGroup = $application?->applicationOccupancyGroups?->first()?->occupancy_sub_group_id;
+    if (old('occupancy_sub_group')) {
+        $selectedSubGroup = old('occupancy_sub_group');
+    }
+@endphp
 <form
     method="POST"
     action="{{ $application ? route('annual-inspection-applications.update', $application) : route('annual-inspection-applications.store') }}"
+    onsubmit="return validateOccupancy();"
     autocomplete="off"
 >
     @csrf
@@ -137,7 +144,41 @@
         </div>
 
         {{-- ================================================================== --}}
-        {{-- 4. EQUIPMENT / ITEMS TO BE INSPECTED --}}
+        {{-- 4. CHARACTER OF OCCUPANCY --}}
+        {{-- ================================================================== --}}
+        <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
+                <span class="inline-flex items-center justify-center w-7 h-7 bg-teal-600 text-white text-xs font-bold rounded-full mr-2">4</span>Character of Occupancy <span class="text-red-500 ml-1">*</span>
+            </h3>
+            <div id="occupancy-error" class="hidden mb-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                Please select a Character of Occupancy.
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                @foreach($occupancyGroups as $group)
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        <div class="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                            <span class="text-sm font-bold text-gray-800 underline">{{ $group->code }}: {{ $group->name }}</span>
+                        </div>
+                        <div class="px-4 py-2.5 space-y-1.5">
+                            @foreach($group->subGroups as $subGroup)
+                                @php $isChecked = (string) $selectedSubGroup === (string) $subGroup->id; @endphp
+                                <div>
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="radio" name="occupancy_sub_group" value="{{ $subGroup->id }}"
+                                            class="w-4 h-4 text-teal-600 border-gray-300 focus:ring-teal-500"
+                                            {{ $isChecked ? 'checked' : '' }}>
+                                        <span class="text-sm text-gray-700">{{ $subGroup->name }}</span>
+                                    </label>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        {{-- ================================================================== --}}
+        {{-- 5. EQUIPMENT / ITEMS TO BE INSPECTED --}}
         {{-- ================================================================== --}}
         @php
             $existingEquipmentData = old('equipment', $application
@@ -152,7 +193,7 @@
             equipment: {{ json_encode(array_values($existingEquipmentData)) }}
         }">
             <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-1 flex items-center">
-                <span class="inline-flex items-center justify-center w-7 h-7 bg-teal-600 text-white text-xs font-bold rounded-full mr-2">4</span>Equipment / Items to be Inspected
+                <span class="inline-flex items-center justify-center w-7 h-7 bg-teal-600 text-white text-xs font-bold rounded-full mr-2">5</span>Equipment / Items to be Inspected
             </h3>
             <p class="text-xs text-gray-500 mb-3">This list is the declared basis for Engineering Assessment — staff will reference it when adding fee items.</p>
 
@@ -212,6 +253,22 @@
     </div>
 </form>
 @endsection
+
+@push('scripts')
+<script>
+    function validateOccupancy() {
+        var checked = document.querySelectorAll('input[name="occupancy_sub_group"]:checked');
+        var errorEl = document.getElementById('occupancy-error');
+        if (checked.length === 0) {
+            errorEl.classList.remove('hidden');
+            errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return false;
+        }
+        errorEl.classList.add('hidden');
+        return true;
+    }
+</script>
+@endpush
 
 @if($errors->any())
 @push('scripts')

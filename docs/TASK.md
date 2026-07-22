@@ -471,6 +471,44 @@
 - Follow-up refinement: the free-text field beside Quantity was renamed from "Remarks" to **"Specification"** (its real purpose), the underlying column renamed via raw `ALTER TABLE ... RENAME COLUMN` (no `doctrine/dbal` dependency for Laravel's native `renameColumn()`), and Equipment + Quantity were made required per row — safely, since the zero-default-rows design means every row that exists in a submission was deliberately added by the user, so `required`/`required_with:equipment` never blocks a no-equipment submission.
 - Verified in-browser: created an application with 0 equipment rows (submits fine, section omitted from show page); added rows with Equipment left blank (native HTML5 validation blocks submission); added a row with Specification left blank (saves with `specification = null`); edited an application with existing rows (pre-fills correctly, add/remove syncs cleanly); confirmed the show page and assessment panel both display "Specification" with correct values.
 
+### Mobile Sidebar Scroll Fix — COMPLETED
+
+- The mobile `<aside>` in `layouts/app.blade.php` was missing `flex flex-col` and its `<nav>` was missing `flex-1 min-h-0`, so `overflow-y-auto` had no bounded height to scroll within on small screens — fixed by matching the desktop sidebar's already-working layout classes.
+
+### Annual Inspection — Mechanical Assessment Spec Fields — COMPLETED
+
+- Added category-specific spec fields to the `AINSP_MECH` add-item form on `/assessments/ai/{id}`, required per category (confirmed via `AskUserQuestion` — the assessor is always looking at real equipment at this stage, so unconditional `required` is safe, unlike the application-time equipment checklist's zero-rows-by-default design): Elevator (Workload in Kilograms, No. of Passengers), Aircon/Refrigeration (Description, Tons or HP), Escalator/Funicular/Cable Car (8 fields: Rated Load, Capacity Per Hour, Speed, Effective Width, Tread Width, Floors Served, Floor Height, Motor Horsepower), Other Machinery (Description).
+- New static code-set helpers (`elevatorCodes()`, `escalatorCodes()`, `acRefCodes()`, `otherMachineryCodes()`) added to `AnnualInspectionEquipmentItem`, derived from the existing `CATEGORIES` const, reused by both the controller's category detection and the Blade form's Alpine conditionals.
+- `AssessmentController::addAnnualInspectionFeeItem()` runs a second category-specific `$request->validate()` and stores the specs under a new `computation_details['specs']` sub-key; both the AINSP_MECH tab's item table and the shared Summary tab's table gained an extra details row showing the specs when present, using a local label map.
+- Fixed two bugs during implementation: Blade's `@json()` doesn't HTML-escape quotes, which silently broke the `x-data` attribute (and all Alpine reactivity on the component) when embedding a JSON array of code strings — switched to the file's existing single-quoted-array-literal convention instead; and Aircon/Other-Machinery's spec fields collided on the same `name="spec_equipment_description"`, so PHP's `$_POST` silently clobbered the visible field's value with the hidden field's — fixed by renaming Other Machinery's field to `spec_machinery_description`.
+- Not yet reflected on any printed PDF (assessment summary or certificate) — display is currently scoped to the assessment item list only, per explicit scope confirmation.
+
+### Signatories — 15 Annual Inspection Roles (Edit-Only) — COMPLETED
+
+- Seeded 15 new `ai_*`-prefixed `Signatory` roles for Annual Inspection sign-off (Locational Zoning of Land Use, Line and Grade (Geodetic), Architectural, Civil/Structural, Electrical, Mechanical, Sanitary, Plumbing, Electronics, Interior Design, Accessibility, Fire Safety, Chief Inspection and Enforcement Division, Chief Processing and Evaluation Division, City Engineer) via `updateOrCreate` in `ReferenceDataSeeder`, each with `title` set to the discipline label and `name` left blank for staff to fill in.
+- Create/Delete UI and routes were built for `/settings/signatories` and then explicitly reverted at the user's follow-up request ("everything is fixed just edit only") — the existing edit-only flow was deemed sufficient; the 15 seeded rows were kept.
+
+### Annual Inspection — Character of Occupancy (Single-Select) — COMPLETED
+
+- Added a "Character of Occupancy" field to `/annual-inspection-applications/create`/edit, matching Building Permit's field conceptually but implemented as a **single-select radio group** (not BP's multi-select checkbox grid), per explicit follow-up request to convert from an initial multi-select build.
+- No migration needed: reuses the existing polymorphic `application_occupancy_groups` table (via `HasPermitApplicationBehavior`'s generic `applicationOccupancyGroups()` relation, already shared by BP/OP/DP/SGP/FP/AI) — single-select is purely an application-logic constraint (write exactly one row) rather than a schema constraint.
+- `/annual-inspection-applications/{id}` displays the selection as two separate labeled fields, **Group** and **Subgroup**, in a grid matching the Location Address section's style — replacing an earlier arrow-joined single-line ("Group → Subgroup") display per follow-up request.
+
+### Annual Inspection Test Data Reset — COMPLETED
+
+- All existing Annual Inspection records were force-deleted and replaced with exactly 3 fresh test records, each progressed only through Engineering Assessment (submitted + fee items added, not finalized/billed/paid/permit-generated) — for clean manual testing of the spec-fields and Character-of-Occupancy features above.
+- Note: MySQL/MariaDB `AUTO_INCREMENT` doesn't reset on `DELETE` (only `TRUNCATE`), so the 3 new records got fresh non-sequential IDs rather than 1/2/3 — expected, not a bug.
+
+### "General, Occupancy & Electrical" Certificate — NBC Form B-19 Background-Overlay Rebuild — COMPLETED
+
+- Replaced the GE-group Annual Inspection certificate (only — other groups ELN/MACH/ACREF/ELEV/ESC are unaffected) with a pixel-accurate reproduction of the official NBC Form No. B-19 "Certificate of Annual Inspection," using the user-supplied form image as a DomPDF background instead of the shared generic itemized-table template.
+- New `pdf/annual-inspection-permit-ge.blade.php`, wired into `PermitController::print()` via an `isAiGe` branch (`$permit->permitType->code === 'AI' && $aiUnit->group_code === 'GE'`) that selects this template and applies a scoped `dpi=200` override instead of the controller's usual `setPaper('a4','landscape')` call, leaving every other template's paper/dpi handling untouched.
+- Built iteratively: initially two A4-portrait pages, then collapsed to **one A4-landscape page** using the full source image as background — made possible because A3-landscape (the original two-page composite's dimensions) and A4-landscape share the identical `1:√2` aspect ratio, so the two-page coordinate set was transformed with a uniform `1/√2` scale plus an x-shift for former page-2 fields, rather than being recalibrated from scratch.
+- Fixed a background-quality issue: the source PNG was a 256-color indexed/palette image, causing visible banding; converted to a truecolor PNG (`nbc-form-b19-hq.png`) via `imagepalettetotruecolor()`, and confirmed `dpi=200` was needed to avoid DomPDF's default 96dpi softening a background this dense.
+- Follow-up rounds: centered the Republic of the Philippines/Province/City letterhead and enlarged all fonts; fixed a remaining label/value overlap on the Name/Character/Located rows (root-caused as a horizontal-clearance problem, not vertical, and fixed by widening the gap rather than chasing an exact tight measurement); enlarged the official logo 1.5x and moved it right; tightened the letterhead's vertical position to sit directly above the pre-printed "OFFICE OF THE BUILDING OFFICIAL" line.
+- All overlay text is bound from the saved application/assessment/permit: Owner name, Location, Character of Occupancy Group/Subgroup, the 12 discipline signatories (`ai_locational_zoning` through `ai_fire_safety`), 2 Chief signature blocks, and the Building Official block (read from the permit's immutable snapshot columns, same convention as every other certificate in the app — not a live Signatory lookup).
+- Calibration was done via `php artisan tinker` direct-controller rendering (bypassing HTTP) combined with the `Read` tool's native PDF rendering, plus custom PHP GD ruler-overlay images (gridlines + inch labels burned onto a copy of the background) for objective pixel-to-inch measurement instead of eyeballing renders.
+
 ---
 
 ## Upcoming Tasks

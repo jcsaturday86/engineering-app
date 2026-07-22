@@ -198,6 +198,38 @@
     </div>
 
     {{-- ================================================================== --}}
+    {{-- CHARACTER OF OCCUPANCY --}}
+    {{-- ================================================================== --}}
+    @php $sectionNum++ @endphp
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+        <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">
+            <span class="inline-flex items-center justify-center w-7 h-7 bg-teal-600 text-white text-xs font-bold rounded-full mr-2">{{ $sectionNum }}</span>Character of Occupancy
+        </h3>
+        @if($application->applicationOccupancyGroups && $application->applicationOccupancyGroups->count())
+            @foreach($application->applicationOccupancyGroups as $occGroup)
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-xs text-gray-500">Group</p>
+                        <p class="text-sm text-gray-900 mt-0.5">
+                            @if($occGroup->occupancyGroup)
+                                {{ $occGroup->occupancyGroup->code }}: {{ $occGroup->occupancyGroup->name }}
+                            @else
+                                ---
+                            @endif
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Subgroup</p>
+                        <p class="text-sm text-gray-900 mt-0.5">{{ $occGroup->occupancySubGroup?->name ?? '---' }}</p>
+                    </div>
+                </div>
+            @endforeach
+        @else
+            <p class="text-sm text-gray-500">No occupancy groups selected.</p>
+        @endif
+    </div>
+
+    {{-- ================================================================== --}}
     {{-- EQUIPMENT / ITEMS TO BE INSPECTED --}}
     {{-- ================================================================== --}}
     @if($application->equipmentItems && $application->equipmentItems->count())

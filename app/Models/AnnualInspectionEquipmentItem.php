@@ -87,6 +87,26 @@ class AnnualInspectionEquipmentItem extends Model
         return collect(self::CATEGORIES)->flatMap(fn ($group) => array_keys($group))->all();
     }
 
+    public static function elevatorCodes(): array
+    {
+        return array_keys(self::CATEGORIES['Elevators']);
+    }
+
+    public static function escalatorCodes(): array
+    {
+        return array_keys(self::CATEGORIES['Escalators, Funiculars & Cable Cars']);
+    }
+
+    public static function acRefCodes(): array
+    {
+        return array_keys(self::CATEGORIES['Air Conditioning & Refrigeration']);
+    }
+
+    public static function otherMachineryCodes(): array
+    {
+        return array_keys(self::CATEGORIES['Other Machinery']);
+    }
+
     public function annualInspectionApplication(): BelongsTo
     {
         return $this->belongsTo(AnnualInspectionApplication::class);

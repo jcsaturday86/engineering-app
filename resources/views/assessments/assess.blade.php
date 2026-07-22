@@ -1153,7 +1153,15 @@
                 },
                 quantityEligibleCodes: ['AINSP_FV_FUNIC', 'AINSP_FV_CABLE', 'AINSP_FVII_BOILER', 'AINSP_FX_DIESEL', 'AINSP_FXI_INTCOMB', 'AINSP_PUMP_WSS', 'AINSP_FXV_PUMP', 'AINSP_FI_REFRIG', 'AINSP_FIII_CENAC', 'AINSP_FXVIII_WEIGH', 'AINSP_FV_FUNIC_LM', 'AINSP_FV_CABLE_LM', 'AINSP_FXIII_PIPE', 'AINSP_FXVII_PNEU', 'AINSP_FXVI_PRESS'],
                 get unitLabel() { return this.unitLabels[this.feeCode] || 'unit'; },
-                get quantityEligible() { return this.quantityEligibleCodes.includes(this.feeCode); }
+                get quantityEligible() { return this.quantityEligibleCodes.includes(this.feeCode); },
+                elevatorCodes: [{{ collect(\App\Models\AnnualInspectionEquipmentItem::elevatorCodes())->map(fn ($c) => "'$c'")->implode(', ') }}],
+                acRefCodes: [{{ collect(\App\Models\AnnualInspectionEquipmentItem::acRefCodes())->map(fn ($c) => "'$c'")->implode(', ') }}],
+                escalatorCodes: [{{ collect(\App\Models\AnnualInspectionEquipmentItem::escalatorCodes())->map(fn ($c) => "'$c'")->implode(', ') }}],
+                otherMachineryCodes: [{{ collect(\App\Models\AnnualInspectionEquipmentItem::otherMachineryCodes())->map(fn ($c) => "'$c'")->implode(', ') }}],
+                get isElevator() { return this.elevatorCodes.includes(this.feeCode); },
+                get isAcref() { return this.acRefCodes.includes(this.feeCode); },
+                get isEscalator() { return this.escalatorCodes.includes(this.feeCode); },
+                get isOtherMach() { return this.otherMachineryCodes.includes(this.feeCode); }
             }">
                 <h4 class="text-sm font-semibold text-gray-700 mb-3">
                     <i class="fas fa-plus-circle text-blue-500 mr-1"></i> Add {{ $aiInspGroups['label'] }} Item
@@ -1192,6 +1200,88 @@
                             </button>
                         </div>
                     </div>
+
+                    {{-- Elevator specs --}}
+                    <div x-show="isElevator" x-cloak class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 pt-3 border-t border-gray-100">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Workload (Kilograms) <span class="text-red-500">*</span></label>
+                            <input type="number" name="spec_workload_kg" step="0.01" min="0.01" :required="isElevator"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">No. of Passengers <span class="text-red-500">*</span></label>
+                            <input type="number" name="spec_no_of_passengers" step="1" min="1" :required="isElevator"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    {{-- Aircon/Refrigeration specs --}}
+                    <div x-show="isAcref" x-cloak class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 pt-3 border-t border-gray-100">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Description <span class="text-red-500">*</span></label>
+                            <input type="text" name="spec_equipment_description" :required="isAcref"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Tons or HP <span class="text-red-500">*</span></label>
+                            <input type="text" name="spec_tons_or_hp" :required="isAcref"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    {{-- Escalator/Funicular/Cable Car specs --}}
+                    <div x-show="isEscalator" x-cloak class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-gray-100">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Rated Load <span class="text-red-500">*</span></label>
+                            <input type="text" name="spec_rated_load" :required="isEscalator"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Capacity Per Hour <span class="text-red-500">*</span></label>
+                            <input type="text" name="spec_capacity_per_hour" :required="isEscalator"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Speed <span class="text-red-500">*</span></label>
+                            <input type="text" name="spec_speed" :required="isEscalator"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Effective Width <span class="text-red-500">*</span></label>
+                            <input type="text" name="spec_effective_width" :required="isEscalator"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Tread Width <span class="text-red-500">*</span></label>
+                            <input type="text" name="spec_tread_width" :required="isEscalator"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Floors Served <span class="text-red-500">*</span></label>
+                            <input type="text" name="spec_floors_served" :required="isEscalator"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Floor Height <span class="text-red-500">*</span></label>
+                            <input type="text" name="spec_floor_height" :required="isEscalator"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Motor Horsepower <span class="text-red-500">*</span></label>
+                            <input type="text" name="spec_motor_hp" :required="isEscalator"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    {{-- Other Machinery specs --}}
+                    <div x-show="isOtherMach" x-cloak class="grid grid-cols-1 gap-3 mt-3 pt-3 border-t border-gray-100">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Description <span class="text-red-500">*</span></label>
+                            <input type="text" name="spec_machinery_description" :required="isOtherMach"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
                     <p class="text-xs text-gray-400 mt-2">Fee auto-computed based on the Annual Inspection fee schedule (Settings &gt; Fee Schedules &gt; Annual Inspection Fees).</p>
                 </form>
             </div>
@@ -1525,6 +1615,25 @@
                                 @endif
                             </td>
                         </tr>
+                        @if(in_array($cat->code, ['AINSP_GEN', 'AINSP_ELECTRONICS', 'AINSP_MECH', 'AINSP_ELEC']) && !empty($compDetails['specs'] ?? null))
+                        <tr class="bg-blue-50/40">
+                            <td colspan="7" class="px-4 py-1.5 text-xs text-gray-600">
+                                @php
+                                    $specLabels = [
+                                        'workload_kg' => 'Workload (kg)', 'no_of_passengers' => 'No. of Passengers',
+                                        'equipment_description' => 'Description', 'tons_or_hp' => 'Tons/HP',
+                                        'rated_load' => 'Rated Load', 'capacity_per_hour' => 'Capacity/Hour', 'speed' => 'Speed',
+                                        'effective_width' => 'Effective Width', 'tread_width' => 'Tread Width',
+                                        'floors_served' => 'Floors Served', 'floor_height' => 'Floor Height', 'motor_hp' => 'Motor HP',
+                                    ];
+                                @endphp
+                                <span class="font-medium text-gray-500">Specs:</span>
+                                @foreach($compDetails['specs'] as $specKey => $specValue)
+                                    <span class="ml-2">{{ $specLabels[$specKey] ?? $specKey }}: <span class="text-gray-800">{{ $specValue }}</span></span>@if(!$loop->last)<span class="text-gray-300"> &middot; </span>@endif
+                                @endforeach
+                            </td>
+                        </tr>
+                        @endif
                         @endforeach
                     </tbody>
                     <tfoot class="bg-gray-50 border-t border-gray-200">
@@ -1661,6 +1770,25 @@
                             @endif
                             <td class="px-4 py-2 text-right font-medium text-gray-900">&#8369;{{ number_format($item->amount, 2) }}</td>
                         </tr>
+                        @if($isAiCat && !empty($compDetails['specs'] ?? null))
+                        <tr class="bg-blue-50/40">
+                            <td colspan="6" class="px-4 py-1.5 text-xs text-gray-600">
+                                @php
+                                    $specLabels = [
+                                        'workload_kg' => 'Workload (kg)', 'no_of_passengers' => 'No. of Passengers',
+                                        'equipment_description' => 'Description', 'tons_or_hp' => 'Tons/HP',
+                                        'rated_load' => 'Rated Load', 'capacity_per_hour' => 'Capacity/Hour', 'speed' => 'Speed',
+                                        'effective_width' => 'Effective Width', 'tread_width' => 'Tread Width',
+                                        'floors_served' => 'Floors Served', 'floor_height' => 'Floor Height', 'motor_hp' => 'Motor HP',
+                                    ];
+                                @endphp
+                                <span class="font-medium text-gray-500">Specs:</span>
+                                @foreach($compDetails['specs'] as $specKey => $specValue)
+                                    <span class="ml-2">{{ $specLabels[$specKey] ?? $specKey }}: <span class="text-gray-800">{{ $specValue }}</span></span>@if(!$loop->last)<span class="text-gray-300"> &middot; </span>@endif
+                                @endforeach
+                            </td>
+                        </tr>
+                        @endif
                         @endforeach
                     </tbody>
                     <tfoot class="bg-gray-50 border-t border-gray-200">
