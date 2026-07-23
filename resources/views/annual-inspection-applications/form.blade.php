@@ -175,6 +175,22 @@
                     </div>
                 @endforeach
             </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 mt-1 border-t border-gray-100">
+                <div>
+                    <label for="occupancy_no" class="block text-xs font-medium text-gray-600 mb-1">Certificate of Occupancy No. <span class="text-gray-400">(optional)</span></label>
+                    <input type="text" name="occupancy_no" id="occupancy_no" value="{{ old('occupancy_no', $application->occupancy_no ?? '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('occupancy_no')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
+                </div>
+                <div>
+                    <label for="occupancy_issued_date" class="block text-xs font-medium text-gray-600 mb-1">Certificate of Occupancy Issued Date <span class="text-gray-400">(optional)</span></label>
+                    <input type="date" name="occupancy_issued_date" id="occupancy_issued_date"
+                        value="{{ old('occupancy_issued_date', isset($application->occupancy_issued_date) ? $application->occupancy_issued_date->format('Y-m-d') : '') }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                    @error('occupancy_issued_date')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
+                </div>
+            </div>
         </div>
 
         {{-- ================================================================== --}}

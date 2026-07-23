@@ -37,6 +37,8 @@
                                     'OP' => 'Certificate of Occupancy',
                                     'DP' => 'Demolition Permit',
                                     'SGP' => 'Signage Permit',
+                                    'FP' => 'Fencing Permit',
+                                    'AI' => 'Annual Inspection Permit',
                                     default => 'Building Permit',
                                 };
                             @endphp

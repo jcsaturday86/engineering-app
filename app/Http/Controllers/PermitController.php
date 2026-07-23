@@ -343,7 +343,22 @@ class PermitController extends Controller
         $permitType = PermitType::where('code', 'AI')->firstOrFail();
         $buildingOfficial = Signatory::where('role', 'building_official')->where('is_active', true)->first();
 
-        DB::transaction(function () use ($application, $permitType, $buildingOfficial, $groups) {
+        // Lock the GE certificate's discipline/chief signatories at generation time, same as
+        // building_official_* above — future edits to Signatory rows must not retroactively
+        // change already-generated certificates.
+        $aiSignatoryRoles = [
+            'ai_locational_zoning', 'ai_line_and_grade', 'ai_architectural', 'ai_civil_structural',
+            'ai_electrical', 'ai_mechanical', 'ai_sanitary', 'ai_plumbing', 'ai_electronics',
+            'ai_interior_design', 'ai_accessibility', 'ai_fire_safety',
+            'ai_chief_inspection_enforcement', 'ai_chief_processing_evaluation',
+        ];
+        $signatoriesSnapshot = Signatory::where('is_active', true)
+            ->whereIn('role', $aiSignatoryRoles)
+            ->get()
+            ->mapWithKeys(fn ($s) => [$s->role => ['title' => $s->title, 'name' => $s->name]])
+            ->all();
+
+        DB::transaction(function () use ($application, $permitType, $buildingOfficial, $signatoriesSnapshot, $groups) {
             $counter = Permit::withTrashed()
                 ->where('permit_type_id', $permitType->id)
                 ->where('permit_year', now()->year)
@@ -370,6 +385,7 @@ class PermitController extends Controller
                     'building_official_title' => $buildingOfficial?->title,
                     'building_official_designation' => $buildingOfficial?->designation,
                     'building_official_license_no' => $buildingOfficial?->license_no,
+                    'signatories_snapshot' => $signatoriesSnapshot,
                 ]);
 
                 AnnualInspectionPermitUnit::create([

@@ -251,6 +251,8 @@ class AnnualInspectionApplicationController extends Controller
             'owner_name' => 'required|string|max:255',
             'location_street' => 'required|string|max:255',
             'location_barangay_id' => 'required|exists:barangays,id',
+            'occupancy_no' => 'nullable|string|max:100',
+            'occupancy_issued_date' => 'nullable|date',
             'equipment' => 'nullable|array',
             'equipment.*.fee_code' => ['required_with:equipment', 'string', Rule::in(AnnualInspectionEquipmentItem::allCodes())],
             'equipment.*.quantity' => 'required_with:equipment|integer|min:1',

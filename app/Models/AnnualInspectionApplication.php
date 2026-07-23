@@ -42,6 +42,8 @@ class AnnualInspectionApplication extends Model implements PermitApplicationCont
         'cancellation_reason',
         'client_user_id',
         'issued_date',
+        'occupancy_no',
+        'occupancy_issued_date',
     ];
 
     protected function casts(): array
@@ -57,6 +59,7 @@ class AnnualInspectionApplication extends Model implements PermitApplicationCont
             'released_at' => 'datetime',
             'cancelled_at' => 'datetime',
             'issued_date' => 'date',
+            'occupancy_issued_date' => 'date',
         ];
     }
 

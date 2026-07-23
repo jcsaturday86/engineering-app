@@ -227,6 +227,18 @@
         @else
             <p class="text-sm text-gray-500">No occupancy groups selected.</p>
         @endif
+        @if($application->occupancy_no || $application->occupancy_issued_date)
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
+                <div>
+                    <p class="text-xs text-gray-500">Certificate of Occupancy No.</p>
+                    <p class="text-sm text-gray-900 mt-0.5">{{ $application->occupancy_no ?? '---' }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500">Certificate of Occupancy Issued Date</p>
+                    <p class="text-sm text-gray-900 mt-0.5">{{ $application->occupancy_issued_date?->format('m/d/Y') ?? '---' }}</p>
+                </div>
+            </div>
+        @endif
     </div>
 
     {{-- ================================================================== --}}

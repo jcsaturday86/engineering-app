@@ -32,6 +32,7 @@ class Permit extends Model
         'building_official_title',
         'building_official_designation',
         'building_official_license_no',
+        'signatories_snapshot',
     ];
 
     protected function casts(): array
@@ -41,6 +42,7 @@ class Permit extends Model
             'permit_month' => 'integer',
             'permit_counter' => 'integer',
             'issued_date' => 'date',
+            'signatories_snapshot' => 'array',
         ];
     }
 
