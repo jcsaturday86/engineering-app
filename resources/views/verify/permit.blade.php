@@ -73,7 +73,7 @@
                         </div>
                         <div>
                             <dt class="text-xs font-medium text-gray-500 uppercase">Location</dt>
-                            <dd class="text-gray-900">{{ $application->building_street ?? '—' }}{{ $application->buildingBarangay ? ', ' . $application->buildingBarangay->name : '' }}</dd>
+                            <dd class="text-gray-900">{{ ($application->location_street ?? $application->building_street) ?? '—' }}{{ $application->buildingBarangay ? ', ' . $application->buildingBarangay->name : '' }}</dd>
                         </div>
                     </dl>
 

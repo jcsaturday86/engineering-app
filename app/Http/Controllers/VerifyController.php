@@ -18,13 +18,18 @@ class VerifyController extends Controller
 
         $application = $permit->applicationable;
 
-        $applicantName = trim(
-            ($application->applicant_last_name ?? '') . ', ' .
-            ($application->applicant_first_name ?? '') . ' ' .
-            ($application->applicant_middle_name ?? '') . ' ' .
-            ($application->applicant_suffix ?? '')
-        );
-        $applicantName = preg_replace('/\s+/', ' ', $applicantName);
+        if (isset($application->owner_name)) {
+            // Annual Inspection applications store a single Owner/Lessee name field, not a split applicant name.
+            $applicantName = $application->owner_name;
+        } else {
+            $applicantName = trim(
+                ($application->applicant_last_name ?? '') . ', ' .
+                ($application->applicant_first_name ?? '') . ' ' .
+                ($application->applicant_middle_name ?? '') . ' ' .
+                ($application->applicant_suffix ?? '')
+            );
+            $applicantName = preg_replace('/\s+/', ' ', $applicantName);
+        }
 
         return view('verify.permit', [
             'permit' => $permit,
