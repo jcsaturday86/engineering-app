@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <meta charset="utf-8">
     <title>Evaluation Report</title>
     <style>

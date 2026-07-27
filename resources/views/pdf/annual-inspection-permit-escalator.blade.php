@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <meta charset="utf-8">
     <title>Escalator Certificate {{ $permit->permit_number }}</title>
     <style>
@@ -52,6 +53,7 @@
         $s = $signatories[$role] ?? null;
         return trim((($s->title ?? '') . ' ' . ($s->name ?? '')));
     };
+    $cityEngineerDesignation = $signatories['ai_city_engineer']->designation ?? '';
 @endphp
 
 <div class="print-page">
@@ -104,6 +106,9 @@
     <div class="f" style="top:6.409in; left:7.247in; width:1.325in;">&#8369;{{ number_format($unit->amount ?? 0, 2) }}</div>
     <div class="f" style="top:6.668in; left:7.529in; width:1.043in;">{{ $collection->or_number ?? '' }}</div>
     <div class="f" style="top:6.926in; left:6.973in; width:1.600in;">{{ $collection?->or_date ? \Carbon\Carbon::parse($collection->or_date)->format('m/d/Y') : '' }}</div>
+
+    <div class="f ctr" style="top:6.20in; left:9.35in; width:2.2in; font-weight:bold;">{{ strtoupper($sigFull('ai_city_engineer')) }}</div>
+    <div class="f ctr sm" style="top:6.40in; left:9.35in; width:2.2in;">{{ $cityEngineerDesignation }}</div>
 
     @if(!empty($qrImage))
     <img src="{{ $qrImage }}" alt="Verification QR" style="display:block; position:absolute; top:6.7in; left:10in; width:0.9in; height:0.9in;">

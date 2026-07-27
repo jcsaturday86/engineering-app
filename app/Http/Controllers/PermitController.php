@@ -753,12 +753,14 @@ class PermitController extends Controller
         $isAiElev = $permit->permitType->code === 'AI' && ($aiUnit->group_code ?? '') === 'ELEV';
         $isAiEsc = $permit->permitType->code === 'AI' && ($aiUnit->group_code ?? '') === 'ESC';
         $isAiMach = $permit->permitType->code === 'AI' && ($aiUnit->group_code ?? '') === 'MACH';
+        $isAiAcref = $permit->permitType->code === 'AI' && ($aiUnit->group_code ?? '') === 'ACREF';
 
         $template = match (true) {
             $isAiGe => 'pdf.annual-inspection-permit-ge',
             $isAiElev => 'pdf.annual-inspection-permit-elevator',
             $isAiEsc => 'pdf.annual-inspection-permit-escalator',
             $isAiMach => 'pdf.annual-inspection-permit-machinery',
+            $isAiAcref => 'pdf.annual-inspection-permit-acref',
             $permit->permitType->code === 'OP' => 'pdf.occupancy-permit',
             $permit->permitType->code === 'DP' => 'pdf.demolition-permit',
             $permit->permitType->code === 'SGP' => 'pdf.signage-permit',
@@ -771,8 +773,8 @@ class PermitController extends Controller
 
         if ($isAiGe) {
             $pdf->setOption('dpi', 200);
-        } elseif ($isAiElev || $isAiEsc || $isAiMach) {
-            // elevator.jpg/escalator.jpg/machinery.jpg backgrounds are native ~128dpi; matching it
+        } elseif ($isAiElev || $isAiEsc || $isAiMach || $isAiAcref) {
+            // elevator.jpg/escalator.jpg/machinery.jpg/aircon.jpg backgrounds are native ~128dpi; matching it
             // (instead of 200) avoids rendering them at an upscaled resolution DomPDF has to do extra work for, with no visible gain.
             $pdf->setOption('dpi', 128);
         } else {

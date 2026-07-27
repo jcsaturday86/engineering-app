@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+<link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
 <meta charset="utf-8">
 <style>
 @page { margin: 14mm 14mm 14mm 14mm; size: A4 portrait; }

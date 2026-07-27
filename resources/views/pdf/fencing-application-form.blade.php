@@ -9,6 +9,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <meta charset="utf-8">
     <title>Application for Fencing Permit - {{ $application->application_number }}</title>
     <style>
