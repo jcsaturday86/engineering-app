@@ -144,9 +144,11 @@
                                 <a href="{{ route('profile.edit') }}" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                                     <i class="fas fa-user-circle w-4"></i> Profile
                                 </a>
+                                @can('manage-settings')
                                 <a href="{{ route('settings.index') }}" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                                     <i class="fas fa-cog w-4"></i> Settings
                                 </a>
+                                @endcan
                                 <hr class="my-1">
                                 <form method="POST" action="{{ route('logout') }}" autocomplete="off">
                                     @csrf

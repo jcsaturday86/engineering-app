@@ -81,7 +81,7 @@ OP skips `zoning_assessed` entirely. Parallel `*Op()` methods in Assessment/Bill
 draft → submitted → engineering_assessed → billed → paid → permit_generated → released
 ```
 
-Same shape as OP — no zoning stage. Parallel `*Dp()` methods in Assessment/Billing/Collection/Permit controllers, all delegating to the same generic private methods BP/OP already use. Assessment fees are looked up via the dedicated `DEMO_FEE` category (`addDemolitionItem()` — server-computed `amount = quantity × rate`, quantity labeled by the fee type's Settings-configured `unit_label`).
+Same shape as OP — no zoning stage. Parallel `*Dp()` methods in Assessment/Billing/Collection/Permit controllers, all delegating to the same generic private methods BP/OP already use. Assessment fees are looked up via the dedicated `DEMO_FEE` category (`addDemolitionItem()` — server-computed `amount = quantity × rate`, quantity labeled by the fee type's Settings-configured `unit_label`). **Online self-service application for DP** (added in a later session — see the Online Application Flow section below): `OnlineApplicationController`'s `TYPES` map now covers all 6 permit types, including DP.
 
 ---
 
@@ -91,7 +91,7 @@ Same shape as OP — no zoning stage. Parallel `*Dp()` methods in Assessment/Bil
 draft → submitted → engineering_assessed → billed → paid → permit_generated → released
 ```
 
-Same 5-step shape as DP/OP. Parallel `*Sgp()` methods, same delegation pattern. Assessment fees are **manual entry only** — the `SGP_FEE` category has no seeded `FeeType`/`FeeSchedule` rows, so the tab falls through to the generic "select category, type quantity + unit fee" fallback form. The application-form print route does not exist yet (no scanned official form supplied); the assessment-summary and final-permit-certificate prints are both complete.
+Same 5-step shape as DP/OP. Parallel `*Sgp()` methods, same delegation pattern. Assessment fees are **manual entry only** — the `SGP_FEE` category has no seeded `FeeType`/`FeeSchedule` rows, so the tab falls through to the generic "select category, type quantity + unit fee" fallback form. `SignageApplicationController::printForm()` (route `signage-applications.print`, `pdf/signage-application-form.blade.php`) was added in a later session — all three prints (application form, assessment summary, final permit certificate) are now complete.
 
 ---
 
@@ -115,7 +115,7 @@ Same 5-step shape as DP/SGP/OP — no zoning stage. `FencingApplicationControlle
 
 **Release Permit**: `PermitController::generateFp()` produces a `Permit` row with number format `FP-YYYY-MM-NNNNN`, prints `pdf/fencing-permit.blade.php` — a 2-page reproduction of NBC Form B-03. Page 1 = Boxes 1-5 (Owner/Applicant info + Scope of Work checkboxes, Design Professional + Full-Time Inspector shown side by side, Applicant + Lot Owner Consent signature blocks, blank Notarization). Page 2 = Boxes 6-8 (blank Measurements/Type-of-Fencing filled by the Design Professional rather than the system, blank Progress-Flow tracking half, auto-filled Assessed-Fees half summing all active `FP_FEE` assessment items with OR number/date paid from the Collection record, Building-Official-signed Action-Taken conditions text).
 
-No online self-service application for FP — `OnlineApplicationController` explicitly excludes `DP`/`SGP`/`FP` from the client-facing permit type list and from `store()` (`abort(403, ...)`), same as DP and SGP: walk-in / staff-entered only for now.
+**Online self-service application for FP** (added in a later session — see the Online Application Flow section below): `OnlineApplicationController`'s `TYPES` map now covers all 6 permit types, including FP. FP's client-facing form/show views are the exact same `fencing-applications/{form,show}.blade.php` files staff use, parameterized by `$portal`.
 
 **Sidebar navigation**: FP's own Applications section sits between Occupancy Permit and Demolition Permit in the main collapsible nav. In the Assessment and Permits flyout submenus, however, Fencing Permit is listed last (after Demolition and Signage), not between Occupancy and Demolition.
 
@@ -149,7 +149,7 @@ Same 5-step shape as DP/SGP/FP — no zoning stage. `AnnualInspectionApplication
 
 A certificate is only generated for a group with at least one assessed item — no empty certificates. Each certificate gets its own `AI-YYYY-MM-NNNNN` number (one shared counter, incremented per certificate in the same generation action) and links back to its slice of assessment data via the reactivated `AnnualInspectionPermitUnit` bridge table. `revertGenerateAi()`/`restoreRevokeAi()` act on **all** of an application's certificates at once (revoke-all / restore-all), not one at a time. `pdf/annual-inspection-permit.blade.php` renders one certificate per print for every group **except `GE`** — bundle-type certificates (ELN/MACH/ACREF) show an itemized table of their items, per-unit certificates (Elevator/Escalator) show a single equipment description/quantity line. **The `GE` certificate** ("General, Occupancy & Electrical") instead renders `pdf/annual-inspection-permit-ge.blade.php`, a dedicated background-image-overlay template reproducing the official **NBC Form No. B-19 "Certificate of Annual Inspection"** as a single A4-landscape page (auto-filled Owner/Location/Character-of-Occupancy, the 12 discipline signatories + 2 Chief signature blocks — each shown as `{title} {name}`, e.g. "Engr Jem Tamani" — No./Fee Paid/OR/Date Paid/Date Issued, Certificate of Occupancy No./Issued Date, a Republic/Province/City letterhead, and a QR verification code) — see `docs/PROJECT_CONTEXT.md` for the full build/calibration history. All 14 discipline/Chief signatories are **locked at generation time** into `permits.signatories_snapshot`, the same principle as the Building Official snapshot below — editing a `Signatory` row afterward no longer changes what a previously-generated GE certificate prints on reprint (permits generated before this existed fall back to a live lookup). The application's `show` page lists all generated certificates in a "Generated Permits (N)" panel with individual print links; `/permits/annual-inspection` shows "N permit(s) generated"/"View Permits" instead of a single permit number/direct print link. (This module briefly used single-permit-per-application generation via the shared `doGenerate()` — see `docs/PROJECT_CONTEXT.md` — before being switched to the multi-certificate scheme described here.)
 
-No online self-service application for AI — excluded from `OnlineApplicationController` same as DP/SGP/FP.
+**Online self-service application for AI** (added in a later session — see the Online Application Flow section below): `OnlineApplicationController`'s `TYPES` map now covers all 6 permit types, including AI. AI's client-facing form/show views are the exact same `annual-inspection-applications/{form,show}.blade.php` files staff use, parameterized by `$portal`.
 
 **Sidebar navigation**: Annual Inspection sits last (after Fencing Permit) in all 3 locations (main nav, Assessment flyout, Permits flyout).
 
@@ -161,7 +161,9 @@ No online self-service application for AI — excluded from `OnlineApplicationCo
 
 | From | To (allowed) |
 |------|-------------|
-| draft | submitted, for_zoning_assessment, cancelled |
+| draft | submitted, for_zoning_assessment, pending_approval, cancelled |
+| pending_approval | submitted, for_zoning_assessment, returned, cancelled |
+| returned | pending_approval, cancelled |
 | submitted | engineering_assessed, cancelled |
 | for_zoning_assessment | zoning_assessed, cancelled |
 | zoning_assessed | engineering_assessed, cancelled |
@@ -170,6 +172,8 @@ No online self-service application for AI — excluded from `OnlineApplicationCo
 | paid | permit_generated, cancelled |
 | permit_generated | released, cancelled |
 | released / cancelled | (terminal) |
+
+`pending_approval` and `returned` only occur on the online/client submission path (see below) — a walk-in application entered directly by staff never passes through them, going straight `draft → submitted`/`for_zoning_assessment`.
 
 ---
 
@@ -359,14 +363,47 @@ The `/collections` Payment History table is scoped to the **logged-in collector 
 | Revoke generated permit | `revert-permits` | engineering-officer |
 | Restore revoked permit | `revert-permits` | engineering-officer |
 | View audit logs | `view-audit-logs` | super-admin only |
+| Approve online application | `approve-applications` | engineering-officer, engineering-staff, administrator, super-admin |
+| Disapprove (return) online application | `reject-applications` | engineering-officer, engineering-staff, administrator, super-admin |
 
 ---
 
 ## Online Application Flow (Client Portal)
 
+The client portal now supports full self-service applications for **all 6 permit types** (BP, OP, FP, DP, SGP, AI) — an earlier version only covered BP/OP. `OnlineApplicationController` is a type-generic dispatcher driven by a private `TYPES` map (permit code → model/controller/form view/show view/show relations/etc.), so it doesn't duplicate the 6 staff application forms or show pages — it reuses the exact same Blade files (`resources/views/{applications,occupancy-applications,fencing-applications,demolition-applications,signage-applications,annual-inspection-applications}/{form,show}.blade.php}`) staff use, rendered with a `$portal` variable (`'staff'` default, `'client'` from the online routes) that toggles which action buttons/sections are visible. Routes live under `/online/{dashboard,apply,application/{type}/{id},...}`, gated by `auth` + `can:online-apply`.
+
+### Submission → Approval Gate
+
 ```
-/register → /login → /online/apply (status = submitted)
-→ upload requirements → track status → download permit (status = released)
+draft ──(submit, requirements uploaded)──> pending_approval ──(Engineering approve)──┬─> submitted (non-BP: engineering_assessed queue)
+                                                  │                                    └─> for_zoning_assessment (BP)
+                                                  └──(Engineering disapprove, remarks required)──> returned ──(edit + resubmit)──> pending_approval
+```
+
+1. **Draft** — a client fills out one of the 6 forms (identical to the staff form, parameterized by `$portal='client'`) and can save as draft, edit, and upload supporting documents (`ApplicationRequirement`, polymorphic) at any point while `draft` or `returned`.
+2. **Requirement-document gate** — `OnlineApplicationController::submit()` refuses to submit (`back()->with('error', ...)`) unless the client has uploaded at least one requirement document via `applicationRequirements()`. The Upload/Edit/Submit action bar is available while the application is `draft` or `returned` (previously Upload was only reachable after submission, which made the gate impossible to satisfy — fixed this session).
+3. **Submit** — moves the application to `pending_approval` and notifies Engineering.
+4. **Engineering Review** (`ApplicationReviewController`, `/application-review`, `approve-applications`/`reject-applications` permissions, granted to engineering-officer/engineering-staff/administrator/super-admin) — a queue of all `pending_approval` applications across all 6 types:
+   - **Approve** — BP routes to `for_zoning_assessment` (needs Zoning first); the other 5 types route straight to `submitted` (their normal walk-in-equivalent starting point, since they skip zoning). Notifies the client (`ApplicationReviewedNotification`, database channel, via the existing notification bell).
+   - **Disapprove** — requires `review_remarks` (why it was rejected); sets status to `returned`. Notifies the client with the remarks. The client can then edit the application (same form, still `$portal='client'`) and resubmit, moving back to `pending_approval`.
+5. **From here on**, a client-originated application follows the exact same workflow as a walk-in one (Zoning if BP → Engineering Assessment → Billing → Payment → Permit Generation → Release) — `source = 'online'` is the only trace that it started in the portal.
+
+### Client-Side Visibility (Show Page Parity)
+
+`OnlineApplicationController::show()` eager-loads the **same relations** as each staff controller's own `show()` (per-type — e.g. BP loads `permitType`/`applicationType`/`scopeOfWork`/`formOfOwnership`/address relations/`landClassification`/`applicationOccupancyGroups.*`/`assessments.assessmentItems`/`billings`/`collections`/`permits`) and renders the staff `show.blade.php` directly — there is no separate thin client view (`resources/views/online/show.blade.php` was deleted as dead code once this was wired in). Each of the 6 staff `show.blade.php` files branches on `$portal`: staff-only content (header action bar with Edit/Submit/Cancel/Revert Submission/Print Forms, and the Activity Log section on BP/OP/DP/SGP) is hidden from clients; clients instead see their own action bar (Edit/Upload Requirements/Submit for Review while `draft`/`returned`; Upload/Track otherwise; Print Application Form once approved; Download Permit once `permit_generated`/`released`), a Requirements card, and a returned-status remarks banner — the latter two shown unconditionally to both portals.
+
+### Client Printing
+
+The application-form PDF download is only unlocked after Engineering approval (`approved_at` set). All 6 types now have both a staff print route and a client print route — this session added `printForm()` + PDF templates for **Signage** and **Annual Inspection** (`resources/views/pdf/{signage,annual-inspection}-application-form.blade.php`), the two types that previously had no application-form print at all (see `docs/PROJECT_CONTEXT.md`). Once `permit_generated`/`released`, the client can also download the generated permit (`OnlineApplicationController::doDownloadPermit()`), carrying the same seal/logo/QR variables as the staff print path.
+
+### Client Dashboard
+
+`resources/views/online/dashboard.blade.php` (`OnlineApplicationController::dashboard()`) gained a status filter dropdown (`?status=`), a Turn-Around-Time column (same day-count logic as the staff application indexes), and icon-button Actions (view/edit/upload/track/download) with color-coded borders per action type, replacing plain text links.
+
+```
+/register → /login → /online/apply/{type} → upload requirements → Submit for Review
+→ pending_approval → Engineering approves/disapproves → (submitted/for_zoning_assessment | returned)
+→ … normal workflow … → permit_generated/released → download permit
 ```
 
 ---
@@ -387,6 +424,8 @@ The `/collections` Payment History table is scoped to the **logged-in collector 
 | electronics-form | ApplicationController::printDiscipline (discipline=electronics) — NBC Form A-07 Electronics, same no-source-scan situation as Mechanical; Scope of Work maps New Installation/Others only |
 | discipline-form | ApplicationController::printDiscipline — generic blank-placeholder fallback, DomPDF A4, city seal header; no longer used by any of the 6 disciplines (all now render real forms), kept for any future/unrecognized discipline key |
 | demolition-application-form | DemolitionApplicationController::printForm (DP only) — DomPDF background-image overlay of the official 2-page NBC Form No. B-08 scan; letterhead (seal + national govt logo + Republic/City/Province) and a Building Official title/name/designation block on page 2 above the signature line |
+| signage-application-form | SignageApplicationController::printForm (SGP only) — new this session; SGP previously had no application-form print at all (no scanned official form was supplied at build time) |
+| annual-inspection-application-form | AnnualInspectionApplicationController::printForm (AI only) — new this session, added alongside the Signage one so all 6 permit types have both a staff and client application-form print |
 | building-permit | PermitController::print (BP) — NBC Form B-018 style, A4 landscape, city seal (left) + DPWH logo (right), QR verification code |
 | occupancy-permit | PermitController::print (OP) — DPWH Certificate of Occupancy style, A4 landscape, DPWH logo + city seal, QR verification code |
 | demolition-permit | PermitController::print (DP) — bordered-frame landscape A4 certificate style (same technique as building-permit/occupancy-permit), QR verification code |
@@ -454,3 +493,4 @@ qrImage   = QR PNG encoding verifyUrl (endroid/qr-code), embedded as base64 data
 | AssessmentCompleteNotification | Assessment finalized → client |
 | PaymentPostedNotification | Payment recorded → client |
 | ApplicationApprovedNotification | Permit generated → client |
+| ApplicationReviewedNotification | Engineering approves or disapproves an online-submitted application → client (database channel, existing notification-bell UI) |

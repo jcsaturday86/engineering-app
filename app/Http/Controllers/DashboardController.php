@@ -16,6 +16,10 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
+        if (auth()->user()->hasRole('client')) {
+            return redirect()->route('online.dashboard');
+        }
+
         $currentYear = now()->year;
         $currentMonth = now()->month;
 

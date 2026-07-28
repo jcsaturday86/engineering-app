@@ -5,6 +5,8 @@ namespace App\Enums;
 enum ApplicationStatus: string
 {
     case DRAFT = 'draft';
+    case PENDING_APPROVAL = 'pending_approval';
+    case RETURNED = 'returned';
     case SUBMITTED = 'submitted';
     case FOR_ZONING_ASSESSMENT = 'for_zoning_assessment';
     case ZONING_ASSESSED = 'zoning_assessed';
@@ -19,6 +21,8 @@ enum ApplicationStatus: string
     {
         return match ($this) {
             self::DRAFT => 'Draft',
+            self::PENDING_APPROVAL => 'Pending Approval',
+            self::RETURNED => 'Returned for Revision',
             self::SUBMITTED => 'Submitted',
             self::FOR_ZONING_ASSESSMENT => 'For Zoning Assessment',
             self::ZONING_ASSESSED => 'Zoning Assessed',
@@ -35,6 +39,8 @@ enum ApplicationStatus: string
     {
         return match ($this) {
             self::DRAFT => 'bg-gray-100 text-gray-800',
+            self::PENDING_APPROVAL => 'bg-amber-100 text-amber-800',
+            self::RETURNED => 'bg-red-100 text-red-800',
             self::SUBMITTED => 'bg-blue-100 text-blue-800',
             self::FOR_ZONING_ASSESSMENT => 'bg-purple-100 text-purple-800',
             self::ZONING_ASSESSED => 'bg-yellow-100 text-yellow-800',
@@ -50,7 +56,9 @@ enum ApplicationStatus: string
     public static function allowedTransitions(): array
     {
         return [
-            self::DRAFT->value => [self::SUBMITTED, self::FOR_ZONING_ASSESSMENT, self::CANCELLED],
+            self::DRAFT->value => [self::SUBMITTED, self::FOR_ZONING_ASSESSMENT, self::PENDING_APPROVAL, self::CANCELLED],
+            self::PENDING_APPROVAL->value => [self::SUBMITTED, self::FOR_ZONING_ASSESSMENT, self::RETURNED, self::CANCELLED],
+            self::RETURNED->value => [self::PENDING_APPROVAL, self::DRAFT, self::CANCELLED],
             self::SUBMITTED->value => [self::ENGINEERING_ASSESSED, self::CANCELLED],
             self::FOR_ZONING_ASSESSMENT->value => [self::ZONING_ASSESSED, self::CANCELLED],
             self::ZONING_ASSESSED->value => [self::ENGINEERING_ASSESSED, self::CANCELLED],
@@ -67,7 +75,9 @@ enum ApplicationStatus: string
     {
         if ($permitTypeCode === 'OP') {
             return [
-                self::DRAFT->value => [self::SUBMITTED, self::CANCELLED],
+                self::DRAFT->value => [self::SUBMITTED, self::PENDING_APPROVAL, self::CANCELLED],
+                self::PENDING_APPROVAL->value => [self::SUBMITTED, self::RETURNED, self::CANCELLED],
+                self::RETURNED->value => [self::PENDING_APPROVAL, self::DRAFT, self::CANCELLED],
                 self::SUBMITTED->value => [self::ENGINEERING_ASSESSED, self::CANCELLED],
                 self::ENGINEERING_ASSESSED->value => [self::BILLED, self::CANCELLED],
                 self::BILLED->value => [self::PAID, self::CANCELLED],

@@ -84,6 +84,28 @@ class OccupancyApplicationController extends Controller
 
     public function store(Request $request)
     {
+        try {
+            $application = $this->persistApplication($request, [
+                'status' => 'draft',
+                'source' => 'walk_in',
+                'entered_by' => Auth::id(),
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Failed to create application: ' . $e->getMessage());
+        }
+
+        return redirect()->route('occupancy-applications.show', $application)
+            ->with('success', "Application {$application->application_number} created successfully.");
+    }
+
+    /**
+     * Validate and create an OccupancyApplication. Shared by the staff
+     * store() and the client online-portal submission.
+     */
+    public function persistApplication(Request $request, array $overrides = []): OccupancyApplication
+    {
         $request->validate([
             'occupancy_sub_groups' => 'required|array|min:1',
         ], [
@@ -93,11 +115,11 @@ class OccupancyApplicationController extends Controller
 
         $validated = $this->validateApplication($request);
 
-        DB::beginTransaction();
-        try {
+        return DB::transaction(function () use ($validated, $overrides, $request) {
             $counter = OccupancyApplication::where('app_year', now()->year)
                     ->where('app_month', now()->month)
-                    ->count() + 1;
+                    ->lockForUpdate()
+                    ->max('app_counter') + 1;
 
             $appNumber = sprintf('OP-%s-%s-%05d', now()->format('Y'), now()->format('m'), $counter);
 
@@ -106,21 +128,16 @@ class OccupancyApplicationController extends Controller
                 'app_month' => now()->month,
                 'app_counter' => $counter,
                 'application_number' => $appNumber,
-                'status' => 'draft',
-                'source' => 'walk_in',
-                'entered_by' => Auth::id(),
+                'status' => $overrides['status'] ?? 'draft',
+                'source' => $overrides['source'] ?? 'walk_in',
+                'entered_by' => $overrides['entered_by'] ?? Auth::id(),
+                'client_user_id' => $overrides['client_user_id'] ?? null,
             ]));
 
             $this->saveOccupancyGroups($application, $request);
 
-            DB::commit();
-
-            return redirect()->route('occupancy-applications.show', $application)
-                ->with('success', "Application {$appNumber} created successfully.");
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return back()->withInput()->with('error', 'Failed to create application: ' . $e->getMessage());
-        }
+            return $application;
+        });
     }
 
     public function show(OccupancyApplication $occupancyApplication)
@@ -149,6 +166,24 @@ class OccupancyApplicationController extends Controller
 
     public function update(Request $request, OccupancyApplication $occupancyApplication)
     {
+        try {
+            $this->applyUpdate($request, $occupancyApplication);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Failed to update application: ' . $e->getMessage());
+        }
+
+        return redirect()->route('occupancy-applications.show', $occupancyApplication)
+            ->with('success', 'Application updated successfully.');
+    }
+
+    /**
+     * Validate and persist edits to an existing OccupancyApplication. Shared
+     * by the staff update() and the client online-portal edit/resubmit flow.
+     */
+    public function applyUpdate(Request $request, OccupancyApplication $occupancyApplication): void
+    {
         $request->validate([
             'occupancy_sub_groups' => 'required|array|min:1',
         ], [
@@ -158,21 +193,12 @@ class OccupancyApplicationController extends Controller
 
         $validated = $this->validateApplication($request);
 
-        DB::beginTransaction();
-        try {
+        DB::transaction(function () use ($occupancyApplication, $validated, $request) {
             $occupancyApplication->update($validated);
 
             $occupancyApplication->applicationOccupancyGroups()->delete();
             $this->saveOccupancyGroups($occupancyApplication, $request);
-
-            DB::commit();
-
-            return redirect()->route('occupancy-applications.show', $occupancyApplication)
-                ->with('success', 'Application updated successfully.');
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return back()->withInput()->with('error', 'Failed to update application: ' . $e->getMessage());
-        }
+        });
     }
 
     public function submit(Request $request, OccupancyApplication $occupancyApplication)
@@ -278,7 +304,7 @@ class OccupancyApplicationController extends Controller
         return $pdf->stream("op_application_{$application->application_number}.pdf");
     }
 
-    private function getFormData(int $permitTypeId): array
+    public function getFormData(int $permitTypeId): array
     {
         $sfcCityId = City::where('name', 'like', '%SAN FERNANDO%')->where('province_id', 3)->value('id') ?? 71;
 
@@ -295,7 +321,7 @@ class OccupancyApplicationController extends Controller
         ];
     }
 
-    private function validateApplication(Request $request): array
+    public function validateApplication(Request $request): array
     {
         return $request->validate([
             'application_type_id' => 'required|exists:application_types,id',

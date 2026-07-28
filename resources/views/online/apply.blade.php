@@ -9,102 +9,40 @@
 @endsection
 
 @section('content')
-<div class="max-w-3xl mx-auto">
-    <h2 class="text-xl font-bold text-gray-900 mb-6">New Permit Application</h2>
+@php
+    $typeMeta = [
+        'BP' => ['icon' => 'fa-building', 'color' => 'bg-blue-600', 'desc' => 'Construct, renovate, or add to a building or structure.'],
+        'OP' => ['icon' => 'fa-door-open', 'color' => 'bg-indigo-600', 'desc' => 'Apply for occupancy of a completed structure.'],
+        'FP' => ['icon' => 'fa-border-all', 'color' => 'bg-teal-600', 'desc' => 'Construct or erect a fence around a property.'],
+        'DP' => ['icon' => 'fa-hammer', 'color' => 'bg-orange-600', 'desc' => 'Demolish or move an existing building or structure.'],
+        'SGP' => ['icon' => 'fa-sign-hanging', 'color' => 'bg-pink-600', 'desc' => 'Install, attach, or paint a signage on your premises.'],
+        'AI' => ['icon' => 'fa-clipboard-check', 'color' => 'bg-emerald-600', 'desc' => 'Annual inspection of mechanical/electrical equipment.'],
+    ];
+@endphp
+<div class="max-w-4xl mx-auto">
+    <h2 class="text-xl font-bold text-gray-900 mb-2">New Permit Application</h2>
+    <p class="text-sm text-gray-500 mb-6">Choose the type of permit you'd like to apply for. You'll fill out the full application form, save it as a draft, and submit it for Engineering review whenever you're ready.</p>
 
-    <form method="POST" action="{{ route('online.store') }}" class="space-y-6" autocomplete="off">
-        @csrf
-
-        <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4"
-             x-data="{
-                permitTypeId: '{{ old('permit_type_id', $permitTypes->first()->id ?? '') }}',
-                appTypes: @js($applicationTypes->mapWithKeys(fn($types, $key) => [$key => $types->map(fn($t) => ['id' => $t->id, 'name' => $t->name])])),
-                get filteredTypes() { return this.appTypes[this.permitTypeId] || []; }
-             }">
-            <h3 class="text-sm font-semibold text-gray-900">Permit &amp; Application Type</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">Permit Type</label>
-                    <select name="permit_type_id" x-model="permitTypeId" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                        @foreach($permitTypes as $pt)
-                        <option value="{{ $pt->id }}" {{ old('permit_type_id') == $pt->id ? 'selected' : '' }}>{{ $pt->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">Application Type</label>
-                    <select name="application_type_id" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                        <template x-for="at in filteredTypes" :key="at.id">
-                            <option :value="at.id" x-text="at.name" :selected="at.id == '{{ old('application_type_id', '') }}'"></option>
-                        </template>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-            <h3 class="text-sm font-semibold text-gray-900">Applicant Information</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">First Name *</label>
-                    <input type="text" name="applicant_first_name" value="{{ old('applicant_first_name', auth()->user()->first_name) }}" required
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">Last Name *</label>
-                    <input type="text" name="applicant_last_name" value="{{ old('applicant_last_name', auth()->user()->last_name) }}" required
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">Contact No.</label>
-                    <input type="text" name="applicant_contact_no" value="{{ old('applicant_contact_no', auth()->user()->phone) }}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">Email</label>
-                    <input type="email" name="applicant_email" value="{{ old('applicant_email', auth()->user()->email) }}" readonly
-                        class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50">
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-            <h3 class="text-sm font-semibold text-gray-900">Project Details</h3>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        @foreach($permitTypes as $pt)
+        @php $meta = $typeMeta[$pt->code] ?? ['icon' => 'fa-file-lines', 'color' => 'bg-gray-600', 'desc' => '']; @endphp
+        <a href="{{ route('online.apply', ['type' => $pt->code]) }}"
+           class="flex items-start gap-4 p-5 bg-white rounded-xl border border-gray-200 hover:border-blue-400 hover:shadow-sm transition">
+            <span class="flex items-center justify-center w-11 h-11 rounded-lg {{ $meta['color'] }} text-white shrink-0">
+                <i class="fas {{ $meta['icon'] }}"></i>
+            </span>
             <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">Project Title</label>
-                <input type="text" name="project_title" value="{{ old('project_title') }}"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="e.g. Two-Storey Residential Building">
+                <h3 class="text-sm font-semibold text-gray-900">{{ $pt->name }}</h3>
+                <p class="text-xs text-gray-500 mt-1">{{ $meta['desc'] }}</p>
             </div>
-            <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">Scope of Work</label>
-                <select name="scope_of_work_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                    <option value="">-- Select --</option>
-                    @foreach($scopeOfWorks as $sw)
-                    <option value="{{ $sw->id }}" {{ old('scope_of_work_id') == $sw->id ? 'selected' : '' }}>{{ $sw->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-        </div>
+        </a>
+        @endforeach
+    </div>
 
-        <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-            <h3 class="text-sm font-semibold text-gray-900">Estimated Cost</h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                @foreach(['building_cost' => 'Building', 'electrical_cost' => 'Electrical', 'mechanical_cost' => 'Mechanical', 'plumbing_cost' => 'Plumbing', 'electronics_cost' => 'Electronics', 'other_equipment_cost' => 'Other Equipment'] as $field => $label)
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">{{ $label }}</label>
-                    <input type="number" name="{{ $field }}" value="{{ old($field, 0) }}" step="0.01" min="0"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                </div>
-                @endforeach
-            </div>
-        </div>
-
-        <div class="flex justify-end gap-3">
-            <a href="{{ route('online.dashboard') }}" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</a>
-            <button type="submit" class="px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
-                Submit Application
-            </button>
-        </div>
-    </form>
+    <div class="mt-6">
+        <a href="{{ route('online.dashboard') }}" class="text-sm text-gray-600 hover:text-gray-800">
+            <i class="fas fa-arrow-left text-xs mr-1"></i> Back to My Applications
+        </a>
+    </div>
 </div>
 @endsection

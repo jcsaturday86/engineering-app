@@ -47,6 +47,7 @@ class SignageApplication extends Model implements PermitApplicationContract
         'entered_by',
         'assessed_by',
         'approved_by',
+        'review_remarks',
         'submitted_at',
         'assessed_at',
         'approved_at',

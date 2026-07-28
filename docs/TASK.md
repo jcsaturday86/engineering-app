@@ -540,6 +540,25 @@
 - Added a bulleted "Verified as to the following" equipment list (`• N Unit(s) of {label}: {description} — {tons_or_hp}`, quantity pulled from `computation_details['quantity_count']` — not the `quantity` column, which for this fee type actually stores the tonnage/HP input value used for fee computation, a distinction only caught by checking the raw seeded data) — first on the left page only, then mirrored onto the right page's "Located At/Along" blank area at follow-up request, then iteratively refined (label's trailing "(by ton)"-style parenthetical stripped, indentation, font size, line-height) and finally re-spaced (8pt font, 1.25 line-height, tuned per-page spacing) to reliably fit up to 10 bullets without colliding with adjacent fields — verified against a synthetic 10-item dataset (Blade rendered directly with fabricated `AssessmentItem` objects) since no real application has that many ACREF items on file
 - All 34 `resources/views/pdf/*.blade.php` templates' `<head>` sections gained a `<link rel="icon">` tag for source consistency (scripted insertion, indentation-matched per file); flagged to the user that this has no visible effect on the actual rendered PDF, since DomPDF output is a binary PDF and browsers' PDF viewers don't read HTML `<head>` tags. ACREF's link alone was then switched, at follow-up request, to resolve from `$settings['general.favicon']` (mirroring `partials/favicon.blade.php`'s Setting-driven logic) instead of the hardcoded static asset — same no-visible-effect caveat noted again
 
+### Online Application Workflow — All 6 Permit Types, Engineering Approval Gate, Show-Parity — COMPLETED
+
+- New `pending_approval`/`returned` `ApplicationStatus` values; new nullable `review_remarks` column added to all 6 application tables (`applications`, `occupancy_applications`, `demolition_applications`, `signage_applications`, `fencing_applications`, `annual_inspection_applications`) via migration `2026_07_28_104533_add_review_remarks_to_application_tables.php`
+- `OnlineApplicationController` rebuilt as a type-generic dispatcher (private `const TYPES` map: permit code → model/controller/form view/show view/show-relations/etc.) covering all 6 permit types instead of BP/OP only; each of the 6 staff controllers' `store()`/`update()` logic was extracted into public `persistApplication()`/`applyUpdate()` methods so both staff routes and the online controller call the same code with different `overrides` (status/source/client_user_id)
+- All 6 staff `form.blade.php`/`show.blade.php` files parameterized by a `$portal` variable (`'staff'`/`'client'`) and reused directly by the client portal — no separate client-facing form/show views duplicated per type
+- New `ApplicationReviewController` (`/application-review`, `approve-applications`/`reject-applications` permissions, granted to engineering-officer/engineering-staff/administrator/super-admin): `approve()` routes BP to `for_zoning_assessment`, the other 5 to `submitted`; `disapprove()` requires `review_remarks` and sets `status = returned`. New `application-review/index.blade.php` view; sidebar link (with pending-count badge) between Dashboard and Building Permit
+- New `ApplicationReviewedNotification` (database channel) fires on approve/disapprove, surfaced via the existing notification bell
+- Requirement-document upload gate: `OnlineApplicationController::submit()` blocks submission unless at least one `ApplicationRequirement` exists; Upload action moved to be reachable while `draft`/`returned` (previously post-submission only, making the gate unsatisfiable) — `online/show.blade.php` deleted as dead code once the Upload/Edit/Submit action bar moved inline into each staff `show.blade.php` behind a `$portal==='client'` branch
+- Client show-page parity: `OnlineApplicationController::show()` now eager-loads the same relations as each staff `show()` and renders the staff view directly instead of a thin client-only view
+- New `printForm()` + PDF templates for Signage (`pdf/signage-application-form.blade.php`) and Annual Inspection (`pdf/annual-inspection-application-form.blade.php`) — the two permit types with no prior application-form print — so all 6 types now have both a staff and a client print route, unlocked once Engineering approves
+- Client dashboard gained a status filter, a Turn-Around-Time column, and icon-button Actions (replacing plain text links)
+- Incidental fixes: BP's "Include Electrical Permit Details" toggle left `required` attributes on hidden fields (switched to Alpine `:required` bindings, 20 fields); a stray `<hr>` before the Settings sidebar section showed as an orphan line for client-only users (moved inside the same `@can('manage-settings')` gate)
+- Verified end-to-end: 12 draft applications created (2 per permit type) via the real online submission path, plus several advanced through submit/approve/disapprove to exercise the review workflow — real dev-DB records, not fixtures
+
+### Documentation Refresh (WORKFLOWS.md, CODEBASE.md, PROGRESS.md, TASK.md) — COMPLETED
+
+- Brought all 6 docs current with the Online Application Workflow buildout above: `DATABASE_SCHEMA.md`/`PROJECT_CONTEXT.md` updated in an earlier pass this session; `WORKFLOWS.md`, `CODEBASE.md`, `PROGRESS.md`, and this file updated in this pass
+- Corrected several now-stale statements found while updating: FP/AI's "no online self-service" notes in `WORKFLOWS.md`, SGP's "no `printForm()`"/"no scanned official form" notes in `CODEBASE.md`/`PROGRESS.md`, and the `application_requirements` "DP/SGP/FP never populate" note in `DATABASE_SCHEMA.md`'s morph-map section — all were true before this session's online-portal rebuild and are now corrected
+
 ---
 
 ## Upcoming Tasks
@@ -547,7 +566,6 @@
 | Task | Priority | Notes |
 |------|----------|-------|
 | Fix Create/Edit User form (role select + blank-field crash) | High | Currently unusable end-to-end — see "Staff Account Password Complexity" above |
-| Signage Permit fee schedule + application-form print | Medium | `SGP_FEE` category exists but has no seeded rates (manual entry only); no scanned official application form supplied yet for the background-overlay print |
+| Signage Permit fee schedule | Medium | `SGP_FEE` category exists but has no seeded rates (manual entry only) — application-form print was added this session, this fee-schedule gap is what remains |
 | Additional permit types (EP, ELP, PP, ECP) | Medium | BP, OP, DP, SGP, FP, and AI (formerly MP) are now active; the rest remain unbuilt placeholders in `permit_types` |
-| Document requirement upload UI | Low | Model/route exists, UI needs improvement |
 | Email notification configuration | Low | SMTP settings, notification templates |

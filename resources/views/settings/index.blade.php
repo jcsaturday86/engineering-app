@@ -15,12 +15,23 @@
         <h2 class="text-xl font-bold text-gray-900">General Settings</h2>
     </div>
 
+    @if($settings->count() > 1)
+    {{-- Section jump nav --}}
+    <div class="flex flex-wrap gap-2 sticky top-0 z-10 bg-gray-50/95 backdrop-blur py-2 -mx-1 px-1">
+        @foreach($settings as $group => $items)
+        <a href="#group-{{ \Illuminate\Support\Str::slug($group) }}" class="px-3 py-1.5 text-xs font-medium rounded-full bg-white border border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-700 transition">
+            {{ ucwords(str_replace(['_', '-'], ' ', $group)) }}
+        </a>
+        @endforeach
+    </div>
+    @endif
+
     <form method="POST" action="{{ route('settings.update') }}" autocomplete="off" enctype="multipart/form-data">
         @csrf
 
         <div class="space-y-6">
             @foreach($settings as $group => $items)
-            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div id="group-{{ \Illuminate\Support\Str::slug($group) }}" class="bg-white rounded-xl border border-gray-200 overflow-hidden scroll-mt-20">
                 <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
                     <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">{{ $group }}</h3>
                 </div>

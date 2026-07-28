@@ -24,6 +24,11 @@
     ];
     $isOP = true;
     $sectionNum = 0;
+    $portal = $portal ?? 'staff';
+    $applicationType = $applicationType ?? 'OP';
+    $routeParams = ['type' => $applicationType, 'id' => $application->id];
+    $canEdit = in_array($application->status, ['draft', 'returned']);
+    $isApproved = $application->approved_at !== null;
 @endphp
 
 <div class="space-y-4">
@@ -45,6 +50,7 @@
                     </div>
                 </div>
             </div>
+            @if($portal === 'staff')
             <div class="flex flex-wrap items-center gap-2" x-data="{ showRevertSubmitModal: false, revertSubmitPassword: '', showSubmitModal: false, submitPassword: '' }">
                 @if($application->status === 'draft')
                     <a href="{{ route('occupancy-applications.edit', $application) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
@@ -159,7 +165,68 @@
                     <i class="fas fa-print"></i> Print
                 </a>
             </div>
+            @else
+            <div class="flex gap-2 flex-wrap">
+                @if($canEdit)
+                <a href="{{ route('online.edit', $routeParams) }}" class="px-3 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700">
+                    <i class="fas fa-pen mr-1"></i> Edit
+                </a>
+                <a href="{{ route('online.upload', $routeParams) }}" class="px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700">
+                    <i class="fas fa-upload mr-1"></i> Upload Requirements
+                </a>
+                <form method="POST" action="{{ route('online.submit', $routeParams) }}" class="inline" onsubmit="return confirm('Submit this application for Engineering review? You won\'t be able to edit it until it is reviewed.');">
+                    @csrf
+                    <button type="submit" class="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-paper-plane mr-1"></i> Submit for Review
+                    </button>
+                </form>
+                @else
+                <a href="{{ route('online.upload', $routeParams) }}" class="px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700">
+                    <i class="fas fa-upload mr-1"></i> Upload
+                </a>
+                <a href="{{ route('online.track', $routeParams) }}" class="px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200">
+                    <i class="fas fa-map-marker-alt mr-1"></i> Track
+                </a>
+                @endif
+                @if($isApproved)
+                <a href="{{ route('online.print', $routeParams) }}" class="px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200" target="_blank">
+                    <i class="fas fa-print mr-1"></i> Print Application Form
+                </a>
+                @endif
+                @if(in_array($application->status, ['permit_generated', 'released']))
+                <a href="{{ route('online.download', $routeParams) }}" class="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">
+                    <i class="fas fa-download mr-1"></i> Download Permit
+                </a>
+                @endif
+            </div>
+            @endif
         </div>
+    </div>
+
+    @if($application->status === 'returned' && $application->review_remarks)
+    <div class="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+        <i class="fas fa-circle-exclamation text-red-500 mt-0.5"></i>
+        <div>
+            <p class="text-sm font-semibold text-red-800">Returned for revision by Engineering</p>
+            <p class="text-sm text-red-700 mt-1">{{ $application->review_remarks }}</p>
+            <p class="text-xs text-red-600 mt-1">Edit your application to address the notes above, then submit it again for review.</p>
+        </div>
+    </div>
+    @endif
+
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <h3 class="text-sm font-semibold text-gray-900 mb-3">Requirements ({{ $application->applicationRequirements->count() }})</h3>
+        @forelse($application->applicationRequirements as $req)
+        <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+            <span class="text-sm text-gray-700">{{ $req->requirement_name }}</span>
+            <span class="text-xs px-2 py-0.5 rounded-full
+                @if($req->status === 'approved') bg-green-100 text-green-700
+                @elseif($req->status === 'rejected') bg-red-100 text-red-700
+                @else bg-yellow-100 text-yellow-700 @endif">{{ ucfirst($req->status) }}</span>
+        </div>
+        @empty
+        <p class="text-sm text-gray-400">No requirements uploaded.</p>
+        @endforelse
     </div>
 
     {{-- ================================================================== --}}
@@ -490,6 +557,7 @@
         </div>
     </div>
 
+    @if($portal === 'staff')
     {{-- ================================================================== --}}
     {{-- ACTIVITY LOG --}}
     {{-- ================================================================== --}}
@@ -523,6 +591,7 @@
             <p class="text-sm text-gray-500">No activity recorded.</p>
         @endif
     </div>
+    @endif
 
     {{-- Cancelled notice --}}
     @if($application->status === 'cancelled')

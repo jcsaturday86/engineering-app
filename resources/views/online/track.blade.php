@@ -10,11 +10,14 @@
 
 @section('content')
 <div class="max-w-2xl mx-auto space-y-6">
+    @php
+        $statusEnum = \App\Enums\ApplicationStatus::tryFrom($application->status);
+    @endphp
     <div class="bg-white rounded-xl border border-gray-200 p-6 text-center">
         <h2 class="text-lg font-bold text-gray-900 font-mono">{{ $application->application_number }}</h2>
-        <p class="text-sm text-gray-500">{{ $application->permitType?->name }} — {{ $application->project_title }}</p>
-        <span class="inline-flex items-center px-3 py-1 mt-3 rounded-full text-sm font-medium bg-blue-100 text-blue-700">
-            {{ ucfirst(str_replace('_', ' ', $application->status)) }}
+        <p class="text-sm text-gray-500">{{ $application->permitType?->name ?? $applicationType }}@if($application->project_title ?? null) — {{ $application->project_title }}@endif</p>
+        <span class="inline-flex items-center px-3 py-1 mt-3 rounded-full text-sm font-medium {{ $statusEnum?->color() ?? 'bg-blue-100 text-blue-700' }}">
+            {{ $statusEnum?->label() ?? ucfirst(str_replace('_', ' ', $application->status)) }}
         </span>
     </div>
 
@@ -22,7 +25,10 @@
         <h3 class="text-sm font-semibold text-gray-900 mb-6">Application Progress</h3>
         <div class="relative">
             @php
-                $statusOrder = ['draft','submitted','zoning_assessed','engineering_assessed','billed','paid','permit_generated','released'];
+                // Derived from this application's own timeline (which already varies
+                // by permit type — BP includes zoning steps, others don't) rather
+                // than a hardcoded list, so the progress markers always line up.
+                $statusOrder = array_column($timeline, 'status');
                 $currentIndex = array_search($application->status, $statusOrder);
                 if ($currentIndex === false) $currentIndex = -1;
             @endphp
@@ -55,7 +61,7 @@
                     <p class="text-sm font-medium {{ $isCurrent ? 'text-blue-700' : ($isComplete ? 'text-green-700' : 'text-gray-400') }}">
                         {{ $step['label'] }}
                     </p>
-                    @if($step['date'])
+                    @if($step['date'] ?? null)
                     <p class="text-xs text-gray-400 mt-0.5">{{ $step['date']->format('M d, Y h:i A') }}</p>
                     @endif
                 </div>

@@ -3,273 +3,360 @@
 namespace App\Http\Controllers;
 
 use App\Models\Application;
-use App\Models\ApplicationRequirement;
-use App\Models\ApplicationType;
-use App\Models\Barangay;
-use App\Models\City;
-use App\Models\FormOfOwnership;
-use App\Models\LandClassification;
+use App\Models\AnnualInspectionApplication;
+use App\Models\DemolitionApplication;
+use App\Models\FencingApplication;
 use App\Models\OccupancyApplication;
-use App\Models\OccupancyGroup;
 use App\Models\Permit;
 use App\Models\PermitType;
-use App\Models\Province;
-use App\Models\ScopeOfWork;
+use App\Models\Setting;
+use App\Models\Signatory;
+use App\Models\SignageApplication;
+use App\Notifications\ApplicationSubmittedNotification;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 class OnlineApplicationController extends Controller
 {
-    public function dashboard()
+    /**
+     * Per-permit-type wiring for the client portal. Each staff module
+     * (ApplicationController, OccupancyApplicationController, ...) owns its
+     * own validation/persistence via persistApplication()/applyUpdate() and
+     * its own form.blade.php — the portal reuses both instead of duplicating
+     * ~3,850 lines of Blade and ~95 validation rules per type.
+     */
+    private const TYPES = [
+        'BP' => [
+            'model' => Application::class,
+            'controller' => ApplicationController::class,
+            'form_view' => 'applications.form',
+            'show_view' => 'applications.show',
+            'show_relations' => [
+                'permitType', 'applicationType', 'scopeOfWork', 'formOfOwnership',
+                'applicantProvince', 'applicantCity', 'applicantBarangay', 'buildingBarangay',
+                'landClassification', 'applicationOccupancyGroups.occupancyGroup',
+                'applicationOccupancyGroups.occupancySubGroup',
+                'assessments.assessmentItems', 'billings', 'collections', 'permits',
+            ],
+            'needs_permit_type' => true,
+            'occupancy_groups' => true,
+            'pdf_template' => 'pdf.application-form',
+        ],
+        'OP' => [
+            'model' => OccupancyApplication::class,
+            'controller' => OccupancyApplicationController::class,
+            'form_view' => 'occupancy-applications.form',
+            'show_view' => 'occupancy-applications.show',
+            'show_relations' => [
+                'applicationType', 'formOfOwnership',
+                'applicantProvince', 'applicantCity', 'applicantBarangay', 'buildingBarangay',
+                'landClassification', 'applicationOccupancyGroups.occupancyGroup',
+                'applicationOccupancyGroups.occupancySubGroup',
+                'assessments.assessmentItems', 'billings', 'collections', 'permits',
+            ],
+            'needs_permit_type' => true,
+            'occupancy_groups' => true,
+            'pdf_template' => 'pdf.occupancy-application-form',
+        ],
+        'FP' => [
+            'model' => FencingApplication::class,
+            'controller' => FencingApplicationController::class,
+            'form_view' => 'fencing-applications.form',
+            'show_view' => 'fencing-applications.show',
+            'show_relations' => [
+                'formOfOwnership',
+                'applicantProvince', 'applicantCity', 'applicantBarangay', 'constructionBarangay',
+                'assessments.assessmentItems', 'billings', 'collections', 'permits',
+            ],
+            'needs_permit_type' => false,
+            'occupancy_groups' => false,
+            'pdf_template' => 'pdf.fencing-application-form',
+        ],
+        'DP' => [
+            'model' => DemolitionApplication::class,
+            'controller' => DemolitionApplicationController::class,
+            'form_view' => 'demolition-applications.form',
+            'show_view' => 'demolition-applications.show',
+            'show_relations' => [
+                'formOfOwnership',
+                'applicantProvince', 'applicantCity', 'applicantBarangay', 'demolitionBarangay',
+                'applicationOccupancyGroups.occupancyGroup', 'applicationOccupancyGroups.occupancySubGroup',
+                'assessments.assessmentItems', 'billings', 'collections', 'permits',
+            ],
+            'needs_permit_type' => false,
+            'occupancy_groups' => true,
+            'pdf_template' => 'pdf.demolition-application-form',
+        ],
+        'SGP' => [
+            'model' => SignageApplication::class,
+            'controller' => SignageApplicationController::class,
+            'form_view' => 'signage-applications.form',
+            'show_view' => 'signage-applications.show',
+            'show_relations' => [
+                'applicantProvince', 'applicantCity', 'applicantBarangay',
+                'assessments.assessmentItems', 'billings', 'collections', 'permits',
+            ],
+            'needs_permit_type' => false,
+            'occupancy_groups' => false,
+            'pdf_template' => 'pdf.signage-application-form',
+        ],
+        'AI' => [
+            'model' => AnnualInspectionApplication::class,
+            'controller' => AnnualInspectionApplicationController::class,
+            'form_view' => 'annual-inspection-applications.form',
+            'show_view' => 'annual-inspection-applications.show',
+            'show_relations' => [
+                'locationBarangay',
+                'assessments.assessmentItems', 'billings', 'collections', 'permits',
+                'annualInspectionPermitUnits.permit', 'equipmentItems',
+                'applicationOccupancyGroups.occupancyGroup', 'applicationOccupancyGroups.occupancySubGroup',
+            ],
+            'needs_permit_type' => false,
+            'occupancy_groups' => true,
+            'pdf_template' => 'pdf.annual-inspection-application-form',
+        ],
+    ];
+
+    private function typeMeta(string $type): ?array
     {
-        $user = Auth::user();
-
-        $bpApplications = Application::with('permitType')
-            ->where('client_user_id', $user->id)
-            ->latest()
-            ->get()
-            ->map(fn ($app) => (object) [
-                'id' => $app->id,
-                'type' => 'bp',
-                'application_number' => $app->application_number,
-                'applicant_full_name' => $app->applicant_full_name,
-                'permit_type_code' => 'BP',
-                'permit_type_name' => $app->permitType->name ?? 'Building Permit',
-                'project_title' => $app->project_title,
-                'status' => $app->status,
-                'created_at' => $app->created_at,
-                'model' => $app,
-            ]);
-
-        $opApplications = OccupancyApplication::where('client_user_id', $user->id)
-            ->latest()
-            ->get()
-            ->map(fn ($app) => (object) [
-                'id' => $app->id,
-                'type' => 'op',
-                'application_number' => $app->application_number,
-                'applicant_full_name' => $app->applicant_full_name,
-                'permit_type_code' => 'OP',
-                'permit_type_name' => 'Occupancy Permit',
-                'project_title' => $app->project_title,
-                'status' => $app->status,
-                'created_at' => $app->created_at,
-                'model' => $app,
-            ]);
-
-        $allApplications = $bpApplications->concat($opApplications)->sortByDesc('created_at');
-
-        $bpCount = Application::where('client_user_id', $user->id)->count();
-        $opCount = OccupancyApplication::where('client_user_id', $user->id)->count();
-
-        $bpPending = Application::where('client_user_id', $user->id)->whereNotIn('status', ['cancelled', 'released', 'permit_generated'])->count();
-        $opPending = OccupancyApplication::where('client_user_id', $user->id)->whereNotIn('status', ['cancelled', 'released', 'permit_generated'])->count();
-
-        $bpApproved = Application::where('client_user_id', $user->id)->whereIn('status', ['permit_generated', 'released'])->count();
-        $opApproved = OccupancyApplication::where('client_user_id', $user->id)->whereIn('status', ['permit_generated', 'released'])->count();
-
-        $stats = [
-            'total' => $bpCount + $opCount,
-            'pending' => $bpPending + $opPending,
-            'approved' => $bpApproved + $opApproved,
-        ];
-
-        $applications = $allApplications;
-
-        return view('online.dashboard', compact('applications', 'stats'));
+        return self::TYPES[strtoupper($type)] ?? null;
     }
 
-    public function create()
+    /** @return Application|OccupancyApplication|FencingApplication|DemolitionApplication|SignageApplication|AnnualInspectionApplication */
+    private function resolveModel(string $type, int $id)
     {
-        // DP/SGP/FP/AI are active for staff use but not yet offered for client online self-service.
-        $permitTypes = PermitType::where('is_active', true)->whereNotIn('code', ['DP', 'SGP', 'FP', 'AI'])->get();
-        $applicationTypes = ApplicationType::where('is_active', true)->orderBy('sort_order')->get()->groupBy('permit_type_id');
-        $scopeOfWorks = ScopeOfWork::where('is_active', true)->orderBy('sort_order')->get();
-        $formOfOwnerships = FormOfOwnership::where('is_active', true)->get();
-        $provinces = Province::where('is_active', true)->orderBy('name')->get();
-        $cities = City::where('is_active', true)->orderBy('name')->get();
-        $barangays = Barangay::where('is_active', true)->orderBy('name')->get();
-        $occupancyGroups = OccupancyGroup::with('subGroups')->where('is_active', true)->orderBy('sort_order')->get();
-        $landClassifications = LandClassification::where('is_active', true)->get();
+        $meta = $this->typeMeta($type);
+        abort_unless($meta, 404);
 
-        return view('online.apply', compact(
-            'permitTypes', 'applicationTypes', 'scopeOfWorks', 'formOfOwnerships',
-            'provinces', 'cities', 'barangays', 'occupancyGroups', 'landClassifications'
-        ));
+        $model = $meta['model']::findOrFail($id);
+        abort_if($model->client_user_id !== Auth::id(), 403);
+
+        return $model;
+    }
+
+    public function dashboard(Request $request)
+    {
+        $user = Auth::user();
+        $applications = collect();
+
+        foreach (self::TYPES as $code => $meta) {
+            $rows = $meta['model']::where('client_user_id', $user->id)->latest()->get();
+
+            $applications = $applications->concat($rows->map(function ($app) use ($code) {
+                $permit = $app->permits->sortByDesc('created_at')->first();
+                $tatStart = $app->submitted_at ?? $app->created_at;
+                $tatDays = $permit ? (int) floor($tatStart->diffInDays($permit->created_at, true)) : null;
+
+                return (object) [
+                    'id' => $app->id,
+                    'type' => strtolower($code),
+                    'application_number' => $app->application_number,
+                    'applicant_full_name' => $app->applicant_full_name ?: ($app->owner_name ?? ''),
+                    'permit_type_code' => $code,
+                    'permit_type_name' => $app->permitType->name ?? PermitType::where('code', $code)->value('name') ?? $code,
+                    'project_title' => $app->project_title ?? null,
+                    'status' => $app->status,
+                    'review_remarks' => $app->review_remarks,
+                    'created_at' => $app->created_at,
+                    'tat_days' => $tatDays,
+                    'model' => $app,
+                ];
+            }));
+        }
+
+        $applications = $applications->sortByDesc('created_at')->values();
+
+        $stats = [
+            'total' => $applications->count(),
+            'pending' => $applications->whereNotIn('status', ['cancelled', 'released', 'permit_generated'])->count(),
+            'returned' => $applications->where('status', 'returned')->count(),
+            'approved' => $applications->whereIn('status', ['permit_generated', 'released'])->count(),
+        ];
+
+        $statusFilter = $request->query('status');
+        $statusOptions = $applications->pluck('status')->unique()->values();
+
+        if ($statusFilter) {
+            $applications = $applications->where('status', $statusFilter)->values();
+        }
+
+        return view('online.dashboard', compact('applications', 'stats', 'statusFilter', 'statusOptions'));
+    }
+
+    /**
+     * Permit-type chooser (no ?type=) or the actual staff form.blade.php
+     * rendered with portal-mode variables (see Phase 2 of the online-portal
+     * rollout — every module's form.blade.php reads $portal/$formAction/
+     * $indexUrl/$indexLabel/$homeUrl, defaulting to staff behaviour when
+     * absent).
+     */
+    public function create(Request $request)
+    {
+        $type = strtoupper((string) $request->query('type', ''));
+        $meta = $this->typeMeta($type);
+
+        if (! $meta) {
+            $permitTypes = PermitType::where('is_active', true)
+                ->whereIn('code', array_keys(self::TYPES))
+                ->get();
+
+            return view('online.apply', compact('permitTypes'));
+        }
+
+        $ctrl = app($meta['controller']);
+        $permitType = PermitType::where('code', $type)->where('is_active', true)->firstOrFail();
+
+        $data = $meta['needs_permit_type'] ? $ctrl->getFormData($permitType->id) : $ctrl->getFormData();
+        $data['application'] = null;
+        if ($type === 'BP') {
+            $data['permitType'] = $permitType;
+        }
+
+        return view($meta['form_view'], $this->portalViewVars($data, $type, route('online.store', ['type' => $type])));
     }
 
     public function store(Request $request)
     {
-        $permitTypeId = $request->input('permit_type_id');
-        $permitType = PermitType::findOrFail($permitTypeId);
+        $type = strtoupper((string) ($request->input('_type') ?? $request->query('type', '')));
+        $meta = $this->typeMeta($type);
+        abort_unless($meta, 404);
 
-        if (in_array($permitType->code, ['DP', 'SGP', 'FP', 'AI'])) {
-            abort(403, $permitType->name . ' applications are not yet available for online submission.');
-        }
+        $ctrl = app($meta['controller']);
 
-        if ($permitType->code === 'OP') {
-            return $this->storeOp($request, $permitType);
-        }
-
-        return $this->storeBp($request, $permitType);
-    }
-
-    private function storeBp(Request $request, PermitType $permitType)
-    {
-        $validated = $request->validate([
-            'permit_type_id' => 'required|exists:permit_types,id',
-            'application_type_id' => 'required|exists:application_types,id',
-            'applicant_first_name' => 'required|string|max:255',
-            'applicant_last_name' => 'required|string|max:255',
-            'applicant_contact_no' => 'nullable|string|max:20',
-            'applicant_email' => 'nullable|email|max:255',
-            'project_title' => 'nullable|string|max:255',
-            'scope_of_work_id' => 'nullable|exists:scope_of_works,id',
-            'building_cost' => 'nullable|numeric|min:0',
-            'electrical_cost' => 'nullable|numeric|min:0',
-            'mechanical_cost' => 'nullable|numeric|min:0',
-            'electronics_cost' => 'nullable|numeric|min:0',
-            'plumbing_cost' => 'nullable|numeric|min:0',
-            'other_equipment_cost' => 'nullable|numeric|min:0',
-        ]);
-
-        DB::beginTransaction();
         try {
-            $counter = Application::where('permit_type_id', $permitType->id)
-                    ->where('app_year', now()->year)
-                    ->where('app_month', now()->month)
-                    ->count() + 1;
-
-            $appNumber = sprintf('BP-%s-%s-%05d', now()->format('Y'), now()->format('m'), $counter);
-
-            $application = Application::create(array_merge($validated, [
-                'app_year' => now()->year,
-                'app_month' => now()->month,
-                'app_counter' => $counter,
-                'application_number' => $appNumber,
-                'status' => 'for_zoning_assessment',
+            $application = $ctrl->persistApplication($request, [
+                'status' => 'draft',
                 'source' => 'online',
                 'entered_by' => Auth::id(),
                 'client_user_id' => Auth::id(),
-                'applicant_email' => Auth::user()->email,
-                'submitted_at' => now(),
-                'total_estimated_cost' => ($validated['building_cost'] ?? 0) + ($validated['electrical_cost'] ?? 0) +
-                    ($validated['mechanical_cost'] ?? 0) + ($validated['electronics_cost'] ?? 0) +
-                    ($validated['plumbing_cost'] ?? 0) + ($validated['other_equipment_cost'] ?? 0),
-            ]));
-
-            DB::commit();
-            return redirect()->route('online.show', $application)->with('success', "Application {$appNumber} created.");
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
-            DB::rollBack();
-            return back()->withInput()->with('error', 'Failed: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Failed to create application: ' . $e->getMessage());
         }
+
+        return redirect()->route('online.show', ['type' => $type, 'id' => $application->id])
+            ->with('success', "Application {$application->application_number} saved as draft. Review it and click Submit when you're ready.");
     }
 
-    private function storeOp(Request $request, PermitType $permitType)
+    public function edit(string $type, int $id)
     {
-        $validated = $request->validate([
-            'permit_type_id' => 'required|exists:permit_types,id',
-            'application_type_id' => 'required|exists:application_types,id',
-            'applicant_first_name' => 'required|string|max:255',
-            'applicant_last_name' => 'required|string|max:255',
-            'applicant_contact_no' => 'nullable|string|max:20',
-            'applicant_email' => 'nullable|email|max:255',
-            'bp_number' => 'nullable|string|max:30',
-            'bp_issued_date' => 'nullable|date',
+        $meta = $this->typeMeta($type);
+        abort_unless($meta, 404);
+
+        $model = $this->resolveModel($type, $id);
+        abort_unless(in_array($model->status, ['draft', 'returned'], true), 403);
+
+        if ($meta['occupancy_groups']) {
+            $model->load('applicationOccupancyGroups');
+        }
+
+        $ctrl = app($meta['controller']);
+        $permitType = PermitType::where('code', $type)->where('is_active', true)->first();
+
+        $data = $meta['needs_permit_type'] ? $ctrl->getFormData($permitType->id) : $ctrl->getFormData();
+        $data['application'] = $model;
+        if ($type === 'BP') {
+            $data['permitType'] = $model->permitType;
+        }
+
+        return view($meta['form_view'], $this->portalViewVars($data, $type, route('online.update', ['type' => $type, 'id' => $model->id])));
+    }
+
+    public function update(Request $request, string $type, int $id)
+    {
+        $meta = $this->typeMeta($type);
+        abort_unless($meta, 404);
+
+        $model = $this->resolveModel($type, $id);
+        abort_unless(in_array($model->status, ['draft', 'returned'], true), 403);
+
+        $ctrl = app($meta['controller']);
+
+        try {
+            $ctrl->applyUpdate($request, $model);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Failed to update application: ' . $e->getMessage());
+        }
+
+        return redirect()->route('online.show', ['type' => $type, 'id' => $model->id])
+            ->with('success', 'Application updated successfully.');
+    }
+
+    public function submit(Request $request, string $type, int $id)
+    {
+        $this->typeMeta($type) ?? abort(404);
+        $model = $this->resolveModel($type, $id);
+
+        if (! in_array($model->status, ['draft', 'returned'], true)) {
+            return back()->with('error', 'Only draft or returned applications can be submitted.');
+        }
+
+        if ($model->applicationRequirements()->count() === 0) {
+            return back()->with('error', 'Please upload at least one required document before submitting this application for review.');
+        }
+
+        $model->update([
+            'status' => 'pending_approval',
+            'submitted_at' => now(),
+            'review_remarks' => null,
         ]);
 
-        // Remove permit_type_id from validated (not in occupancy_applications table)
-        unset($validated['permit_type_id']);
+        activity()->causedBy(Auth::user())->performedOn($model)
+            ->log('Application submitted online — awaiting Engineering approval');
 
-        DB::beginTransaction();
-        try {
-            $counter = OccupancyApplication::where('app_year', now()->year)
-                    ->where('app_month', now()->month)
-                    ->count() + 1;
+        $engineeringUsers = User::role(['engineering-officer', 'engineering-staff'])->get();
+        Notification::send($engineeringUsers, new ApplicationSubmittedNotification($model));
 
-            $appNumber = sprintf('OP-%s-%s-%05d', now()->format('Y'), now()->format('m'), $counter);
-
-            $application = OccupancyApplication::create(array_merge($validated, [
-                'app_year' => now()->year,
-                'app_month' => now()->month,
-                'app_counter' => $counter,
-                'application_number' => $appNumber,
-                'status' => 'submitted',
-                'source' => 'online',
-                'entered_by' => Auth::id(),
-                'client_user_id' => Auth::id(),
-                'applicant_email' => Auth::user()->email,
-                'submitted_at' => now(),
-            ]));
-
-            DB::commit();
-            return redirect()->route('online.show.op', $application)->with('success', "Application {$appNumber} created.");
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return back()->withInput()->with('error', 'Failed: ' . $e->getMessage());
-        }
+        return redirect()->route('online.show', ['type' => $type, 'id' => $model->id])
+            ->with('success', 'Application submitted. Engineering will review it shortly.');
     }
 
-    // BP show
-    public function show(Application $application)
+    public function show(string $type, int $id)
     {
-        abort_if($application->client_user_id !== Auth::id(), 403);
-        $application->load('permitType', 'applicationRequirements', 'permits', 'collections');
-        return view('online.show', compact('application'));
+        $meta = $this->typeMeta($type);
+        abort_unless($meta, 404);
+        $model = $this->resolveModel($type, $id);
+
+        $model->load(array_merge($meta['show_relations'], ['applicationRequirements']));
+
+        return view($meta['show_view'], [
+            'application' => $model,
+            'applicationType' => strtoupper($type),
+            'portal' => 'client',
+        ]);
     }
 
-    // OP show
-    public function showOp(OccupancyApplication $occupancyApplication)
+    public function uploadRequirements(string $type, int $id)
     {
-        abort_if($occupancyApplication->client_user_id !== Auth::id(), 403);
-        $occupancyApplication->load('applicationType', 'applicationRequirements', 'permits', 'collections');
-        $application = $occupancyApplication;
-        return view('online.show', compact('application'));
+        $this->typeMeta($type) ?? abort(404);
+        $model = $this->resolveModel($type, $id);
+
+        $application = $model;
+        $applicationType = $type;
+        $requirements = $model->applicationRequirements;
+
+        return view('online.upload', compact('application', 'applicationType', 'requirements'));
     }
 
-    // BP upload
-    public function uploadRequirements(Application $application)
+    public function storeRequirement(Request $request, string $type, int $id)
     {
-        abort_if($application->client_user_id !== Auth::id(), 403);
-        $requirements = $application->applicationRequirements;
-        return view('online.upload', compact('application', 'requirements'));
-    }
-
-    // OP upload
-    public function uploadRequirementsOp(OccupancyApplication $occupancyApplication)
-    {
-        abort_if($occupancyApplication->client_user_id !== Auth::id(), 403);
-        $requirements = $occupancyApplication->applicationRequirements;
-        $application = $occupancyApplication;
-        return view('online.upload', compact('application', 'requirements'));
-    }
-
-    // BP store requirement
-    public function storeRequirement(Request $request, Application $application)
-    {
-        return $this->doStoreRequirement($request, $application);
-    }
-
-    // OP store requirement
-    public function storeRequirementOp(Request $request, OccupancyApplication $occupancyApplication)
-    {
-        return $this->doStoreRequirement($request, $occupancyApplication);
-    }
-
-    private function doStoreRequirement(Request $request, $application)
-    {
-        abort_if($application->client_user_id !== Auth::id(), 403);
+        $this->typeMeta($type) ?? abort(404);
+        $model = $this->resolveModel($type, $id);
 
         $request->validate([
             'requirement_name' => 'required|string|max:255',
             'file' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png',
         ]);
 
-        $path = $request->file('file')->store('requirements/' . $application->id, 'public');
+        $path = $request->file('file')->store('requirements/' . strtolower($type) . '-' . $model->id, 'public');
 
-        $application->applicationRequirements()->create([
+        $model->applicationRequirements()->create([
             'requirement_name' => $request->requirement_name,
             'file_path' => $path,
             'original_filename' => $request->file('file')->getClientOriginalName(),
@@ -279,84 +366,67 @@ class OnlineApplicationController extends Controller
         return back()->with('success', 'Requirement uploaded.');
     }
 
-    // BP track
-    public function track(Application $application)
+    public function track(string $type, int $id)
     {
-        abort_if($application->client_user_id !== Auth::id(), 403);
-        $application->load('permitType', 'collections', 'permits');
-        return $this->doTrack($application, true);
-    }
+        $this->typeMeta($type) ?? abort(404);
+        $model = $this->resolveModel($type, $id);
+        $model->load('permits', 'collections');
 
-    // OP track
-    public function trackOp(OccupancyApplication $occupancyApplication)
-    {
-        abort_if($occupancyApplication->client_user_id !== Auth::id(), 403);
-        $occupancyApplication->load('applicationType', 'collections', 'permits');
-        return $this->doTrack($occupancyApplication, false);
-    }
+        $usesZoning = $type === 'BP';
 
-    private function doTrack($application, bool $includeZoning)
-    {
         $timeline = [
-            ['status' => 'draft', 'label' => 'Application Created', 'date' => $application->created_at],
+            ['status' => 'draft', 'label' => 'Application Created', 'date' => $model->created_at],
         ];
 
-        if ($includeZoning) {
-            $timeline[] = ['status' => 'for_zoning_assessment', 'label' => 'For Zoning Assessment', 'date' => $application->submitted_at];
+        if ($model->status === 'returned' || $model->review_remarks) {
+            $timeline[] = ['status' => 'returned', 'label' => 'Returned for Revision', 'date' => $model->updated_at];
+        }
+
+        $timeline[] = ['status' => 'pending_approval', 'label' => 'Submitted — Awaiting Engineering Approval', 'date' => $model->submitted_at];
+
+        if ($usesZoning) {
+            $timeline[] = ['status' => 'for_zoning_assessment', 'label' => 'For Zoning Assessment', 'date' => $model->approved_at];
             $timeline[] = ['status' => 'zoning_assessed', 'label' => 'Zoning Assessed', 'date' => null];
         } else {
-            $timeline[] = ['status' => 'submitted', 'label' => 'Submitted', 'date' => $application->submitted_at];
+            $timeline[] = ['status' => 'submitted', 'label' => 'Approved — Routed to Engineering Assessment', 'date' => $model->approved_at];
         }
 
         $timeline = array_merge($timeline, [
-            ['status' => 'engineering_assessed', 'label' => 'Engineering Assessed', 'date' => $application->assessed_at],
+            ['status' => 'engineering_assessed', 'label' => 'Engineering Assessed', 'date' => $model->assessed_at],
             ['status' => 'billed', 'label' => 'Billed', 'date' => null],
-            ['status' => 'paid', 'label' => 'Payment Received', 'date' => $application->paid_at],
+            ['status' => 'paid', 'label' => 'Payment Received', 'date' => $model->paid_at],
             ['status' => 'permit_generated', 'label' => 'Permit Generated', 'date' => null],
-            ['status' => 'released', 'label' => 'Released', 'date' => $application->released_at],
+            ['status' => 'released', 'label' => 'Released', 'date' => $model->released_at],
         ]);
 
-        return view('online.track', compact('application', 'timeline'));
+        $application = $model;
+        $applicationType = $type;
+
+        return view('online.track', compact('application', 'applicationType', 'timeline'));
     }
 
-    // BP download permit
-    public function downloadPermit(Application $application)
+    public function downloadPermit(string $type, int $id)
     {
-        abort_if($application->client_user_id !== Auth::id(), 403);
-        return $this->doDownloadPermit($application, 'BP');
-    }
+        $this->typeMeta($type) ?? abort(404);
+        $model = $this->resolveModel($type, $id);
 
-    // OP download permit
-    public function downloadPermitOp(OccupancyApplication $occupancyApplication)
-    {
-        abort_if($occupancyApplication->client_user_id !== Auth::id(), 403);
-        return $this->doDownloadPermit($occupancyApplication, 'OP');
-    }
+        $permit = $model->permits()->latest()->first();
 
-    private function doDownloadPermit($application, string $permitCode)
-    {
-        $permit = $application->permits()->latest()->first();
-
-        if (!$permit) {
+        if (! $permit) {
             return back()->with('error', 'Permit not yet generated.');
         }
 
-        $application->load(
-            'applicantBarangay', 'buildingBarangay',
-            'applicationOccupancyGroups.occupancyGroup', 'applicationOccupancyGroups.occupancySubGroup',
-            'collections.collectionDetails'
-        );
-
-        if ($application instanceof Application) {
-            $application->load('permitType', 'scopeOfWork');
+        $model->load('applicationRequirements', 'collections.collectionDetails');
+        if ($type === 'BP') {
+            $model->load('applicantBarangay', 'buildingBarangay', 'applicationOccupancyGroups.occupancyGroup', 'applicationOccupancyGroups.occupancySubGroup', 'permitType', 'scopeOfWork');
         }
 
-        $signatories = \App\Models\Signatory::where('is_active', true)->get()->keyBy('role');
-        $template = $permitCode === 'OP' ? 'pdf.occupancy-permit' : 'pdf.building-permit';
+        $signatories = Signatory::where('is_active', true)->get()->keyBy('role');
+        $template = $type === 'OP' ? 'pdf.occupancy-permit' : 'pdf.building-permit';
 
-        $settings = \App\Models\Setting::general();
-        $sealImage = \App\Models\Setting::imageDataUri($settings, 'general.logo');
-        $dpwhLogo = \App\Models\Setting::imageDataUri($settings, 'general.dpwh_logo');
+        $settings = Setting::general();
+        $sealImage = Setting::imageDataUri($settings, 'general.logo');
+        $dpwhLogo = Setting::imageDataUri($settings, 'general.dpwh_logo');
         if (! $dpwhLogo) {
             $dpwhLogoPath = public_path('images/dpwh-logo.png');
             if (file_exists($dpwhLogoPath)) {
@@ -373,9 +443,41 @@ class OnlineApplicationController extends Controller
         );
         $qrImage = (new \Endroid\QrCode\Writer\PngWriter())->write($qrCode)->getDataUri();
 
+        $application = $model;
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($template, compact('permit', 'application', 'signatories', 'settings', 'sealImage', 'dpwhLogo', 'qrImage'));
         $pdf->setPaper('a4', 'landscape');
 
         return $pdf->download("permit_{$permit->permit_number}.pdf");
+    }
+
+    /**
+     * Print the filled-in application form itself. Gated to applications
+     * that have passed Engineering review (approved_at set) so unapproved
+     * forms don't circulate.
+     */
+    public function printForm(string $type, int $id)
+    {
+        $meta = $this->typeMeta($type);
+        abort_unless($meta, 404);
+
+        $model = $this->resolveModel($type, $id);
+        abort_unless($model->approved_at !== null, 403);
+
+        $ctrl = app($meta['controller']);
+        abort_unless(method_exists($ctrl, 'printForm'), 404);
+
+        return $ctrl->printForm($model);
+    }
+
+    private function portalViewVars(array $data, string $type, string $formAction): array
+    {
+        $data['portal'] = 'client';
+        $data['formAction'] = $formAction;
+        $data['indexUrl'] = route('online.dashboard');
+        $data['indexLabel'] = 'My Applications';
+        $data['homeUrl'] = route('online.dashboard');
+        $data['homeLabel'] = 'My Applications';
+
+        return $data;
     }
 }

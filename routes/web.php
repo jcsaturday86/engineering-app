@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ApplicationController;
+use App\Http\Controllers\ApplicationReviewController;
 use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
@@ -138,6 +139,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/{signageApplication}/submit', [SignageApplicationController::class, 'submit'])->name('submit')->middleware('can:submit-applications');
         Route::post('/{signageApplication}/cancel', [SignageApplicationController::class, 'cancel'])->name('cancel')->middleware('can:cancel-applications');
         Route::post('/{signageApplication}/revert-submission', [SignageApplicationController::class, 'revertSubmission'])->name('revertSubmission')->middleware('can:revert-submission');
+        Route::get('/{signageApplication}/print', [SignageApplicationController::class, 'printForm'])->name('print')->middleware('can:view-applications');
     });
 
     // Fencing Permit Applications (FP)
@@ -166,6 +168,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/{annualInspectionApplication}/submit', [AnnualInspectionApplicationController::class, 'submit'])->name('submit')->middleware('can:submit-applications');
         Route::post('/{annualInspectionApplication}/cancel', [AnnualInspectionApplicationController::class, 'cancel'])->name('cancel')->middleware('can:cancel-applications');
         Route::post('/{annualInspectionApplication}/revert-submission', [AnnualInspectionApplicationController::class, 'revertSubmission'])->name('revertSubmission')->middleware('can:revert-submission');
+        Route::get('/{annualInspectionApplication}/print', [AnnualInspectionApplicationController::class, 'printForm'])->name('print')->middleware('can:view-applications');
     });
 
     // Zoning Assessment (Planning Office) — BP only
@@ -335,6 +338,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/audit-logs', [ReportController::class, 'auditLogs'])->middleware('can:view-audit-logs')->name('audit-logs');
     });
 
+    // Application Review (Engineering approve/disapprove of online submissions)
+    Route::prefix('application-review')->name('application-review.')->middleware('can:approve-applications')->group(function () {
+        Route::get('/', [ApplicationReviewController::class, 'index'])->name('index');
+        Route::post('/{type}/{id}/approve', [ApplicationReviewController::class, 'approve'])->name('approve');
+        Route::post('/{type}/{id}/disapprove', [ApplicationReviewController::class, 'disapprove'])->name('disapprove')->middleware('can:reject-applications');
+    });
+
     // Settings (Admin)
     Route::prefix('settings')->name('settings.')->middleware('can:manage-settings')->group(function () {
         Route::get('/', [SettingsController::class, 'index'])->name('index');
@@ -404,23 +414,22 @@ Route::middleware('auth')->group(function () {
         Route::post('/signatories/{signatory}', [SettingsController::class, 'updateSignatory'])->name('signatories.update')->middleware('can:manage-signatories');
     });
 
-    // Online Application Portal (Clients)
+    // Online Application Portal (Clients) — one type-generic route set for all
+    // 6 permit types (BP/OP/FP/DP/SGP/AI), resolved via OnlineApplicationController::TYPES.
     Route::prefix('online')->name('online.')->middleware('can:online-apply')->group(function () {
         Route::get('/dashboard', [OnlineApplicationController::class, 'dashboard'])->name('dashboard');
         Route::get('/apply', [OnlineApplicationController::class, 'create'])->name('apply');
         Route::post('/apply', [OnlineApplicationController::class, 'store'])->name('store');
-        // BP application routes
-        Route::get('/application/{application}', [OnlineApplicationController::class, 'show'])->name('show');
-        Route::get('/application/{application}/upload', [OnlineApplicationController::class, 'uploadRequirements'])->name('upload');
-        Route::post('/application/{application}/upload', [OnlineApplicationController::class, 'storeRequirement'])->name('upload.store');
-        Route::get('/application/{application}/track', [OnlineApplicationController::class, 'track'])->name('track');
-        Route::get('/application/{application}/download', [OnlineApplicationController::class, 'downloadPermit'])->name('download');
-        // OP application routes
-        Route::get('/application/op/{occupancyApplication}', [OnlineApplicationController::class, 'showOp'])->name('show.op');
-        Route::get('/application/op/{occupancyApplication}/upload', [OnlineApplicationController::class, 'uploadRequirementsOp'])->name('upload.op');
-        Route::post('/application/op/{occupancyApplication}/upload', [OnlineApplicationController::class, 'storeRequirementOp'])->name('upload.store.op');
-        Route::get('/application/op/{occupancyApplication}/track', [OnlineApplicationController::class, 'trackOp'])->name('track.op');
-        Route::get('/application/op/{occupancyApplication}/download', [OnlineApplicationController::class, 'downloadPermitOp'])->name('download.op');
+
+        Route::get('/application/{type}/{id}', [OnlineApplicationController::class, 'show'])->name('show');
+        Route::get('/application/{type}/{id}/edit', [OnlineApplicationController::class, 'edit'])->name('edit');
+        Route::put('/application/{type}/{id}', [OnlineApplicationController::class, 'update'])->name('update');
+        Route::post('/application/{type}/{id}/submit', [OnlineApplicationController::class, 'submit'])->name('submit');
+        Route::get('/application/{type}/{id}/upload', [OnlineApplicationController::class, 'uploadRequirements'])->name('upload')->middleware('can:online-upload');
+        Route::post('/application/{type}/{id}/upload', [OnlineApplicationController::class, 'storeRequirement'])->name('upload.store')->middleware('can:online-upload');
+        Route::get('/application/{type}/{id}/track', [OnlineApplicationController::class, 'track'])->name('track')->middleware('can:online-track');
+        Route::get('/application/{type}/{id}/download', [OnlineApplicationController::class, 'downloadPermit'])->name('download')->middleware('can:online-download');
+        Route::get('/application/{type}/{id}/print', [OnlineApplicationController::class, 'printForm'])->name('print')->middleware('can:online-download');
     });
 });
 

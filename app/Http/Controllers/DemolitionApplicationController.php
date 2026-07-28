@@ -81,6 +81,28 @@ class DemolitionApplicationController extends Controller
 
     public function store(Request $request)
     {
+        try {
+            $application = $this->persistApplication($request, [
+                'status' => 'draft',
+                'source' => 'walk_in',
+                'entered_by' => Auth::id(),
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Failed to create application: ' . $e->getMessage());
+        }
+
+        return redirect()->route('demolition-applications.show', $application)
+            ->with('success', "Application {$application->application_number} created successfully.");
+    }
+
+    /**
+     * Validate and create a DemolitionApplication. Shared by the staff
+     * store() and the client online-portal submission.
+     */
+    public function persistApplication(Request $request, array $overrides = []): DemolitionApplication
+    {
         $request->validate([
             'occupancy_sub_groups' => 'required|array|min:1',
         ], [
@@ -90,8 +112,7 @@ class DemolitionApplicationController extends Controller
 
         $validated = $this->validateApplication($request);
 
-        DB::beginTransaction();
-        try {
+        return DB::transaction(function () use ($validated, $overrides, $request) {
             $counter = DB::table('demolition_applications')
                 ->where('app_year', now()->year)
                 ->where('app_month', now()->month)
@@ -106,21 +127,16 @@ class DemolitionApplicationController extends Controller
                 'app_month' => now()->month,
                 'app_counter' => $nextCounter,
                 'application_number' => $appNumber,
-                'status' => 'draft',
-                'source' => 'walk_in',
-                'entered_by' => Auth::id(),
+                'status' => $overrides['status'] ?? 'draft',
+                'source' => $overrides['source'] ?? 'walk_in',
+                'entered_by' => $overrides['entered_by'] ?? Auth::id(),
+                'client_user_id' => $overrides['client_user_id'] ?? null,
             ]));
 
             $this->saveOccupancyGroups($application, $request);
 
-            DB::commit();
-
-            return redirect()->route('demolition-applications.show', $application)
-                ->with('success', "Application {$appNumber} created successfully.");
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return back()->withInput()->with('error', 'Failed to create application: ' . $e->getMessage());
-        }
+            return $application;
+        });
     }
 
     public function show(DemolitionApplication $demolitionApplication)
@@ -148,6 +164,25 @@ class DemolitionApplicationController extends Controller
 
     public function update(Request $request, DemolitionApplication $demolitionApplication)
     {
+        try {
+            $this->applyUpdate($request, $demolitionApplication);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Failed to update application: ' . $e->getMessage());
+        }
+
+        return redirect()->route('demolition-applications.show', $demolitionApplication)
+            ->with('success', 'Application updated successfully.');
+    }
+
+    /**
+     * Validate and persist edits to an existing DemolitionApplication.
+     * Shared by the staff update() and the client online-portal
+     * edit/resubmit flow.
+     */
+    public function applyUpdate(Request $request, DemolitionApplication $demolitionApplication): void
+    {
         $request->validate([
             'occupancy_sub_groups' => 'required|array|min:1',
         ], [
@@ -157,21 +192,12 @@ class DemolitionApplicationController extends Controller
 
         $validated = $this->validateApplication($request);
 
-        DB::beginTransaction();
-        try {
+        DB::transaction(function () use ($demolitionApplication, $validated, $request) {
             $demolitionApplication->update($validated);
 
             $demolitionApplication->applicationOccupancyGroups()->delete();
             $this->saveOccupancyGroups($demolitionApplication, $request);
-
-            DB::commit();
-
-            return redirect()->route('demolition-applications.show', $demolitionApplication)
-                ->with('success', 'Application updated successfully.');
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return back()->withInput()->with('error', 'Failed to update application: ' . $e->getMessage());
-        }
+        });
     }
 
     public function submit(Request $request, DemolitionApplication $demolitionApplication)
@@ -294,7 +320,7 @@ class DemolitionApplicationController extends Controller
         ];
     }
 
-    private function getFormData(): array
+    public function getFormData(): array
     {
         $sfcCityId = City::where('name', 'like', '%SAN FERNANDO%')->where('province_id', 3)->value('id') ?? 71;
 
@@ -307,7 +333,7 @@ class DemolitionApplicationController extends Controller
         ];
     }
 
-    private function validateApplication(Request $request): array
+    public function validateApplication(Request $request): array
     {
         $validated = $request->validate([
             // Applicant

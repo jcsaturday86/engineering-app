@@ -78,10 +78,31 @@ class SignageApplicationController extends Controller
 
     public function store(Request $request)
     {
+        try {
+            $application = $this->persistApplication($request, [
+                'status' => 'draft',
+                'source' => 'walk_in',
+                'entered_by' => Auth::id(),
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Failed to create application: ' . $e->getMessage());
+        }
+
+        return redirect()->route('signage-applications.show', $application)
+            ->with('success', "Application {$application->application_number} created successfully.");
+    }
+
+    /**
+     * Validate and create a SignageApplication. Shared by the staff store()
+     * and the client online-portal submission.
+     */
+    public function persistApplication(Request $request, array $overrides = []): SignageApplication
+    {
         $validated = $this->validateApplication($request);
 
-        DB::beginTransaction();
-        try {
+        return DB::transaction(function () use ($validated, $overrides) {
             $counter = DB::table('signage_applications')
                 ->where('app_year', now()->year)
                 ->where('app_month', now()->month)
@@ -91,24 +112,17 @@ class SignageApplicationController extends Controller
             $nextCounter = ($counter ?? 0) + 1;
             $appNumber = sprintf('SGP-%s-%s-%05d', now()->format('Y'), now()->format('m'), $nextCounter);
 
-            $application = SignageApplication::create(array_merge($validated, [
+            return SignageApplication::create(array_merge($validated, [
                 'app_year' => now()->year,
                 'app_month' => now()->month,
                 'app_counter' => $nextCounter,
                 'application_number' => $appNumber,
-                'status' => 'draft',
-                'source' => 'walk_in',
-                'entered_by' => Auth::id(),
+                'status' => $overrides['status'] ?? 'draft',
+                'source' => $overrides['source'] ?? 'walk_in',
+                'entered_by' => $overrides['entered_by'] ?? Auth::id(),
+                'client_user_id' => $overrides['client_user_id'] ?? null,
             ]));
-
-            DB::commit();
-
-            return redirect()->route('signage-applications.show', $application)
-                ->with('success', "Application {$appNumber} created successfully.");
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return back()->withInput()->with('error', 'Failed to create application: ' . $e->getMessage());
-        }
+        });
     }
 
     public function show(SignageApplication $signageApplication)
@@ -134,20 +148,29 @@ class SignageApplicationController extends Controller
 
     public function update(Request $request, SignageApplication $signageApplication)
     {
-        $validated = $this->validateApplication($request);
-
-        DB::beginTransaction();
         try {
-            $signageApplication->update($validated);
-
-            DB::commit();
-
-            return redirect()->route('signage-applications.show', $signageApplication)
-                ->with('success', 'Application updated successfully.');
+            $this->applyUpdate($request, $signageApplication);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
-            DB::rollBack();
             return back()->withInput()->with('error', 'Failed to update application: ' . $e->getMessage());
         }
+
+        return redirect()->route('signage-applications.show', $signageApplication)
+            ->with('success', 'Application updated successfully.');
+    }
+
+    /**
+     * Validate and persist edits to an existing SignageApplication. Shared
+     * by the staff update() and the client online-portal edit/resubmit flow.
+     */
+    public function applyUpdate(Request $request, SignageApplication $signageApplication): void
+    {
+        $validated = $this->validateApplication($request);
+
+        DB::transaction(function () use ($signageApplication, $validated) {
+            $signageApplication->update($validated);
+        });
     }
 
     public function submit(Request $request, SignageApplication $signageApplication)
@@ -220,7 +243,51 @@ class SignageApplicationController extends Controller
         return redirect()->route('signage-applications.index')->with('warning', 'Application has been cancelled.');
     }
 
-    private function getFormData(): array
+    public function printForm(SignageApplication $signageApplication)
+    {
+        $signageApplication->load(['applicantProvince', 'applicantCity', 'applicantBarangay']);
+
+        $application = $signageApplication;
+
+        $settings = \App\Models\Setting::where('group', 'general')->pluck('value', 'key');
+        $sealImage = \App\Models\Setting::imageDataUri($settings, 'general.logo');
+        $nationalGovtLogo = \App\Models\Setting::imageDataUri($settings, 'general.national_govt_logo');
+        [$boTitle, $boName, $boDesignation] = $this->resolveBuildingOfficial($application);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.signage-application-form', compact('application', 'sealImage', 'nationalGovtLogo', 'settings', 'boTitle', 'boName', 'boDesignation'));
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->stream("sgp_application_{$application->application_number}.pdf");
+    }
+
+    /**
+     * Prefer the generated Permit's immutable building-official snapshot; fall back to the
+     * currently-active Building Official signatory when no Permit has been generated yet.
+     *
+     * @return array{0: string, 1: string, 2: string} [title, name, designation]
+     */
+    private function resolveBuildingOfficial(SignageApplication $application): array
+    {
+        $permit = $application->permits->first();
+
+        if ($permit) {
+            return [
+                $permit->building_official_title ?? '',
+                $permit->building_official_name ?? '',
+                $permit->building_official_designation ?? 'Building Official',
+            ];
+        }
+
+        $signatory = \App\Models\Signatory::where('role', 'building_official')->where('is_active', true)->first();
+
+        return [
+            $signatory?->title ?? '',
+            $signatory?->name ?? '',
+            $signatory?->designation ?? 'Building Official',
+        ];
+    }
+
+    public function getFormData(): array
     {
         $sfcCityId = City::where('name', 'like', '%SAN FERNANDO%')->where('province_id', 3)->value('id') ?? 71;
 
@@ -231,7 +298,7 @@ class SignageApplicationController extends Controller
         ];
     }
 
-    private function validateApplication(Request $request): array
+    public function validateApplication(Request $request): array
     {
         $validated = $request->validate([
             // Applicant

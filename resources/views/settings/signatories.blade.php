@@ -17,17 +17,35 @@
         <h2 class="text-xl font-bold text-gray-900">Signatories</h2>
     </div>
 
-    {{-- Signatories List --}}
-    <div class="space-y-4">
-        @forelse($signatories as $signatory)
-        <div x-data="{ editing: false }" class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    @php
+        $humanizeRole = fn (string $role) => ucwords(str_replace(['ai_', '_'], ['AI: ', ' '], $role));
+        [$coreSignatories, $aiSignatories] = $signatories->partition(fn ($s) => !str_starts_with($s->role, 'ai_'));
+    @endphp
+
+    <div x-data="{ q: '' }" class="space-y-6">
+        {{-- Search --}}
+        <div class="relative max-w-sm">
+            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+            <input type="text" x-model="q" placeholder="Search signatories by name or role..."
+                class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+
+        @foreach([['label' => 'Core Signatories', 'items' => $coreSignatories], ['label' => 'Annual Inspection Signatories', 'items' => $aiSignatories]] as $section)
+        @if($section['items']->isNotEmpty())
+        <div>
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{{ $section['label'] }}</h3>
+            {{-- Signatories List --}}
+            <div class="space-y-4">
+                @foreach($section['items'] as $signatory)
+                @php $roleLabel = $humanizeRole($signatory->role); @endphp
+                <div x-data="{ editing: false }" x-show="q === '' || {{ Js::from(strtolower($signatory->name . ' ' . $roleLabel)) }}.includes(q.toLowerCase())" class="bg-white rounded-xl border border-gray-200 overflow-hidden">
             {{-- Display Mode --}}
             <div x-show="!editing" class="p-6">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div class="flex-1">
                         <div class="flex items-center gap-3 mb-2">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
-                                {{ $signatory->role }}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700" title="{{ $signatory->role }}">
+                                {{ $roleLabel }}
                             </span>
                             @if($signatory->is_active)
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Active</span>
@@ -117,12 +135,18 @@
                 </form>
             </div>
         </div>
-        @empty
+                @endforeach
+            </div>
+        </div>
+        @endif
+        @endforeach
+
+        @if($signatories->isEmpty())
         <div class="bg-white rounded-xl border border-gray-200 p-12 text-center">
             <i class="fas fa-file-signature text-3xl text-gray-300 mb-3"></i>
             <p class="text-gray-400">No signatories configured</p>
         </div>
-        @endforelse
+        @endif
     </div>
 </div>
 @endsection

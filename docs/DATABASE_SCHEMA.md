@@ -172,7 +172,7 @@ Standard hierarchical geo tables with `psgc_code`, `name`, `is_active`. ~42K bar
 | Column Group | Columns |
 |-------------|---------|
 | **Identity** | id, permit_type_id (FK), application_type_id (FK), app_year, app_month, app_counter, application_number (unique), area_number |
-| **Status** | status (default: 'draft'), source (walk_in/online) |
+| **Status** | status (default: 'draft' — now includes `pending_approval`/`returned` for online-submitted applications awaiting or sent back from Engineering review, see `docs/WORKFLOWS.md`), source (walk_in/online), review_remarks (text, nullable — set by Engineering on disapproval via `ApplicationReviewController::disapprove()`, shown to the client and required before edit+resubmit) |
 | **Header** | complexity, applies_to |
 | **Applicant** | applicant_first/middle/last_name, suffix, tin, contact_no, email, govt_id, id_date_issued, id_place_issued, date_signed |
 | **Enterprise** | enterprise_name, form_of_ownership_id (FK) |
@@ -195,14 +195,14 @@ Standard hierarchical geo tables with `psgc_code`, `name`, `is_active`. ~42K bar
 
 ### `occupancy_applications` (Occupancy Permit only)
 
-Same structure as `applications` minus BP-specific columns (no cost fields, no engineer/PEE/SEW, no electrical, no scope_of_work, no complexity). Adds OP-specific: `bp_number`, `bp_issued_date`, `fsec_no`, `fsec_issued_date`, `fsic_no` (reference only — no BFP workflow), `applies_for` (full/partial select on the OP form — currently informational only; the printed Certificate of Occupancy's FULL/PARTIAL checkbox is actually driven by `applicationType->name`, since Full/Partial is also modeled as the OP `application_types` options), `completion_date`, `project_title`.
+Same structure as `applications` minus BP-specific columns (no cost fields, no engineer/PEE/SEW, no electrical, no scope_of_work, no complexity). Adds OP-specific: `bp_number`, `bp_issued_date`, `fsec_no`, `fsec_issued_date`, `fsic_no` (reference only — no BFP workflow), `applies_for` (full/partial select on the OP form — currently informational only; the printed Certificate of Occupancy's FULL/PARTIAL checkbox is actually driven by `applicationType->name`, since Full/Partial is also modeled as the OP `application_types` options), `completion_date`, `project_title`. Also carries the same `review_remarks` (text, nullable) column added to all 6 application tables for the Engineering-approval online workflow (see below).
 
 ### `demolition_applications` (Demolition Permit only)
 
 | Column Group | Columns |
 |-------------|---------|
 | **Identity** | id, application_type_id (FK), app_year, app_month, app_counter, application_number (unique, DP-YYYY-MM-NNNNN) |
-| **Status** | status (default: 'draft'), source (walk_in/online) |
+| **Status** | status (default: 'draft' — incl. `pending_approval`/`returned`, see Online Application Workflow below), source (walk_in/online), review_remarks (text, nullable) |
 | **Applicant** | applicant_first/middle/last_name, applicant_tin, applicant_telephone |
 | **Enterprise** | owned_by_enterprise, enterprise_name, form_of_ownership_id (FK) |
 | **Applicant Address** | applicant_province/city/barangay_id (FK), applicant_street, applicant_zip_code, applicant_ctc_no, applicant_ctc_date_issued, applicant_ctc_place_issued |
@@ -222,7 +222,7 @@ A much simpler table than `demolition_applications` — no enterprise, CTC, insp
 | Column Group | Columns |
 |-------------|---------|
 | **Identity** | id, application_type_id (FK), app_year, app_month, app_counter, application_number (unique, SGP-YYYY-MM-NNNNN) |
-| **Status** | status (default: 'draft'), source (walk_in/online) |
+| **Status** | status (default: 'draft' — incl. `pending_approval`/`returned`, see Online Application Workflow below), source (walk_in/online), review_remarks (text, nullable) |
 | **Applicant** | applicant_first/middle/last_name |
 | **Applicant Address** | applicant_province/city/barangay_id (FK), applicant_street, applicant_zip_code |
 | **Scope of Work** | install (boolean), install_detail (text), attach (boolean), attach_detail (text), paint (boolean), paint_detail (text) — three independent checkboxes, each with its own detail textbox; at least one required |
@@ -241,7 +241,7 @@ Structurally closest to `demolition_applications` — has enterprise, design-pro
 | Column Group | Columns |
 |-------------|---------|
 | **Identity** | id, application_type_id (FK), app_year, app_month, app_counter, application_number (unique, FP-YYYY-MM-NNNNN) |
-| **Status** | status (default: 'draft'), source (walk_in/online) |
+| **Status** | status (default: 'draft' — incl. `pending_approval`/`returned`, see Online Application Workflow below), source (walk_in/online), review_remarks (text, nullable) |
 | **Applicant** | applicant_first/middle/last_name, applicant_tin, applicant_telephone |
 | **Enterprise** | owned_by_enterprise, enterprise_name, form_of_ownership_id (FK) |
 | **Applicant Address** | applicant_province/city/barangay_id (FK), applicant_street, applicant_zip_code, applicant_ctc_no, applicant_ctc_date_issued, applicant_ctc_issued_at |
@@ -262,7 +262,7 @@ Structurally closest to `demolition_applications` — has enterprise, design-pro
 | Column Group | Columns |
 |-------------|---------|
 | **Identity** | id, application_type_id (FK), app_year, app_month, app_counter, application_number (unique, AI-YYYY-MM-NNNNN) |
-| **Status** | status (default: 'draft'), source (walk_in/online) |
+| **Status** | status (default: 'draft' — incl. `pending_approval`/`returned`, see Online Application Workflow below), source (walk_in/online), review_remarks (text, nullable) |
 | **Application Kind** | application_kind (enum: new/yearly, default 'new') — Yearly = annual re-inspection; fee lookups otherwise identical between the two |
 | **Applicant** | owner_name (Name of Owner/Lessee — no separate first/middle/last split) |
 | **Location** | location_street (nullable), location_barangay_id (FK barangays) |
@@ -284,7 +284,16 @@ Structurally closest to `demolition_applications` — has enterprise, design-pro
 Polymorphic (`applicationable_type` / `applicationable_id`), `occupancy_group_id`, `occupancy_sub_group_id`, `others_text`. BP and OP allow **multiple** rows per application (multi-select checkbox grid). AI also populates this table (added later) but only ever writes **one** row per application — its Character of Occupancy field is a single-select radio group, not a checkbox grid, reusing the same table/relation rather than a schema change. DP, SGP, and FP still have no occupancy-group concept at all.
 
 ### `application_requirements`
-Polymorphic, `requirement_name`, `file_path`, `original_filename`, `status` (pending/approved/rejected), `reviewer_remarks`, `reviewed_by`, `reviewed_at`.
+Polymorphic, `requirement_name`, `file_path`, `original_filename`, `status` (pending/approved/rejected), `reviewer_remarks`, `reviewed_by`, `reviewed_at`. Now populated by the client portal for **all 6** permit types (previously online self-service only covered BP/OP) — `OnlineApplicationController::submit()` blocks submission with `back()->with('error', ...)` unless at least one requirement row exists for the application.
+
+---
+
+## Online Application Workflow (Client Portal) — Schema Notes
+
+- **`review_remarks`** (text, nullable) was added via migration `2026_07_28_104533_add_review_remarks_to_application_tables.php` to all 6 application tables (`applications`, `occupancy_applications`, `demolition_applications`, `signage_applications`, `fencing_applications`, `annual_inspection_applications`). Set by `ApplicationReviewController::disapprove()`, required whenever a client-submitted application is sent back with `status = returned`; cleared implicitly by the next resubmission (not explicitly nulled — a resubmit simply moves status forward again).
+- **`ApplicationStatus` enum** gained two new values: `pending_approval` (client submitted online, awaiting Engineering approve/disapprove) and `returned` (Engineering disapproved; client can edit and resubmit). See `docs/WORKFLOWS.md` for the full transition diagram.
+- **`applications.source`** (and the equivalent column on the other 5 tables) distinguishes `walk_in` from `online` — set by `OnlineApplicationController` overrides passed into each controller's shared `persistApplication()`/`applyUpdate()` methods.
+- 12 draft test applications (2 per permit type) plus several advanced through submit/approve/disapprove were created in the dev database this session via the real online submission code path, to exercise the portal end-to-end — real rows, not seeded fixtures; not part of the schema.
 
 ---
 
@@ -375,6 +384,6 @@ Registered in `AppServiceProvider`:
 | `fp` | `App\Models\FencingApplication` |
 | `ai` | `App\Models\AnnualInspectionApplication` (morph alias renamed from `mp` in the same migration that renamed the underlying table/model) |
 
-The 7 downstream tables (assessments, billings, collections, permits, documents, application_occupancy_groups, application_requirements) use `applicationable_type` + `applicationable_id` to reference BP, OP, DP, SGP, FP, or AI. DP/SGP/FP never populate `application_occupancy_groups`/`application_requirements` — no occupancy-group or document-upload concept on any of them. AI populates `application_occupancy_groups` (single row per application, via `HasPermitApplicationBehavior`'s generic `applicationOccupancyGroups()` relation — no new relation/migration needed) but still never populates `application_requirements`. Legacy `application_id` column is kept nullable for backward compatibility.
+The 7 downstream tables (assessments, billings, collections, permits, documents, application_occupancy_groups, application_requirements) use `applicationable_type` + `applicationable_id` to reference BP, OP, DP, SGP, FP, or AI. DP, SGP, and FP still have no occupancy-group concept (`application_occupancy_groups` stays empty for them). AI populates `application_occupancy_groups` (single row per application, via `HasPermitApplicationBehavior`'s generic `applicationOccupancyGroups()` relation — no new relation/migration needed). `application_requirements`, however, is now populated by **all 6** types when an application is created through the online client portal (`OnlineApplicationController`, rebuilt to cover all 6 permit types, not just BP/OP) — the earlier restriction to BP/OP no longer applies. Legacy `application_id` column is kept nullable for backward compatibility.
 
 Every controller/service that branches on permit type by `match ($application->getPermitTypeCode()) { 'OP' => 'op', 'DP' => 'dp', 'SGP' => 'sgp', 'FP' => 'fp', 'AI' => 'ai', default => 'bp' }` (or the reverse) must include all 6 arms — several of these `match()` blocks were found missing an `SGP` arm (silently falling through to `'bp'`/the BP route) during the SGP build, including one that had already been missing a `DP` arm since DP was first built (`BillingService::generateFor()`, `collections/index.blade.php`, `permits/index.blade.php`, `verify/permit.blade.php`); the same class of bug was proactively checked for and fixed when AI was added — `PermitController::doGenerate()`'s `$morphType` match had no `'AI'` arm at one point during the single-permit-generation switch, which would have silently created `Permit` rows pointing at the wrong parent table (`applicationable_type = 'bp'`) had it shipped.

@@ -89,6 +89,30 @@ class ApplicationController extends Controller
 
     public function store(Request $request)
     {
+        try {
+            $application = $this->persistApplication($request, [
+                'status' => 'draft',
+                'source' => 'walk_in',
+                'entered_by' => Auth::id(),
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Failed to create application: ' . $e->getMessage());
+        }
+
+        return redirect()->route('applications.show', $application)
+            ->with('success', "Application {$application->application_number} created successfully.");
+    }
+
+    /**
+     * Validate and create an Application. Shared by the staff store() and the
+     * client online-portal submission — $overrides carries status/source/
+     * entered_by/client_user_id so each caller controls those without
+     * duplicating the validation/number-generation/occupancy-group logic.
+     */
+    public function persistApplication(Request $request, array $overrides = []): Application
+    {
         $request->validate([
             'occupancy_sub_groups' => 'required|array|min:1',
         ], [
@@ -106,12 +130,12 @@ class ApplicationController extends Controller
 
         $permitType = PermitType::where('code', 'BP')->firstOrFail();
 
-        DB::beginTransaction();
-        try {
+        return DB::transaction(function () use ($validated, $permitType, $overrides, $request) {
             $counter = Application::where('permit_type_id', $permitType->id)
                     ->where('app_year', now()->year)
                     ->where('app_month', now()->month)
-                    ->count() + 1;
+                    ->lockForUpdate()
+                    ->max('app_counter') + 1;
 
             $appNumber = sprintf(
                 'BP-%s-%s-%05d',
@@ -126,22 +150,17 @@ class ApplicationController extends Controller
                 'app_month' => now()->month,
                 'app_counter' => $counter,
                 'application_number' => $appNumber,
-                'status' => 'draft',
-                'source' => 'walk_in',
-                'entered_by' => Auth::id(),
+                'status' => $overrides['status'] ?? 'draft',
+                'source' => $overrides['source'] ?? 'walk_in',
+                'entered_by' => $overrides['entered_by'] ?? Auth::id(),
+                'client_user_id' => $overrides['client_user_id'] ?? null,
                 'total_estimated_cost' => $this->calculateTotalEstimatedCost($validated),
             ]));
 
             $this->saveOccupancyGroups($application, $request);
 
-            DB::commit();
-
-            return redirect()->route('applications.show', $application)
-                ->with('success', "Application {$appNumber} created successfully.");
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return back()->withInput()->with('error', 'Failed to create application: ' . $e->getMessage());
-        }
+            return $application;
+        });
     }
 
     public function show(Application $application)
@@ -168,6 +187,24 @@ class ApplicationController extends Controller
 
     public function update(Request $request, Application $application)
     {
+        try {
+            $this->applyUpdate($request, $application);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Failed to update application: ' . $e->getMessage());
+        }
+
+        return redirect()->route('applications.show', $application)
+            ->with('success', 'Application updated successfully.');
+    }
+
+    /**
+     * Validate and persist edits to an existing Application. Shared by the
+     * staff update() and the client online-portal edit/resubmit flow.
+     */
+    public function applyUpdate(Request $request, Application $application): void
+    {
         $request->validate([
             'occupancy_sub_groups' => 'required|array|min:1',
         ], [
@@ -183,23 +220,14 @@ class ApplicationController extends Controller
 
         $validated['applies_to'] = $request->boolean('skip_locational') ? 'SKIP_LC' : '';
 
-        DB::beginTransaction();
-        try {
+        DB::transaction(function () use ($application, $validated, $request) {
             $validated['total_estimated_cost'] = $this->calculateTotalEstimatedCost($validated);
 
             $application->update($validated);
 
             $application->applicationOccupancyGroups()->delete();
             $this->saveOccupancyGroups($application, $request);
-
-            DB::commit();
-
-            return redirect()->route('applications.show', $application)
-                ->with('success', 'Application updated successfully.');
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return back()->withInput()->with('error', 'Failed to update application: ' . $e->getMessage());
-        }
+        });
     }
 
     public function submit(Request $request, Application $application)
@@ -500,7 +528,7 @@ class ApplicationController extends Controller
         ];
     }
 
-    private function getFormData(?int $permitTypeId = null): array
+    public function getFormData(?int $permitTypeId = null): array
     {
         $sfcCityId = City::where('name', 'like', '%SAN FERNANDO%')->where('province_id', 3)->value('id') ?? 71;
 
@@ -539,7 +567,7 @@ class ApplicationController extends Controller
             ($validated['equipment_cost_4'] ?? 0);
     }
 
-    private function validateApplication(Request $request): array
+    public function validateApplication(Request $request): array
     {
         return $request->validate([
             'application_type_id' => 'required|exists:application_types,id',

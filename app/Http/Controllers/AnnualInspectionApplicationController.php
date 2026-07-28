@@ -63,6 +63,28 @@ class AnnualInspectionApplicationController extends Controller
 
     public function store(Request $request)
     {
+        try {
+            $application = $this->persistApplication($request, [
+                'status' => 'draft',
+                'source' => 'walk_in',
+                'entered_by' => Auth::id(),
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Failed to create application: ' . $e->getMessage());
+        }
+
+        return redirect()->route('annual-inspection-applications.show', $application)
+            ->with('success', "Application {$application->application_number} created successfully.");
+    }
+
+    /**
+     * Validate and create an AnnualInspectionApplication. Shared by the
+     * staff store() and the client online-portal submission.
+     */
+    public function persistApplication(Request $request, array $overrides = []): AnnualInspectionApplication
+    {
         $request->validate([
             'occupancy_sub_group' => 'required|exists:occupancy_sub_groups,id',
         ], [
@@ -71,8 +93,7 @@ class AnnualInspectionApplicationController extends Controller
 
         $validated = $this->validateApplication($request);
 
-        DB::beginTransaction();
-        try {
+        return DB::transaction(function () use ($validated, $overrides, $request) {
             $counter = DB::table('annual_inspection_applications')
                 ->where('app_year', now()->year)
                 ->where('app_month', now()->month)
@@ -90,22 +111,17 @@ class AnnualInspectionApplicationController extends Controller
                 'app_month' => now()->month,
                 'app_counter' => $nextCounter,
                 'application_number' => $appNumber,
-                'status' => 'draft',
-                'source' => 'walk_in',
-                'entered_by' => Auth::id(),
+                'status' => $overrides['status'] ?? 'draft',
+                'source' => $overrides['source'] ?? 'walk_in',
+                'entered_by' => $overrides['entered_by'] ?? Auth::id(),
+                'client_user_id' => $overrides['client_user_id'] ?? null,
             ]));
 
             $this->syncEquipmentItems($application, $equipment);
             $this->saveOccupancyGroups($application, $request);
 
-            DB::commit();
-
-            return redirect()->route('annual-inspection-applications.show', $application)
-                ->with('success', "Application {$appNumber} created successfully.");
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return back()->withInput()->with('error', 'Failed to create application: ' . $e->getMessage());
-        }
+            return $application;
+        });
     }
 
     public function show(AnnualInspectionApplication $annualInspectionApplication)
@@ -133,6 +149,25 @@ class AnnualInspectionApplicationController extends Controller
 
     public function update(Request $request, AnnualInspectionApplication $annualInspectionApplication)
     {
+        try {
+            $this->applyUpdate($request, $annualInspectionApplication);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Failed to update application: ' . $e->getMessage());
+        }
+
+        return redirect()->route('annual-inspection-applications.show', $annualInspectionApplication)
+            ->with('success', 'Application updated successfully.');
+    }
+
+    /**
+     * Validate and persist edits to an existing AnnualInspectionApplication.
+     * Shared by the staff update() and the client online-portal
+     * edit/resubmit flow.
+     */
+    public function applyUpdate(Request $request, AnnualInspectionApplication $annualInspectionApplication): void
+    {
         $request->validate([
             'occupancy_sub_group' => 'required|exists:occupancy_sub_groups,id',
         ], [
@@ -144,23 +179,14 @@ class AnnualInspectionApplicationController extends Controller
         $equipment = $validated['equipment'] ?? [];
         unset($validated['equipment']);
 
-        DB::beginTransaction();
-        try {
+        DB::transaction(function () use ($annualInspectionApplication, $validated, $equipment, $request) {
             $annualInspectionApplication->update($validated);
 
             $this->syncEquipmentItems($annualInspectionApplication, $equipment);
 
             $annualInspectionApplication->applicationOccupancyGroups()->delete();
             $this->saveOccupancyGroups($annualInspectionApplication, $request);
-
-            DB::commit();
-
-            return redirect()->route('annual-inspection-applications.show', $annualInspectionApplication)
-                ->with('success', 'Application updated successfully.');
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return back()->withInput()->with('error', 'Failed to update application: ' . $e->getMessage());
-        }
+        });
     }
 
     public function submit(Request $request, AnnualInspectionApplication $annualInspectionApplication)
@@ -233,7 +259,51 @@ class AnnualInspectionApplicationController extends Controller
         return redirect()->route('annual-inspection-applications.index')->with('warning', 'Application has been cancelled.');
     }
 
-    private function getFormData(): array
+    public function printForm(AnnualInspectionApplication $annualInspectionApplication)
+    {
+        $annualInspectionApplication->load(['locationBarangay', 'equipmentItems']);
+
+        $application = $annualInspectionApplication;
+
+        $settings = \App\Models\Setting::where('group', 'general')->pluck('value', 'key');
+        $sealImage = \App\Models\Setting::imageDataUri($settings, 'general.logo');
+        $nationalGovtLogo = \App\Models\Setting::imageDataUri($settings, 'general.national_govt_logo');
+        [$boTitle, $boName, $boDesignation] = $this->resolveBuildingOfficial($application);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.annual-inspection-application-form', compact('application', 'sealImage', 'nationalGovtLogo', 'settings', 'boTitle', 'boName', 'boDesignation'));
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->stream("ai_application_{$application->application_number}.pdf");
+    }
+
+    /**
+     * Prefer the generated Permit's immutable building-official snapshot; fall back to the
+     * currently-active Building Official signatory when no Permit has been generated yet.
+     *
+     * @return array{0: string, 1: string, 2: string} [title, name, designation]
+     */
+    private function resolveBuildingOfficial(AnnualInspectionApplication $application): array
+    {
+        $permit = $application->permits->first();
+
+        if ($permit) {
+            return [
+                $permit->building_official_title ?? '',
+                $permit->building_official_name ?? '',
+                $permit->building_official_designation ?? 'Building Official',
+            ];
+        }
+
+        $signatory = \App\Models\Signatory::where('role', 'building_official')->where('is_active', true)->first();
+
+        return [
+            $signatory?->title ?? '',
+            $signatory?->name ?? '',
+            $signatory?->designation ?? 'Building Official',
+        ];
+    }
+
+    public function getFormData(): array
     {
         $sfcCityId = City::where('name', 'like', '%SAN FERNANDO%')->where('province_id', 3)->value('id') ?? 71;
 
@@ -244,7 +314,7 @@ class AnnualInspectionApplicationController extends Controller
         ];
     }
 
-    private function validateApplication(Request $request): array
+    public function validateApplication(Request $request): array
     {
         return $request->validate([
             'application_kind' => 'required|in:new,yearly',

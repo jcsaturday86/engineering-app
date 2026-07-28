@@ -3,9 +3,9 @@
 @section('title', $application ? 'Edit Application' : 'New Application')
 
 @section('breadcrumbs')
-    <a href="{{ route('dashboard') }}" class="text-gray-500 hover:text-gray-700">Dashboard</a>
+    <a href="{{ $homeUrl ?? route('dashboard') }}" class="text-gray-500 hover:text-gray-700">{{ $homeLabel ?? 'Dashboard' }}</a>
     <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
-    <a href="{{ route('applications.index') }}" class="text-gray-500 hover:text-gray-700">Applications</a>
+    <a href="{{ $indexUrl ?? route('applications.index') }}" class="text-gray-500 hover:text-gray-700">{{ $indexLabel ?? 'Applications' }}</a>
     <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
     <span class="text-gray-900 font-medium">
         {{ $application ? 'Edit ' . $application->application_number : 'New ' . $permitType->name . ' Application' }}
@@ -14,6 +14,8 @@
 
 @section('content')
 @php
+    $portal = $portal ?? 'staff';
+    $formAction = $formAction ?? ($application ? route('applications.update', $application) : route('applications.store'));
     $isBP = $permitType->code === 'BP';
     $isOP = $permitType->code === 'OP';
 
@@ -45,7 +47,7 @@
 
 <form
     method="POST"
-    action="{{ $application ? route('applications.update', $application) : route('applications.store') }}"
+    action="{{ $formAction }}"
     x-data="applicationForm()"
     onsubmit="return validateOccupancy();"
     autocomplete="off"
@@ -1097,7 +1099,7 @@
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                             <label for="total_connected_load" class="block text-xs font-medium text-gray-600 mb-1">Total Connected Load kVA <span class="text-red-500">*</span></label>
-                            <input type="number" name="total_connected_load" required id="total_connected_load" min="0" step="0.01"
+                            <input type="number" name="total_connected_load" :required="includeElectrical" id="total_connected_load" min="0" step="0.01"
                                 value="{{ old('total_connected_load', $application->total_connected_load ?? '') }}"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                             @error('total_connected_load')
@@ -1106,7 +1108,7 @@
                         </div>
                         <div>
                             <label for="total_transformer_capacity" class="block text-xs font-medium text-gray-600 mb-1">Total Transformer Capacity kVA <span class="text-red-500">*</span></label>
-                            <input type="number" name="total_transformer_capacity" required id="total_transformer_capacity" min="0" step="0.01"
+                            <input type="number" name="total_transformer_capacity" :required="includeElectrical" id="total_transformer_capacity" min="0" step="0.01"
                                 value="{{ old('total_transformer_capacity', $application->total_transformer_capacity ?? '') }}"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                             @error('total_transformer_capacity')
@@ -1115,7 +1117,7 @@
                         </div>
                         <div>
                             <label for="total_generator_capacity" class="block text-xs font-medium text-gray-600 mb-1">Total Generator/UPS Capacity kVA <span class="text-red-500">*</span></label>
-                            <input type="number" name="total_generator_capacity" required id="total_generator_capacity" min="0" step="0.01"
+                            <input type="number" name="total_generator_capacity" :required="includeElectrical" id="total_generator_capacity" min="0" step="0.01"
                                 value="{{ old('total_generator_capacity', $application->total_generator_capacity ?? '') }}"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                             @error('total_generator_capacity')
@@ -1132,7 +1134,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label for="pee_name" class="block text-xs font-medium text-gray-600 mb-1">Name <span class="text-red-500">*</span></label>
-                                <input type="text" name="pee_name" required id="pee_name"
+                                <input type="text" name="pee_name" :required="includeElectrical" id="pee_name"
                                     value="{{ old('pee_name', $application->pee_name ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('pee_name')
@@ -1141,7 +1143,7 @@
                             </div>
                             <div>
                                 <label for="pee_date_signed" class="block text-xs font-medium text-gray-600 mb-1">Date Signed <span class="text-red-500">*</span></label>
-                                <input type="date" name="pee_date_signed" required id="pee_date_signed"
+                                <input type="date" name="pee_date_signed" :required="includeElectrical" id="pee_date_signed"
                                     value="{{ old('pee_date_signed', optional($application->pee_date_signed ?? null)->format('Y-m-d')) }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('pee_date_signed')
@@ -1152,7 +1154,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label for="pee_prc_no" class="block text-xs font-medium text-gray-600 mb-1">PRC No. <span class="text-red-500">*</span></label>
-                                <input type="text" name="pee_prc_no" required id="pee_prc_no"
+                                <input type="text" name="pee_prc_no" :required="includeElectrical" id="pee_prc_no"
                                     value="{{ old('pee_prc_no', $application->pee_prc_no ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('pee_prc_no')
@@ -1161,7 +1163,7 @@
                             </div>
                             <div>
                                 <label for="pee_prc_validity" class="block text-xs font-medium text-gray-600 mb-1">PRC Validity <span class="text-red-500">*</span></label>
-                                <input type="date" name="pee_prc_validity" required id="pee_prc_validity"
+                                <input type="date" name="pee_prc_validity" :required="includeElectrical" id="pee_prc_validity"
                                     value="{{ old('pee_prc_validity', optional($application->pee_prc_validity ?? null)->format('Y-m-d')) }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('pee_prc_validity')
@@ -1172,7 +1174,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div>
                                 <label for="pee_ptr_no" class="block text-xs font-medium text-gray-600 mb-1">PTR No. <span class="text-red-500">*</span></label>
-                                <input type="text" name="pee_ptr_no" required id="pee_ptr_no"
+                                <input type="text" name="pee_ptr_no" :required="includeElectrical" id="pee_ptr_no"
                                     value="{{ old('pee_ptr_no', $application->pee_ptr_no ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('pee_ptr_no')
@@ -1181,7 +1183,7 @@
                             </div>
                             <div>
                                 <label for="pee_ptr_date_issued" class="block text-xs font-medium text-gray-600 mb-1">PTR Date Issued <span class="text-red-500">*</span></label>
-                                <input type="date" name="pee_ptr_date_issued" required id="pee_ptr_date_issued"
+                                <input type="date" name="pee_ptr_date_issued" :required="includeElectrical" id="pee_ptr_date_issued"
                                     value="{{ old('pee_ptr_date_issued', optional($application->pee_ptr_date_issued ?? null)->format('Y-m-d')) }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('pee_ptr_date_issued')
@@ -1190,7 +1192,7 @@
                             </div>
                             <div>
                                 <label for="pee_ptr_issued_at" class="block text-xs font-medium text-gray-600 mb-1">PTR Issued At <span class="text-red-500">*</span></label>
-                                <input type="text" name="pee_ptr_issued_at" required id="pee_ptr_issued_at"
+                                <input type="text" name="pee_ptr_issued_at" :required="includeElectrical" id="pee_ptr_issued_at"
                                     value="{{ old('pee_ptr_issued_at', $application->pee_ptr_issued_at ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('pee_ptr_issued_at')
@@ -1201,7 +1203,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label for="pee_address" class="block text-xs font-medium text-gray-600 mb-1">Address <span class="text-red-500">*</span></label>
-                                <input type="text" name="pee_address" required id="pee_address"
+                                <input type="text" name="pee_address" :required="includeElectrical" id="pee_address"
                                     value="{{ old('pee_address', $application->pee_address ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('pee_address')
@@ -1210,7 +1212,7 @@
                             </div>
                             <div>
                                 <label for="pee_tin" class="block text-xs font-medium text-gray-600 mb-1">TIN <span class="text-red-500">*</span></label>
-                                <input type="text" name="pee_tin" required id="pee_tin"
+                                <input type="text" name="pee_tin" :required="includeElectrical" id="pee_tin"
                                     value="{{ old('pee_tin', $application->pee_tin ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('pee_tin')
@@ -1255,7 +1257,7 @@
                             </div>
                             <div>
                                 <label for="sew_name" class="block text-xs font-medium text-gray-600 mb-1">Name <span class="text-red-500">*</span></label>
-                                <input type="text" name="sew_name" required id="sew_name"
+                                <input type="text" name="sew_name" :required="includeElectrical" id="sew_name"
                                     value="{{ old('sew_name', $application->sew_name ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('sew_name')
@@ -1264,7 +1266,7 @@
                             </div>
                             <div>
                                 <label for="sew_date_signed" class="block text-xs font-medium text-gray-600 mb-1">Date Signed <span class="text-red-500">*</span></label>
-                                <input type="date" name="sew_date_signed" required id="sew_date_signed"
+                                <input type="date" name="sew_date_signed" :required="includeElectrical" id="sew_date_signed"
                                     value="{{ old('sew_date_signed', optional($application->sew_date_signed ?? null)->format('Y-m-d')) }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('sew_date_signed')
@@ -1275,7 +1277,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label for="sew_prc_no" class="block text-xs font-medium text-gray-600 mb-1">PRC No. <span class="text-red-500">*</span></label>
-                                <input type="text" name="sew_prc_no" required id="sew_prc_no"
+                                <input type="text" name="sew_prc_no" :required="includeElectrical" id="sew_prc_no"
                                     value="{{ old('sew_prc_no', $application->sew_prc_no ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('sew_prc_no')
@@ -1284,7 +1286,7 @@
                             </div>
                             <div>
                                 <label for="sew_prc_validity" class="block text-xs font-medium text-gray-600 mb-1">PRC Validity <span class="text-red-500">*</span></label>
-                                <input type="date" name="sew_prc_validity" required id="sew_prc_validity"
+                                <input type="date" name="sew_prc_validity" :required="includeElectrical" id="sew_prc_validity"
                                     value="{{ old('sew_prc_validity', optional($application->sew_prc_validity ?? null)->format('Y-m-d')) }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('sew_prc_validity')
@@ -1295,7 +1297,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div>
                                 <label for="sew_ptr_no" class="block text-xs font-medium text-gray-600 mb-1">PTR No. <span class="text-red-500">*</span></label>
-                                <input type="text" name="sew_ptr_no" required id="sew_ptr_no"
+                                <input type="text" name="sew_ptr_no" :required="includeElectrical" id="sew_ptr_no"
                                     value="{{ old('sew_ptr_no', $application->sew_ptr_no ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('sew_ptr_no')
@@ -1304,7 +1306,7 @@
                             </div>
                             <div>
                                 <label for="sew_ptr_date_issued" class="block text-xs font-medium text-gray-600 mb-1">PTR Date Issued <span class="text-red-500">*</span></label>
-                                <input type="date" name="sew_ptr_date_issued" required id="sew_ptr_date_issued"
+                                <input type="date" name="sew_ptr_date_issued" :required="includeElectrical" id="sew_ptr_date_issued"
                                     value="{{ old('sew_ptr_date_issued', optional($application->sew_ptr_date_issued ?? null)->format('Y-m-d')) }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('sew_ptr_date_issued')
@@ -1313,7 +1315,7 @@
                             </div>
                             <div>
                                 <label for="sew_ptr_issued_at" class="block text-xs font-medium text-gray-600 mb-1">PTR Issued At <span class="text-red-500">*</span></label>
-                                <input type="text" name="sew_ptr_issued_at" required id="sew_ptr_issued_at"
+                                <input type="text" name="sew_ptr_issued_at" :required="includeElectrical" id="sew_ptr_issued_at"
                                     value="{{ old('sew_ptr_issued_at', $application->sew_ptr_issued_at ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('sew_ptr_issued_at')
@@ -1324,7 +1326,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label for="sew_address" class="block text-xs font-medium text-gray-600 mb-1">Address <span class="text-red-500">*</span></label>
-                                <input type="text" name="sew_address" required id="sew_address"
+                                <input type="text" name="sew_address" :required="includeElectrical" id="sew_address"
                                     value="{{ old('sew_address', $application->sew_address ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('sew_address')
@@ -1333,7 +1335,7 @@
                             </div>
                             <div>
                                 <label for="sew_tin" class="block text-xs font-medium text-gray-600 mb-1">TIN <span class="text-red-500">*</span></label>
-                                <input type="text" name="sew_tin" required id="sew_tin"
+                                <input type="text" name="sew_tin" :required="includeElectrical" id="sew_tin"
                                     value="{{ old('sew_tin', $application->sew_tin ?? '') }}"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 @error('sew_tin')
@@ -1353,7 +1355,7 @@
     {{-- FORM ACTIONS --}}
     {{-- ================================================================== --}}
     <div class="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
-        <a href="{{ route('applications.index') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition">
+        <a href="{{ $indexUrl ?? route('applications.index') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition">
             <i class="fas fa-times text-xs"></i> Cancel
         </a>
         <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-2.5 bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition">

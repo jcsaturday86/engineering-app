@@ -117,8 +117,9 @@ class RolePermissionSeeder extends Seeder
             ],
 
             'engineering-staff' => [
-                // Applications (view/create/edit)
+                // Applications (view/create/edit + online-portal review)
                 'view-applications', 'create-applications', 'edit-applications',
+                'approve-applications', 'reject-applications',
                 // Assessments (view/create/edit)
                 'view-assessments', 'create-assessments', 'edit-assessments',
                 // Billing (view only)

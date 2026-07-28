@@ -3,15 +3,17 @@
 @section('title', $application ? 'Edit Demolition Permit Application' : 'New Demolition Permit Application')
 
 @section('breadcrumbs')
-    <a href="{{ route('dashboard') }}" class="text-gray-500 hover:text-gray-700">Dashboard</a>
+    <a href="{{ $homeUrl ?? route('dashboard') }}" class="text-gray-500 hover:text-gray-700">{{ $homeLabel ?? 'Dashboard' }}</a>
     <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
-    <a href="{{ route('demolition-applications.index') }}" class="text-gray-500 hover:text-gray-700">Demolition Applications</a>
+    <a href="{{ $indexUrl ?? route('demolition-applications.index') }}" class="text-gray-500 hover:text-gray-700">{{ $indexLabel ?? 'Demolition Applications' }}</a>
     <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
     <span class="text-gray-900 font-medium">{{ $application ? 'Edit ' . $application->application_number : 'New Application' }}</span>
 @endsection
 
 @section('content')
 @php
+    $portal = $portal ?? 'staff';
+    $formAction = $formAction ?? ($application ? route('demolition-applications.update', $application) : route('demolition-applications.store'));
     $selectedSubGroups = [];
     if ($application && $application->applicationOccupancyGroups) {
         foreach ($application->applicationOccupancyGroups as $aog) {
@@ -26,7 +28,7 @@
 
 <form
     method="POST"
-    action="{{ $application ? route('demolition-applications.update', $application) : route('demolition-applications.store') }}"
+    action="{{ $formAction }}"
     x-data="demolitionApplicationForm()"
     onsubmit="return validateOccupancy();"
     autocomplete="off"
@@ -484,7 +486,7 @@
     {{-- FORM ACTIONS --}}
     {{-- ================================================================== --}}
     <div class="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4">
-        <a href="{{ route('demolition-applications.index') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition">
+        <a href="{{ $indexUrl ?? route('demolition-applications.index') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition">
             <i class="fas fa-times text-xs"></i> Cancel
         </a>
         <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-2.5 bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition">

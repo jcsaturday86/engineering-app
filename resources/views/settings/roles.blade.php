@@ -17,6 +17,11 @@
         <h2 class="text-xl font-bold text-gray-900">Roles & Permissions</h2>
     </div>
 
+    <div class="flex items-start gap-2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
+        <i class="fas fa-circle-info text-gray-400 mt-0.5"></i>
+        <p>This page is read-only. Roles and their assigned permissions are defined in the system seeders and cannot be created, edited, or deleted here.</p>
+    </div>
+
     {{-- Roles --}}
     <div class="space-y-4">
         @forelse($roles as $role)

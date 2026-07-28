@@ -10,10 +10,29 @@
 
 @section('content')
 <div class="space-y-6">
-    <div class="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 class="text-base font-semibold text-gray-900 mb-2">{{ $application->application_number }}</h3>
-        <p class="text-sm text-gray-500">{{ $application->project_title }}</p>
+    <div class="bg-white rounded-xl border border-gray-200 p-6 flex items-center justify-between flex-wrap gap-3">
+        <div>
+            <h3 class="text-base font-semibold text-gray-900 mb-2">{{ $application->application_number }}</h3>
+            @if($application->project_title ?? null)
+            <p class="text-sm text-gray-500">{{ $application->project_title }}</p>
+            @endif
+        </div>
+        @if(in_array($application->status, ['draft', 'returned']))
+        <form method="POST" action="{{ route('online.submit', ['type' => $applicationType, 'id' => $application->id]) }}" onsubmit="return confirm('Submit this application for Engineering review? You won\'t be able to edit it until it is reviewed.');">
+            @csrf
+            <button type="submit" class="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
+                <i class="fas fa-paper-plane mr-1"></i> Submit for Review
+            </button>
+        </form>
+        @endif
     </div>
+
+    @if(in_array($application->status, ['draft', 'returned']) && $requirements->isEmpty())
+    <div class="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+        <i class="fas fa-circle-exclamation text-amber-500 mt-0.5"></i>
+        <p class="text-sm text-amber-800">At least one document must be uploaded before this application can be submitted for Engineering review.</p>
+    </div>
+    @endif
 
     <div class="bg-white rounded-xl border border-gray-200 p-6">
         <h3 class="text-sm font-semibold text-gray-900 mb-4">Uploaded Requirements</h3>
@@ -44,7 +63,7 @@
 
     <div class="bg-white rounded-xl border border-gray-200 p-6">
         <h3 class="text-sm font-semibold text-gray-900 mb-4">Upload New Requirement</h3>
-        <form method="POST" action="{{ route('online.upload.store', $application) }}" enctype="multipart/form-data" class="space-y-4" autocomplete="off">
+        <form method="POST" action="{{ route('online.upload.store', ['type' => $applicationType, 'id' => $application->id]) }}" enctype="multipart/form-data" class="space-y-4" autocomplete="off">
             @csrf
             <div>
                 <label class="block text-xs font-medium text-gray-500 mb-1">Requirement Type</label>

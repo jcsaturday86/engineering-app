@@ -91,7 +91,7 @@
 | Assessment summary PDF | DONE | `pdf/assessment-summary-dp.blade.php` |
 | Final permit certificate PDF | DONE | `pdf/demolition-permit.blade.php`, bordered-frame landscape style, QR verification code |
 | Sidebar entries | DONE | Main nav, Assessment flyout, Permits flyout |
-| Excluded from online self-service + generic fee-schedule listing | DONE | Has its own dedicated Demolition Fees settings page |
+| Online self-service application | DONE | Was excluded at initial build; `OnlineApplicationController`'s later 6-type rebuild brought DP into the client portal along with FP/SGP/AI. Still not part of the generic fee-schedule listing — has its own dedicated Demolition Fees settings page |
 | `/permits/demolition` Print button removed | DONE | Application-form printing for DP is a manual/physical process — underlying route/PDF untouched |
 | OR Number autofocus on payment form | DONE | `collections/create.blade.php` (shared by BP/OP/DP/SGP) |
 
@@ -106,12 +106,12 @@
 | SGP form fields | DONE | Applicant name, applicant address, Scope of Work (Install/Attach/Paint checkboxes + detail textboxes), Wordings, Premises Of |
 | Status workflow (skips zoning) | DONE | Same 5-step shape as DP: submitted → engineering_assessed → billed → paid → permit_generated → released |
 | Assessment fees | DONE (manual entry) | Empty `SGP_FEE` category seeded (tab renders); no `FeeType`/`FeeSchedule` rows yet — generic "Add Fee Item" fallback form used, same as every category originally worked before a dedicated fee-schedule form was built |
-| Application form print | PENDING | No scanned official form supplied yet; deferred by explicit scope decision — every other print output is complete |
+| Application form print | DONE | Was PENDING (no scanned official form supplied at build time); `SignageApplicationController::printForm()` + `pdf/signage-application-form.blade.php` added in a later session, prompted by the client-portal print gate. All print outputs now complete |
 | Assessment summary PDF | DONE | `pdf/assessment-summary-sgp.blade.php` |
 | Final permit certificate PDF | DONE | `pdf/signage-permit.blade.php`, bordered-frame landscape style, QR verification code |
 | Sidebar entries | DONE | Main nav, Assessment flyout, Permits flyout — positioned below Demolition Permit |
-| Excluded from online self-service | DONE | Not excluded from the generic `/settings/fees` listing (no dedicated settings page yet) |
-| `/permits/signage` Print button | DONE | Shown (unlike DP) — final permit certificate print is complete, only the application-form print is deferred |
+| Online self-service application | DONE | Was excluded at initial build; brought into the client portal by the later 6-type `OnlineApplicationController` rebuild. Still not part of the generic `/settings/fees` listing (no dedicated settings page yet) |
+| `/permits/signage` Print button | DONE | Shown (unlike DP) — all print outputs complete |
 | Cross-cutting `match($permitCode)` bug sweep | DONE (fixed) | Found and fixed 4 places missing an `SGP` arm during end-to-end verification: `BillingService::generateFor()` (billing created with wrong morph type), `collections/index.blade.php` (pay-button route + type badge), `permits/index.blade.php` (permit-number link hardcoded to the BP show route — a pre-existing bug also affecting DP, now fixed for all 4 types), `verify/permit.blade.php` (type label) |
 
 ---
@@ -132,6 +132,7 @@
 | Final permit certificate PDF | DONE | `pdf/fencing-permit.blade.php`, 2-page plain-HTML/CSS reproduction of NBC Form B-03 |
 | DomPDF 3-page pagination bug | DONE (fixed) | Certificate rendered 3 pages instead of 2 — root cause: insufficient CSS vertical-spacing headroom combined with a `display:table`-based two-column layout (`.box-half`) DomPDF mis-paginated; fixed by tightening spacing and switching to CSS `float`-based columns |
 | Sidebar entries | DONE | Main nav, Assessment flyout, Permits flyout — positioned between Occupancy Permit and Demolition Permit |
+| Online self-service application | DONE | Was excluded at initial build; brought into the client portal by the later 6-type `OnlineApplicationController` rebuild |
 | End-to-end verification | DONE | Full lifecycle verified in browser: create → submit → assess → finalize → pay → generate permit → print |
 | Application-form print | DONE | `printForm()` (route `fencing-applications.print`) + `pdf/fencing-application-form.blade.php` — background-image-overlay over the NBC Form B-03 scans, added in a follow-up session (mirrors `DemolitionApplicationController`'s approach; DP/SGP's own application-form prints remain deferred) |
 | Application-print field-position bugs | DONE (fixed) | Several Box 1/2/3/4 fields (Address, Location-of-Construction's Lot/Blk/TCT/Tax-Dec-No. row, Box 2/3 name lines, Box 4's C.T.C. row) had values overlapping their own printed labels; Tax Dec. No. needed a centered band instead of left-aligned. All re-calibrated via PHP-GD pixel scans of the source scans rather than eyeballed estimates |
@@ -166,7 +167,7 @@
 | Generated Permits panel restored | DONE | `annual-inspection-applications/show.blade.php` regained its multi-row Generated Permits panel; `permits/index.blade.php`'s `mechanical` type regained its multi-permit-aware UI ("N permit(s) generated", "View Permits") — both had been reverted to single-permit display during the interim single-permit period |
 | "Equipment / Items to be Inspected" checklist | DONE | New optional section on the application form — a declared reference list (Elevators/Escalators/Aircon-Refrigeration/Other Machinery/Electronics Equipment, each row = fee code + Quantity + optional Specification) shown on the show page and as a read-only panel on the Assessment page; does not auto-generate assessment items. New `annual_inspection_equipment_items` table/`AnnualInspectionEquipmentItem` model; first live repeatable-row Alpine.js UI in the codebase (starts with zero rows so Equipment+Quantity can be `required` per row without blocking a no-equipment submission) |
 | Sidebar entries | DONE | Main nav, Assessment flyout, Permits flyout — positioned last (after Fencing Permit) |
-| Excluded from online self-service | DONE | Same as DP/SGP/FP |
+| Online self-service application | DONE | Was excluded at initial build (same as DP/SGP/FP); brought into the client portal by the later 6-type `OnlineApplicationController` rebuild |
 | Mechanical assessment spec fields | DONE | AINSP_MECH add-item form on `/assessments/ai/{id}` captures category-specific specs, required per category: Elevator (Workload kg, No. of Passengers), Aircon/Refrigeration (Description, Tons or HP), Escalator/Funicular/Cable Car (8 fields: Rated Load, Capacity/Hr, Speed, Effective Width, Tread Width, Floors Served, Floor Height, Motor HP), Other Machinery (Description). Stored in `AssessmentItem.computation_details['specs']`; new code-set helpers on `AnnualInspectionEquipmentItem`; shown as an extra details row under each item in both the tab table and the Summary tab table. Not yet reflected on any printed PDF |
 | Character of Occupancy (single-select) | DONE | Added to `/annual-inspection-applications/create`/edit, matching Building Permit's field but as a single-select radio group (not multi-select checkboxes) — reuses the existing polymorphic `application_occupancy_groups` table with no migration, writing exactly one row per application. `/annual-inspection-applications/{id}` shows Group and Subgroup as two separate labeled fields |
 | Signatories: 15 Annual Inspection roles | DONE | Seeded 15 `ai_*` roles (Locational Zoning of Land Use, Line and Grade (Geodetic), Architectural, Civil/Structural, Electrical, Mechanical, Sanitary, Plumbing, Electronics, Interior Design, Accessibility, Fire Safety, and 3 Chief/City Engineer roles) into `/settings/signatories`, edit-only (a Create/Delete UI was built then explicitly reverted at the user's request — edit-only was deemed sufficient) |
@@ -330,10 +331,18 @@
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Registration + login | DONE | Separate portal |
-| Online application submission | DONE | Auto-submits |
+| Online application submission — all 6 permit types | DONE | `OnlineApplicationController` rebuilt as a type-generic dispatcher (`TYPES` map); previously BP/OP only. Reuses the 6 staff `form`/`show` Blade views via a `$portal` variable instead of duplicating them |
+| Engineering approval gate (submit → pending_approval → approve/disapprove) | DONE | New `pending_approval`/`returned` `ApplicationStatus` values; new `ApplicationReviewController` queue at `/application-review` (`approve-applications`/`reject-applications` permissions); disapproval requires `review_remarks` (new column on all 6 application tables) and returns the application to the client for edit + resubmit |
+| Requirement-document upload gate before submission | DONE | `OnlineApplicationController::submit()` blocks with a flashed error unless at least one `ApplicationRequirement` row exists; Upload action moved to be available while `draft`/`returned` (previously only post-submission, which made the gate impossible to satisfy) |
 | Status tracking | DONE | Timeline view |
-| Document requirement upload | PARTIAL | Model/route exists, UI needs work |
-| Permit download | DONE | When status = released; now carries the same seal/DPWH logo/QR as the staff print path (previously rendered without them) |
+| Client show-page parity with staff | DONE | `OnlineApplicationController::show()` eager-loads the same relations as each staff `show()` and renders the staff `show.blade.php` directly (`$portal='client'`); `online/show.blade.php` deleted as dead code |
+| Client dashboard UX | DONE | Status filter dropdown, Turn-Around-Time column, icon-button Actions (was plain text links) |
+| Client review notifications | DONE | New `ApplicationReviewedNotification` (database channel) on approve/disapprove, via the existing notification bell |
+| Client application-form printing (all 6 types, gated on approval) | DONE | New `printForm()` + PDF templates for Signage and Annual Inspection (the two types with no prior application-form print) — all 6 types now have a client print route |
+| Document requirement upload | DONE | Was PARTIAL ("model/route exists, UI needs work") — resolved by the gate + dashboard/upload-page work above |
+| Permit download | DONE | When status = released/permit_generated; carries the same seal/DPWH logo/QR as the staff print path |
+
+> **2026-07-28 session note:** the full 6-type online portal buildout above (submission gate, approval queue, show-parity, printing, dashboard UX) was verified end-to-end in the dev database by creating 12 draft applications (2 per permit type, e.g. BP-2026-07-00009/00010, OP-2026-07-00005/00006, etc.) via the real online submission code path, then advancing a subset through submit/approve/disapprove to exercise the review workflow. These are real dev-DB records created for testing, not seeded fixtures — not tracked as a permanent feature/schema item.
 
 ---
 

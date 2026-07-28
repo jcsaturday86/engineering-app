@@ -13,9 +13,9 @@ engineering-app/
 │   ├── DTOs/              (4 data transfer objects)
 │   ├── Enums/             (5 enums)
 │   ├── Exports/           (3 Excel export classes)
-│   ├── Http/Controllers/  (18 + Auth controllers)
+│   ├── Http/Controllers/  (19 + Auth controllers)
 │   ├── Models/            (34 Eloquent models)
-│   ├── Notifications/     (4 notification classes)
+│   ├── Notifications/     (5 notification classes)
 │   ├── Providers/         (AppServiceProvider, SelfHealingServiceProvider)
 │   └── Services/          (8 service classes)
 ├── database/
@@ -108,9 +108,9 @@ index, create, store, show, edit, update, submit, cancel, revertSubmission, prin
 Same shape as `OccupancyApplicationController`, with DP-specific fields (enterprise, address CTC, Location of Demolition Works, Scope of Work, Full-time Inspector/Supervisor, Lot Owner Consent). `printForm()` streams the background-image-overlay NBC Form B-08 PDF, resolving the Building Official via a private `resolveBuildingOfficial(DemolitionApplication): array` helper (same shape as `ApplicationController`'s).
 
 ### SignageApplicationController (SGP only)
-index, create, store, show, edit, update, submit, cancel, revertSubmission
+index, create, store, show, edit, update, submit, cancel, revertSubmission, printForm
 
-Same shape again, trimmed further (no enterprise/CTC/inspector/lot-owner sections, no occupancy-group selection). **No `printForm()`** — the application-form print is deferred pending a scanned official form.
+Same shape again, trimmed further (no enterprise/CTC/inspector/lot-owner sections, no occupancy-group selection). `printForm()` (route `signage-applications.print`, `pdf/signage-application-form.blade.php`) was added in a later session, once online self-service and its "unlock print after approval" gate made a print-less SGP application form a real gap, not just a deferred nice-to-have.
 
 ### FencingApplicationController (FP only)
 index, report, create, store, show, edit, update, submit, revertSubmission, cancel, printForm
@@ -118,9 +118,13 @@ index, report, create, store, show, edit, update, submit, revertSubmission, canc
 Same shape as `DemolitionApplicationController`, with FP-specific fields (enterprise, address plus an `applicant_ctc_*` triplet, Location of Construction, Scope of Work, Design Professional, Full-Time Inspector or Supervisor, Consent of Lot Owner). `validateApplication()` marks every field `required` except `owned_by_enterprise` (optional checkbox) and its two dependents `enterprise_name`/`form_of_ownership_id` (`required_if:owned_by_enterprise,1`), plus `scope_of_work_detail` (`required_if:scope_of_work,repair,others`). Adds a dedicated `report()` method (`GET /fencing-applications/report`) streaming a landscape DomPDF via the shared `pdf/report.blade.php` template — no equivalent exists on DP/SGP's controllers. `printForm()` (route `fencing-applications.print`) mirrors `DemolitionApplicationController::printForm()`'s background-image-overlay approach, rendering `pdf/fencing-application-form.blade.php` over `public/images/forms/fencing-p1.jpg`/`fencing-p2.jpg` (JPEG, not PNG — see the PDF Print Performance note in `docs/TASK.md`); this was added after FP's initial build, so unlike DP/SGP the application-form print is not deferred. The final permit certificate print (`printFp()` on `PermitController`) is a separate, plain-HTML/CSS template.
 
 ### AnnualInspectionApplicationController (AI only)
-index, create, store, show, edit, update, submit, revertSubmission, cancel
+index, create, store, show, edit, update, submit, revertSubmission, cancel, printForm
 
-Same shape as `FencingApplicationController` (minus its `report()`/`printForm()` extras) — trimmed to AI's minimal field set (owner name, location, `application_kind` new/yearly toggle, editable only while `draft`). No occupancy-group selection, no enterprise/CTC/inspector/lot-owner sections. Renamed from `MechanicalApplicationController` in the same rename pass as the model/table.
+Same shape as `FencingApplicationController` — trimmed to AI's minimal field set (owner name, location, `application_kind` new/yearly toggle, editable only while `draft`). No occupancy-group selection, no enterprise/CTC/inspector/lot-owner sections. Renamed from `MechanicalApplicationController` in the same rename pass as the model/table. `printForm()` (route `annual-inspection-applications.print`, `pdf/annual-inspection-application-form.blade.php`) was added in the same later session as Signage's, for the same online-portal-driven reason.
+
+### Online Application Portal: `store()`/`update()` Refactored for Reuse
+
+All 6 application controllers above had their `store()`/`update()` logic extracted into public `persistApplication()`/`applyUpdate()` methods, so both the controller's own staff routes and `OnlineApplicationController` can call the identical validation/persistence logic with different `overrides` (`status`, `source`, `client_user_id`) rather than duplicating it. `validateApplication()`/form-data-building helpers were likewise made `public` where `OnlineApplicationController` needs to call into them directly.
 
 ### GeoController
 `barangaysForCity(City $city)` — `GET /geo/barangays/{city}`, returns active barangays for a city as JSON (`id`, `name`). Used by the BP/OP application form's cascading address dropdowns instead of shipping the full ~42K-row barangay dataset to the page.
@@ -225,8 +229,18 @@ index, updateSchedule, storeSchedule, destroySchedule, updateUnitLabel — `/set
 
 Also fixed: `AnnualInspectionApplication` doesn't have the split `applicant_first_name`/`applicant_last_name`/etc. or `building_street`/`buildingBarangay` fields other application types use — it stores a single `owner_name` and `location_street` instead. `show()` now duck-types on `isset($application->owner_name)` to branch between the split-name concatenation and the single `owner_name` field for the Applicant row; the Location row's blade falls back to `$application->building_street` OR `$application->location_street`.
 
+### OnlineApplicationController (Client Portal, all 6 permit types)
+dashboard, apply (create), store, show, edit, update, submit, uploadRequirements/storeRequirement, printForm, doDownloadPermit, track
+
+A type-generic dispatcher, not 6 separate near-duplicate controllers — a private `const TYPES` map keys each permit code (`BP`/`OP`/`FP`/`DP`/`SGP`/`AI`) to its model class, staff-controller class, form view, show view, show-page eager-load relations, whether it needs a permit-type selector, occupancy-group options, and its PDF print template. Every method looks up the current `$type` against this map and delegates to the mapped staff controller's `persistApplication()`/`applyUpdate()`/`validateApplication()` (see above) rather than reimplementing per-type logic — this is what let all 6 types land in the portal at once instead of one at a time. `store()` sets `overrides` (`status = pending_approval` once requirements exist, `source = online`, `client_user_id = Auth::id()`); `submit()` blocks with a flashed error unless `applicationRequirements()->exists()`. `show()` eager-loads the same relations as each staff controller's own `show()` and renders the **staff** `show.blade.php` (parameterized `$portal='client'`) — `resources/views/online/show.blade.php` was deleted, no longer needed. `doDownloadPermit()` only allows the download once the application's permit(s) are generated, passing the same seal/logo/QR variables as `PermitController::print()`. Routes live under `/online/*`, `middleware('auth')` + `can:online-apply`.
+
+### ApplicationReviewController (Engineering approve/disapprove queue, all 6 permit types)
+index, approve, disapprove
+
+New this session. `GET /application-review` (permissions `approve-applications`/`reject-applications`, granted to engineering-officer, engineering-staff, administrator, super-admin) lists every application at `status = pending_approval` across all 6 types. `approve()` routes BP to `for_zoning_assessment`, the other 5 straight to `submitted`; `disapprove()` requires `review_remarks` and sets `status = returned`. Both fire `ApplicationReviewedNotification` (database channel) to the client's own account. View: `resources/views/application-review/index.blade.php`. Sidebar link "Application Review" (with a live pending-count badge) sits directly between "Dashboard" and "Building Permit" in `partials/sidebar-nav.blade.php`.
+
 ### Other Controllers
-DashboardController, OnlineApplicationController, ReportController, SettingsController, FeeScheduleController, ProfileController
+DashboardController, ReportController, SettingsController, FeeScheduleController, ProfileController
 
 `DashboardController::index()` aggregates KPI stats, the Monthly Transactions chart, and Recent Applications across **all 6 permit types** (BP/OP/DP/SGP/FP/AI) — originally only knew about BP and OP. The chart gained 4 more grouped-bar datasets (one per DP/FP/SGP/AI, sourced from `Collection.applicationable_type` the same way BP/OP already were); Recent Applications merges all 6 types' latest records into one timestamp-sorted list, resolving AI's display name from `owner_name` (it has no applicant first/middle/last split) and routing each entry to its correct per-type `show` page.
 
@@ -261,7 +275,7 @@ ApplicationDTO, OccupancyApplicationDTO, AssessmentItemDTO, CollectionDTO
 
 | Enum | Values |
 |------|--------|
-| ApplicationStatus | draft, submitted, for_zoning_assessment, zoning_assessed, engineering_assessed, billed, paid, permit_generated, released, cancelled |
+| ApplicationStatus | draft, submitted, for_zoning_assessment, **pending_approval**, **returned**, zoning_assessed, engineering_assessed, billed, paid, permit_generated, released, cancelled — the two bolded values are online-portal-only (client submitted, awaiting/returned-from Engineering review; see `docs/WORKFLOWS.md`) |
 | AssessmentType | building, occupancy, zoning |
 | ComputationMethod | fixed, per_unit, range_based, cumulative_range, percentage, formula |
 | PaymentMode | cash, check, online |
@@ -282,21 +296,29 @@ SGP: `signage-applications/index`, `form`, `show`
 FP: `fencing-applications/index`, `form`, `show`
 AI: `annual-inspection-applications/index`, `form`, `show` (directory renamed from `mechanical-applications/`) — `form`/`show` both carry the "Equipment / Items to be Inspected" checklist section (Alpine repeatable-row UI on the form; a simple listed table on show)
 
+All 6 `form.blade.php`/`show.blade.php` pairs above are now shared between staff and the online client portal, parameterized by a `$portal` variable (`'staff'`/`'client'`) rather than each having a separate client-facing view — see `OnlineApplicationController` below and `docs/WORKFLOWS.md`'s Online Application Flow section.
+
+### Online Portal Views
+`online/dashboard.blade.php` (status filter, TAT column, icon-button Actions), `online/apply.blade.php` (type picker), `online/upload.blade.php` (requirements upload + Submit for Review), `online/track.blade.php`. **`online/show.blade.php` no longer exists** — deleted once `OnlineApplicationController::show()` was rewritten to render the staff `show.blade.php` directly (with `$portal='client'`) instead of a separate thin view.
+
+### Application Review View
+`application-review/index.blade.php` — Engineering's approve/disapprove queue for all 6 permit types, backing `ApplicationReviewController`.
+
 ### Assessment Views
 `assessments/assess.blade.php` — tabbed: Construction, Electrical, Mechanical, Plumbing, Electronics, Accessories, Accessory, Surcharges, DEMO_FEE (DP), SGP_FEE (SGP, generic fallback form), FP_FEE (FP), AINSP_GEN/AINSP_ELECTRONICS/AINSP_MECH/AINSP_ELEC (AI — the module's original 5 equipment-tab branches, `AI_AC`/`AI_MACH`/`AI_ESC`/`AI_ELEV`/`AI_GENSET`, were removed once these 4 official-schedule tabs replaced them), Summary. Excluded from tabs: ZONING_LC, ZONING_CERT, ANN_INSP, VIOLATION, MECH_INSP. `$isOp`/`$isDp`/`$isSgp`/`$isFp`/`$isMp` flags thread through every route/visibility ternary (the AI flag variable name `$isMp` was kept from the pre-rename build). The AINSP_MECH/AINSP_ELEC branches additionally carry a per-fee-code `quantityEligible` list (Alpine, Mechanical tab) / reuse of the existing `showKva` computed property (Electrical tab) to conditionally show a second "Quantity" input, and a parallel PHP-side `$aiQuantityEligibleCodes`/`$aiUnitLabels` pair (declared fresh each `@foreach($tabCategories as $cat)` iteration, to avoid stale values leaking into an unrelated tab) driving the assessment-items table's split Unit/Qty columns — this same pair/split logic was later extended into the **Summary tab's** per-category tables too (previously a generic single Qty/Unit-Fee column pair that didn't know about the AI split, showing a raw ambiguous quantity for AI items). When `$isAi`, a read-only amber "Declared Equipment (Basis of Assessment)" panel renders above the tab bar (on every AI tab), listing `$application->equipmentItems` — purely informational, sourced from the AI application form's equipment checklist, no interaction with the add-item forms.
 `assessments/demolition-index.blade.php`, `assessments/signage-index.blade.php` — the DP/SGP equivalents of `occupancy-index.blade.php`. FP and AI reuse the same generic index pattern.
 
 ### Other Views
-`zoning/`, `collections/`, `permits/`, `online/`, `dashboard/`, `settings/`, `reports/`, `auth/`. (`billing/` views removed — billing is print-only now, served via `pdf/billing-statement`.)
+`zoning/`, `collections/`, `permits/`, `online/`, `application-review/`, `dashboard/`, `settings/`, `reports/`, `auth/`. (`billing/` views removed — billing is print-only now, served via `pdf/billing-statement`.)
 
 `collections/create.blade.php` — POS-style single-screen payment form: Application No./Applicant + OR Number/Paid By rows, a 3-column Amount Due/Amount Received/Change strip (Alpine-live), a Cash/Check/Online segmented control, and a sticky bottom action bar so the collector doesn't scroll mid-transaction.
 
 ### PDF Templates (`resources/views/pdf/`)
-application-form (BP Unified Application Form — background-image overlay, see below), occupancy-application-form (OP Unified Application Form for Certificate of Occupancy — DomPDF, see below), demolition-application-form (DP application form, NBC Form No. B-08 — background-image overlay, see below), fencing-application-form (FP application form, NBC Form No. B-03 — background-image overlay), architectural-form (NBC Form A-01 Architectural Permit — background-image overlay, see below), structural-form (NBC Form A-07 Civil/Structural Permit — background-image overlay, see below), electrical-form (Form No. 77-001-S Electrical Permit — background-image overlay, see below), sanitary-form (Form No. 77-001-S Sanitary/Plumbing Permit — background-image overlay, see below), mechanical-form (NBC Form No. A-04 Mechanical Permit — background-image overlay, see below), electronics-form (NBC Form No. A-07 Electronics Permit — background-image overlay, see below), discipline-form (unused generic fallback), building-permit (NBC Form B-018 style, city seal + DPWH logo + QR code), occupancy-permit (DPWH Certificate of Occupancy style, DPWH logo + city seal + QR code), demolition-permit (bordered-frame landscape certificate style + QR code), signage-permit (same bordered-frame style, cloned from demolition-permit + QR code), fencing-permit (2-page plain-CSS NBC Form B-03 reproduction + QR code), annual-inspection-permit (one certificate per print, parameterized by `AnnualInspectionPermitUnit` — itemized table for bundle-type certificates, single equipment line for per-unit Elevator/Escalator certificates + QR code), assessment-summary (BP), assessment-summary-op (OP), assessment-summary-dp (DP), assessment-summary-sgp (SGP), assessment-summary-fp (FP), assessment-summary-ai (AI), billing-statement, official-receipt, zoning-certification, locational-clearance, evaluation-report, report
+application-form (BP Unified Application Form — background-image overlay, see below), occupancy-application-form (OP Unified Application Form for Certificate of Occupancy — DomPDF, see below), demolition-application-form (DP application form, NBC Form No. B-08 — background-image overlay, see below), fencing-application-form (FP application form, NBC Form No. B-03 — background-image overlay), signage-application-form (SGP application form, added in a later session), annual-inspection-application-form (AI application form, added in the same later session), architectural-form (NBC Form A-01 Architectural Permit — background-image overlay, see below), structural-form (NBC Form A-07 Civil/Structural Permit — background-image overlay, see below), electrical-form (Form No. 77-001-S Electrical Permit — background-image overlay, see below), sanitary-form (Form No. 77-001-S Sanitary/Plumbing Permit — background-image overlay, see below), mechanical-form (NBC Form No. A-04 Mechanical Permit — background-image overlay, see below), electronics-form (NBC Form No. A-07 Electronics Permit — background-image overlay, see below), discipline-form (unused generic fallback), building-permit (NBC Form B-018 style, city seal + DPWH logo + QR code), occupancy-permit (DPWH Certificate of Occupancy style, DPWH logo + city seal + QR code), demolition-permit (bordered-frame landscape certificate style + QR code), signage-permit (same bordered-frame style, cloned from demolition-permit + QR code), fencing-permit (2-page plain-CSS NBC Form B-03 reproduction + QR code), annual-inspection-permit (one certificate per print, parameterized by `AnnualInspectionPermitUnit` — itemized table for bundle-type certificates, single equipment line for per-unit Elevator/Escalator certificates + QR code), assessment-summary (BP), assessment-summary-op (OP), assessment-summary-dp (DP), assessment-summary-sgp (SGP), assessment-summary-fp (FP), assessment-summary-ai (AI), billing-statement, official-receipt, zoning-certification, locational-clearance, evaluation-report, report
 
 **Note on `mechanical-form.blade.php`**: this is NBC Form No. A-04, one of the 6 Building Permit **discipline** print forms (`ApplicationController::printDiscipline()`), unrelated to the separate Annual Inspection (AI, formerly "Mechanical Permit") application module — the naming overlap ("mechanical") is coincidental, the two features share no code.
 
-**SGP has no `signage-application-form.blade.php`** — unlike every other permit type, the application-form print is deliberately deferred (no scanned official form supplied yet). `SignageApplicationController` has no `printForm()` method or `print` route.
+**`signage-application-form.blade.php` and `annual-inspection-application-form.blade.php`** were added in a later session — SGP and AI previously had no application-form print at all (SGP had no scanned official form supplied at build time; AI's minimal owner/location field set made it a lower priority initially). `SignageApplicationController::printForm()` / `AnnualInspectionApplicationController::printForm()` now exist, giving all 6 permit types both a staff print route and a client (online-portal) print route.
 
 Every template above that carries an Official Seal / logo sources it dynamically from `Setting` via the `Setting::general()` + `Setting::imageDataUri()` static helpers (base64 data-URI embedding) — including official-receipt, billing-statement, both assessment summaries, and evaluation-report, which previously had no branding at all. `OnlineApplicationController::doDownloadPermit()` (client-portal permit download) passes the same full variable set (`settings`/`sealImage`/`dpwhLogo`/`qrImage`) as `PermitController::print()` — it previously passed none of them, so downloaded permits silently rendered without seal/logo/QR.
 

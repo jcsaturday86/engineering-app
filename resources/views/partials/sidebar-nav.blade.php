@@ -40,6 +40,20 @@
 </a>
 @endcan
 
+{{-- Application Review (Engineering approve/disapprove of online submissions) --}}
+@can('approve-applications')
+<a href="{{ route('application-review.index') }}" class="sidebar-link flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition {{ str_starts_with($currentRoute, 'application-review') ? 'text-primary-700 bg-primary-50' : 'text-gray-700 hover:bg-gray-50' }}">
+    <div class="flex items-center gap-3">
+        <i class="fas fa-clipboard-check w-5 text-center"></i>
+        <span x-show="sidebarOpen || mobileMenuOpen">Application Review</span>
+    </div>
+    @php $pendingReviewCount = \App\Http\Controllers\ApplicationReviewController::pendingCount(); @endphp
+    @if($pendingReviewCount > 0)
+    <span x-show="sidebarOpen || mobileMenuOpen" class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-xs font-bold bg-amber-500 text-white">{{ $pendingReviewCount }}</span>
+    @endif
+</a>
+@endcan
+
 {{-- Building Permit Applications (Staff/Admin) --}}
 @canany(['view-applications', 'create-applications'])
 <div x-data="{ open: {{ str_starts_with($currentRoute, 'applications') ? 'true' : 'false' }} }">
@@ -321,11 +335,11 @@
 </div>
 @endcan
 
+{{-- Settings --}}
+@can('manage-settings')
 {{-- Separator --}}
 <hr class="my-3 border-gray-200">
 
-{{-- Settings --}}
-@can('manage-settings')
 <div x-data="{ open: {{ str_starts_with($currentRoute, 'settings') ? 'true' : 'false' }} }">
     <button @click="open = !open" class="sidebar-link flex items-center justify-between w-full px-3 py-2.5 text-sm font-medium rounded-lg transition text-gray-700">
         <div class="flex items-center gap-3">
@@ -343,15 +357,23 @@
         <a href="{{ route('settings.roles') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Roles</a>
         @endcan
         @can('manage-fee-schedules')
-        <a href="{{ route('settings.fees') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Fee Schedules</a>
-        <a href="{{ route('settings.zoning-fees') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Zoning Fees</a>
-        <a href="{{ route('settings.mech-insp-fees') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Mech Inspection Fees</a>
-        <a href="{{ route('settings.plumbing-fees') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Plumbing Fees</a>
-        <a href="{{ route('settings.electronics-fees') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Electronics Fees</a>
-        <a href="{{ route('settings.accessory-fees') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Accessory Fees</a>
-        <a href="{{ route('settings.acc-fees') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Acc. Misc. Fees</a>
-        <a href="{{ route('settings.demolition-fees') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Demolition Fees</a>
-        <a href="{{ route('settings.surcharge-fees') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Surcharge Fees</a>
+        <div x-data="{ feesOpen: {{ str_starts_with($currentRoute, 'settings.') && str_contains($currentRoute, 'fees') ? 'true' : 'false' }} }">
+            <button @click="feesOpen = !feesOpen" class="flex items-center justify-between w-full px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">
+                <span>Fee Schedules</span>
+                <i :class="feesOpen ? 'rotate-90' : ''" class="fas fa-chevron-right text-xs transition-transform"></i>
+            </button>
+            <div x-show="feesOpen" x-cloak class="ml-4 mt-1 space-y-1 border-l border-gray-200 pl-3">
+                <a href="{{ route('settings.fees') }}" class="block px-3 py-1.5 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Building Permit Fees</a>
+                <a href="{{ route('settings.zoning-fees') }}" class="block px-3 py-1.5 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Zoning Fees</a>
+                <a href="{{ route('settings.mech-insp-fees') }}" class="block px-3 py-1.5 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Mech. Inspection Fees</a>
+                <a href="{{ route('settings.plumbing-fees') }}" class="block px-3 py-1.5 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Plumbing Fees</a>
+                <a href="{{ route('settings.electronics-fees') }}" class="block px-3 py-1.5 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Electronics Fees</a>
+                <a href="{{ route('settings.accessory-fees') }}" class="block px-3 py-1.5 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Accessory Bldg. Permit Fees</a>
+                <a href="{{ route('settings.acc-fees') }}" class="block px-3 py-1.5 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Accessory Misc. Fees (ACC)</a>
+                <a href="{{ route('settings.demolition-fees') }}" class="block px-3 py-1.5 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Demolition Fees</a>
+                <a href="{{ route('settings.surcharge-fees') }}" class="block px-3 py-1.5 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Surcharge Fees</a>
+            </div>
+        </div>
         @endcan
         @can('manage-signatories')
         <a href="{{ route('settings.signatories') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Signatories</a>

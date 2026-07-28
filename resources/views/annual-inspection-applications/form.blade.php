@@ -3,15 +3,17 @@
 @section('title', $application ? 'Edit Annual Inspection Application' : 'New Annual Inspection Application')
 
 @section('breadcrumbs')
-    <a href="{{ route('dashboard') }}" class="text-gray-500 hover:text-gray-700">Dashboard</a>
+    <a href="{{ $homeUrl ?? route('dashboard') }}" class="text-gray-500 hover:text-gray-700">{{ $homeLabel ?? 'Dashboard' }}</a>
     <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
-    <a href="{{ route('annual-inspection-applications.index') }}" class="text-gray-500 hover:text-gray-700">Annual Inspection Applications</a>
+    <a href="{{ $indexUrl ?? route('annual-inspection-applications.index') }}" class="text-gray-500 hover:text-gray-700">{{ $indexLabel ?? 'Annual Inspection Applications' }}</a>
     <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
     <span class="text-gray-900 font-medium">{{ $application ? 'Edit ' . $application->application_number : 'New Application' }}</span>
 @endsection
 
 @section('content')
 @php
+    $portal = $portal ?? 'staff';
+    $formAction = $formAction ?? ($application ? route('annual-inspection-applications.update', $application) : route('annual-inspection-applications.store'));
     $selectedSubGroup = $application?->applicationOccupancyGroups?->first()?->occupancy_sub_group_id;
     if (old('occupancy_sub_group')) {
         $selectedSubGroup = old('occupancy_sub_group');
@@ -19,7 +21,7 @@
 @endphp
 <form
     method="POST"
-    action="{{ $application ? route('annual-inspection-applications.update', $application) : route('annual-inspection-applications.store') }}"
+    action="{{ $formAction }}"
     onsubmit="return validateOccupancy();"
     autocomplete="off"
 >
@@ -260,7 +262,7 @@
     {{-- FORM ACTIONS --}}
     {{-- ================================================================== --}}
     <div class="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4">
-        <a href="{{ route('annual-inspection-applications.index') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition">
+        <a href="{{ $indexUrl ?? route('annual-inspection-applications.index') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition">
             <i class="fas fa-times text-xs"></i> Cancel
         </a>
         <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-2.5 bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 transition">

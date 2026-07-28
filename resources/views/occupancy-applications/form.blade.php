@@ -3,9 +3,9 @@
 @section('title', $application ? 'Edit OP Application' : 'New Occupancy Permit Application')
 
 @section('breadcrumbs')
-    <a href="{{ route('dashboard') }}" class="text-gray-500 hover:text-gray-700">Dashboard</a>
+    <a href="{{ $homeUrl ?? route('dashboard') }}" class="text-gray-500 hover:text-gray-700">{{ $homeLabel ?? 'Dashboard' }}</a>
     <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
-    <a href="{{ route('occupancy-applications.index') }}" class="text-gray-500 hover:text-gray-700">Occupancy Applications</a>
+    <a href="{{ $indexUrl ?? route('occupancy-applications.index') }}" class="text-gray-500 hover:text-gray-700">{{ $indexLabel ?? 'Occupancy Applications' }}</a>
     <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
     <span class="text-gray-900 font-medium">
         {{ $application ? 'Edit ' . $application->application_number : 'New Occupancy Permit Application' }}
@@ -14,6 +14,8 @@
 
 @section('content')
 @php
+    $portal = $portal ?? 'staff';
+    $formAction = $formAction ?? ($application ? route('occupancy-applications.update', $application) : route('occupancy-applications.store'));
     $isOP = true;
 
     // Pre-build occupancy selections for edit mode
@@ -37,7 +39,7 @@
 
 <form
     method="POST"
-    action="{{ $application ? route('occupancy-applications.update', $application) : route('occupancy-applications.store') }}"
+    action="{{ $formAction }}"
     x-data="applicationForm()"
     onsubmit="return validateOccupancy();"
     autocomplete="off"
@@ -554,7 +556,7 @@
     {{-- FORM ACTIONS --}}
     {{-- ================================================================== --}}
     <div class="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
-        <a href="{{ route('occupancy-applications.index') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition">
+        <a href="{{ $indexUrl ?? route('occupancy-applications.index') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition">
             <i class="fas fa-times text-xs"></i> Cancel
         </a>
         <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-2.5 bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition">

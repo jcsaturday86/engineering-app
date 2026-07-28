@@ -79,10 +79,31 @@ class FencingApplicationController extends Controller
 
     public function store(Request $request)
     {
+        try {
+            $application = $this->persistApplication($request, [
+                'status' => 'draft',
+                'source' => 'walk_in',
+                'entered_by' => Auth::id(),
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Failed to create application: ' . $e->getMessage());
+        }
+
+        return redirect()->route('fencing-applications.show', $application)
+            ->with('success', "Application {$application->application_number} created successfully.");
+    }
+
+    /**
+     * Validate and create a FencingApplication. Shared by the staff store()
+     * and the client online-portal submission.
+     */
+    public function persistApplication(Request $request, array $overrides = []): FencingApplication
+    {
         $validated = $this->validateApplication($request);
 
-        DB::beginTransaction();
-        try {
+        return DB::transaction(function () use ($validated, $overrides) {
             $counter = DB::table('fencing_applications')
                 ->where('app_year', now()->year)
                 ->where('app_month', now()->month)
@@ -92,24 +113,17 @@ class FencingApplicationController extends Controller
             $nextCounter = ($counter ?? 0) + 1;
             $appNumber = sprintf('FP-%s-%s-%05d', now()->format('Y'), now()->format('m'), $nextCounter);
 
-            $application = FencingApplication::create(array_merge($validated, [
+            return FencingApplication::create(array_merge($validated, [
                 'app_year' => now()->year,
                 'app_month' => now()->month,
                 'app_counter' => $nextCounter,
                 'application_number' => $appNumber,
-                'status' => 'draft',
-                'source' => 'walk_in',
-                'entered_by' => Auth::id(),
+                'status' => $overrides['status'] ?? 'draft',
+                'source' => $overrides['source'] ?? 'walk_in',
+                'entered_by' => $overrides['entered_by'] ?? Auth::id(),
+                'client_user_id' => $overrides['client_user_id'] ?? null,
             ]));
-
-            DB::commit();
-
-            return redirect()->route('fencing-applications.show', $application)
-                ->with('success', "Application {$appNumber} created successfully.");
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return back()->withInput()->with('error', 'Failed to create application: ' . $e->getMessage());
-        }
+        });
     }
 
     public function show(FencingApplication $fencingApplication)
@@ -136,20 +150,29 @@ class FencingApplicationController extends Controller
 
     public function update(Request $request, FencingApplication $fencingApplication)
     {
-        $validated = $this->validateApplication($request);
-
-        DB::beginTransaction();
         try {
-            $fencingApplication->update($validated);
-
-            DB::commit();
-
-            return redirect()->route('fencing-applications.show', $fencingApplication)
-                ->with('success', 'Application updated successfully.');
+            $this->applyUpdate($request, $fencingApplication);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
-            DB::rollBack();
             return back()->withInput()->with('error', 'Failed to update application: ' . $e->getMessage());
         }
+
+        return redirect()->route('fencing-applications.show', $fencingApplication)
+            ->with('success', 'Application updated successfully.');
+    }
+
+    /**
+     * Validate and persist edits to an existing FencingApplication. Shared
+     * by the staff update() and the client online-portal edit/resubmit flow.
+     */
+    public function applyUpdate(Request $request, FencingApplication $fencingApplication): void
+    {
+        $validated = $this->validateApplication($request);
+
+        DB::transaction(function () use ($fencingApplication, $validated) {
+            $fencingApplication->update($validated);
+        });
     }
 
     public function submit(Request $request, FencingApplication $fencingApplication)
@@ -272,7 +295,7 @@ class FencingApplicationController extends Controller
         ];
     }
 
-    private function getFormData(): array
+    public function getFormData(): array
     {
         $sfcCityId = City::where('name', 'like', '%SAN FERNANDO%')->where('province_id', 3)->value('id') ?? 71;
 
@@ -284,7 +307,7 @@ class FencingApplicationController extends Controller
         ];
     }
 
-    private function validateApplication(Request $request): array
+    public function validateApplication(Request $request): array
     {
         $validated = $request->validate([
             // Applicant
