@@ -36,6 +36,10 @@ class AnnualInspectionApplicationController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->filled('source')) {
+            $query->where('source', $request->source);
+        }
+
         $dateFrom = $request->filled('date_from') ? $request->date_from : now()->startOfYear()->toDateString();
         $dateTo = $request->filled('date_to') ? $request->date_to : now()->toDateString();
         $query->whereBetween('created_at', [$dateFrom, $dateTo . ' 23:59:59']);

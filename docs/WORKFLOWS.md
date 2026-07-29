@@ -57,6 +57,8 @@ The Cancel button on the BP/OP application Show pages is hidden once status reac
 When `applies_to = "SKIP_LC"`: `draft → submitted` (bypasses planning).
 Without skip LC: `draft → for_zoning_assessment → zoning_assessed`.
 
+Staff-only: the "Skip Locational Clearance" checkbox on `applications/form.blade.php` is gated `@if($isBP && $portal !== 'client')` — hidden from online clients (`/online/apply?type=BP`) but always available to staff, including staff editing an application that originated online. Clients cannot bypass Planning review themselves.
+
 ### Zoning Fee Auto-Compute
 1. Look up `land_use_and_zoning_fees` by occupancy sub-group + total estimated cost
 2. Compute: `amount + ((totalCost - excess_of) × percentage)` per sub-group
@@ -394,11 +396,23 @@ draft ──(submit, requirements uploaded)──> pending_approval ──(Engin
 
 ### Client Printing
 
-The application-form PDF download is only unlocked after Engineering approval (`approved_at` set). All 6 types now have both a staff print route and a client print route — this session added `printForm()` + PDF templates for **Signage** and **Annual Inspection** (`resources/views/pdf/{signage,annual-inspection}-application-form.blade.php`), the two types that previously had no application-form print at all (see `docs/PROJECT_CONTEXT.md`). Once `permit_generated`/`released`, the client can also download the generated permit (`OnlineApplicationController::doDownloadPermit()`), carrying the same seal/logo/QR variables as the staff print path.
+All 6 types have both a staff print route and a client print route — an earlier session added `printForm()` + PDF templates for **Signage** and **Annual Inspection** (`resources/views/pdf/{signage,annual-inspection}-application-form.blade.php`), the two types that previously had no application-form print at all (see `docs/PROJECT_CONTEXT.md`).
+
+Print is available at **any application status, including draft** — not gated on Engineering approval. (An earlier version of this feature gated the client's "Print Application Form" button on `approved_at !== null`; that gate was removed from both the Blade buttons and `OnlineApplicationController::printForm()`/`printDiscipline()` per explicit follow-up feedback — a client must be able to print/preview what they've filled in before submitting.)
+
+**BP discipline forms in the client portal**: the client's BP show page now renders the same "Print Forms" Alpine dropdown staff sees — Application Form + the 6 discipline forms (Architectural/Structural/Electrical/Sanitary/Mechanical/Electronics) — via a new `online.print.discipline` route (`OnlineApplicationController::printDiscipline()`, `abort_unless($type === 'BP', 404)`, delegates to `ApplicationController::printDiscipline()`). Previously the client could only print the single unified Application Form. The other 5 types don't have discipline forms (BP-only), so their client print stays a single "Print Application Form" button, matching staff exactly.
+
+**Staff parity fix**: Signage and Annual Inspection staff `show.blade.php` views had the `printForm()` route/controller wired up but no button in the UI at all — staff could not print those two forms through the browser. Both now have the same single "Print" button as Occupancy/Fencing/Demolition.
+
+Once `permit_generated`/`released`, the client can also download the generated permit (`OnlineApplicationController::doDownloadPermit()`), carrying the same seal/logo/QR variables as the staff print path — this one remains gated to that status range, since there's nothing to download before a permit exists.
 
 ### Client Dashboard
 
 `resources/views/online/dashboard.blade.php` (`OnlineApplicationController::dashboard()`) gained a status filter dropdown (`?status=`), a Turn-Around-Time column (same day-count logic as the staff application indexes), and icon-button Actions (view/edit/upload/track/download) with color-coded borders per action type, replacing plain text links.
+
+### Staff Monitoring: Online vs Onsite
+
+All 6 staff application index pages (`/applications`, `/occupancy-applications`, `/fencing-applications`, `/demolition-applications`, `/signage-applications`, `/annual-inspection-applications`) show a **Source** column (Online/Onsite badge, colored per module's theme) and a matching `?source=` filter dropdown, so staff monitoring the transaction lists can distinguish which applications came through the client portal vs. were filed at the counter. Added identically to each controller's existing `filteredQuery()` private method (`if ($request->filled('source')) { $query->where('source', $request->source); }`) — no schema change, `source` already existed on all 6 tables (see `docs/DATABASE_SCHEMA.md`).
 
 ```
 /register → /login → /online/apply/{type} → upload requirements → Submit for Review

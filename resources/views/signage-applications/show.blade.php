@@ -12,16 +12,7 @@
 
 @section('content')
 @php
-    $statusColors = [
-        'draft' => 'bg-gray-100 text-gray-600',
-        'submitted' => 'bg-blue-100 text-blue-700',
-        'engineering_assessed' => 'bg-amber-100 text-amber-700',
-        'billed' => 'bg-orange-100 text-orange-700',
-        'paid' => 'bg-green-100 text-green-700',
-        'permit_generated' => 'bg-indigo-100 text-indigo-700',
-        'released' => 'bg-emerald-100 text-emerald-700',
-        'cancelled' => 'bg-red-100 text-red-700',
-    ];
+    $statusEnum = \App\Enums\ApplicationStatus::tryFrom($application->status);
     $sectionNum = 0;
     $portal = $portal ?? 'staff';
     $applicationType = $applicationType ?? 'SGP';
@@ -39,12 +30,12 @@
             <div class="flex items-center gap-3">
                 <div>
                     <h2 class="text-2xl font-bold text-gray-900 font-mono">{{ $application->application_number }}</h2>
-                    <div class="flex items-center gap-2 mt-1">
+                    <div class="flex flex-wrap items-center gap-2 mt-1">
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">
                             {{ $application->getPermitTypeCode() }} &mdash; Signage Permit
                         </span>
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusColors[$application->status] ?? 'bg-gray-100 text-gray-600' }}">
-                            {{ ucfirst(str_replace('_', ' ', $application->status)) }}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusEnum?->color() ?? 'bg-gray-100 text-gray-600' }}">
+                            {{ $statusEnum?->label() ?? ucfirst(str_replace('_', ' ', $application->status)) }}
                         </span>
                     </div>
                 </div>
@@ -160,6 +151,9 @@
                     </div>
                 @endif
                 @endcan
+                <a href="{{ route('signage-applications.print', $application) }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
+                    <i class="fas fa-print"></i> Print
+                </a>
             </div>
             @else
             <div class="flex gap-2 flex-wrap">
@@ -184,11 +178,9 @@
                     <i class="fas fa-map-marker-alt mr-1"></i> Track
                 </a>
                 @endif
-                @if($isApproved)
                 <a href="{{ route('online.print', $routeParams) }}" class="px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200" target="_blank">
                     <i class="fas fa-print mr-1"></i> Print Application Form
                 </a>
-                @endif
                 @if(in_array($application->status, ['permit_generated', 'released']))
                 <a href="{{ route('online.download', $routeParams) }}" class="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">
                     <i class="fas fa-download mr-1"></i> Download Permit
@@ -198,6 +190,8 @@
             @endif
         </div>
     </div>
+
+    @include('partials.application-stepper')
 
     @if($application->status === 'returned' && $application->review_remarks)
     <div class="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">

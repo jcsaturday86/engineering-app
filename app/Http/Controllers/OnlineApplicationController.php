@@ -14,6 +14,7 @@ use App\Models\Signatory;
 use App\Models\SignageApplication;
 use App\Notifications\ApplicationSubmittedNotification;
 use App\Models\User;
+use App\Support\ApplicationTimeline;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Notification;
@@ -372,32 +373,7 @@ class OnlineApplicationController extends Controller
         $model = $this->resolveModel($type, $id);
         $model->load('permits', 'collections');
 
-        $usesZoning = $type === 'BP';
-
-        $timeline = [
-            ['status' => 'draft', 'label' => 'Application Created', 'date' => $model->created_at],
-        ];
-
-        if ($model->status === 'returned' || $model->review_remarks) {
-            $timeline[] = ['status' => 'returned', 'label' => 'Returned for Revision', 'date' => $model->updated_at];
-        }
-
-        $timeline[] = ['status' => 'pending_approval', 'label' => 'Submitted — Awaiting Engineering Approval', 'date' => $model->submitted_at];
-
-        if ($usesZoning) {
-            $timeline[] = ['status' => 'for_zoning_assessment', 'label' => 'For Zoning Assessment', 'date' => $model->approved_at];
-            $timeline[] = ['status' => 'zoning_assessed', 'label' => 'Zoning Assessed', 'date' => null];
-        } else {
-            $timeline[] = ['status' => 'submitted', 'label' => 'Approved — Routed to Engineering Assessment', 'date' => $model->approved_at];
-        }
-
-        $timeline = array_merge($timeline, [
-            ['status' => 'engineering_assessed', 'label' => 'Engineering Assessed', 'date' => $model->assessed_at],
-            ['status' => 'billed', 'label' => 'Billed', 'date' => null],
-            ['status' => 'paid', 'label' => 'Payment Received', 'date' => $model->paid_at],
-            ['status' => 'permit_generated', 'label' => 'Permit Generated', 'date' => null],
-            ['status' => 'released', 'label' => 'Released', 'date' => $model->released_at],
-        ]);
+        $timeline = ApplicationTimeline::build($model, $type);
 
         $application = $model;
         $applicationType = $type;
@@ -451,9 +427,8 @@ class OnlineApplicationController extends Controller
     }
 
     /**
-     * Print the filled-in application form itself. Gated to applications
-     * that have passed Engineering review (approved_at set) so unapproved
-     * forms don't circulate.
+     * Print the filled-in application form itself. Available at any status
+     * (including draft) so clients can print/preview what they've filled in.
      */
     public function printForm(string $type, int $id)
     {
@@ -461,12 +436,25 @@ class OnlineApplicationController extends Controller
         abort_unless($meta, 404);
 
         $model = $this->resolveModel($type, $id);
-        abort_unless($model->approved_at !== null, 403);
 
         $ctrl = app($meta['controller']);
         abort_unless(method_exists($ctrl, 'printForm'), 404);
 
         return $ctrl->printForm($model);
+    }
+
+    /**
+     * Print one of the 6 BP discipline-specific forms (Architectural, Structural,
+     * Electrical, Sanitary, Mechanical, Electronics). Discipline forms only exist
+     * for Building Permit applications.
+     */
+    public function printDiscipline(string $type, int $id, string $discipline)
+    {
+        abort_unless($type === 'BP', 404);
+
+        $model = $this->resolveModel($type, $id);
+
+        return app(ApplicationController::class)->printDiscipline($model, $discipline);
     }
 
     private function portalViewVars(array $data, string $type, string $formAction): array

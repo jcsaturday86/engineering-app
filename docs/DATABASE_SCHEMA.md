@@ -294,6 +294,7 @@ Polymorphic, `requirement_name`, `file_path`, `original_filename`, `status` (pen
 - **`ApplicationStatus` enum** gained two new values: `pending_approval` (client submitted online, awaiting Engineering approve/disapprove) and `returned` (Engineering disapproved; client can edit and resubmit). See `docs/WORKFLOWS.md` for the full transition diagram.
 - **`applications.source`** (and the equivalent column on the other 5 tables) distinguishes `walk_in` from `online` — set by `OnlineApplicationController` overrides passed into each controller's shared `persistApplication()`/`applyUpdate()` methods.
 - 12 draft test applications (2 per permit type) plus several advanced through submit/approve/disapprove were created in the dev database this session via the real online submission code path, to exercise the portal end-to-end — real rows, not seeded fixtures; not part of the schema.
+- **`source` surfaced in staff UI** (later session, no schema change): all 6 staff application index pages (`/applications`, `/occupancy-applications`, `/fencing-applications`, `/demolition-applications`, `/signage-applications`, `/annual-inspection-applications`) gained a Source column (Online/Onsite badge) and a matching `?source=` filter dropdown, added to each controller's existing `filteredQuery()` method — the column already existed, this only added it to the read path.
 
 ---
 

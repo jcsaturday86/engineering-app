@@ -430,6 +430,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/application/{type}/{id}/track', [OnlineApplicationController::class, 'track'])->name('track')->middleware('can:online-track');
         Route::get('/application/{type}/{id}/download', [OnlineApplicationController::class, 'downloadPermit'])->name('download')->middleware('can:online-download');
         Route::get('/application/{type}/{id}/print', [OnlineApplicationController::class, 'printForm'])->name('print')->middleware('can:online-download');
+        Route::get('/application/{type}/{id}/print-discipline/{discipline}', [OnlineApplicationController::class, 'printDiscipline'])->name('print.discipline')->middleware('can:online-download');
     });
 });
 

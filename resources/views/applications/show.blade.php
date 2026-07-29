@@ -12,17 +12,7 @@
 
 @section('content')
 @php
-    $statusColors = [
-        'draft' => 'bg-gray-100 text-gray-600',
-        'submitted' => 'bg-blue-100 text-blue-700',
-        'zoning_assessed' => 'bg-yellow-100 text-yellow-700',
-        'engineering_assessed' => 'bg-amber-100 text-amber-700',
-        'billed' => 'bg-orange-100 text-orange-700',
-        'paid' => 'bg-green-100 text-green-700',
-        'permit_generated' => 'bg-indigo-100 text-indigo-700',
-        'released' => 'bg-emerald-100 text-emerald-700',
-        'cancelled' => 'bg-red-100 text-red-700',
-    ];
+    $statusEnum = \App\Enums\ApplicationStatus::tryFrom($application->status);
     $permitColor = $application->permitType->code === 'BP' ? 'bg-blue-100 text-blue-700' : 'bg-indigo-100 text-indigo-700';
     $isBP = $application->permitType->code === 'BP';
     $isOP = $application->permitType->code === 'OP';
@@ -43,12 +33,12 @@
             <div class="flex items-center gap-3">
                 <div>
                     <h2 class="text-2xl font-bold text-gray-900 font-mono">{{ $application->application_number }}</h2>
-                    <div class="flex items-center gap-2 mt-1">
+                    <div class="flex flex-wrap items-center gap-2 mt-1">
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium {{ $permitColor }}">
                             {{ $application->permitType->code }} &mdash; {{ $application->permitType->name }}
                         </span>
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusColors[$application->status] ?? 'bg-gray-100 text-gray-600' }}">
-                            {{ ucfirst(str_replace('_', ' ', $application->status)) }}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusEnum?->color() ?? 'bg-gray-100 text-gray-600' }}">
+                            {{ $statusEnum?->label() ?? ucfirst(str_replace('_', ' ', $application->status)) }}
                         </span>
                     </div>
                 </div>
@@ -203,11 +193,21 @@
                     <i class="fas fa-map-marker-alt mr-1"></i> Track
                 </a>
                 @endif
-                @if($isApproved)
-                <a href="{{ route('online.print', $routeParams) }}" class="px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200" target="_blank">
-                    <i class="fas fa-print mr-1"></i> Print Application Form
-                </a>
-                @endif
+                <div x-data="{ open: false }" class="relative">
+                    <button type="button" @click="open = !open" class="px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 inline-flex items-center gap-2">
+                        <i class="fas fa-print"></i> Print Forms <i class="fas fa-chevron-down text-xs text-gray-400"></i>
+                    </button>
+                    <div x-show="open" @click.outside="open = false" x-cloak class="absolute left-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                        <a href="{{ route('online.print', $routeParams) }}" target="_blank" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                            <i class="fas fa-print w-4 text-gray-400"></i> 1. Application Form
+                        </a>
+                        @foreach(['architectural' => 'Architectural', 'structural' => 'Structural', 'electrical' => 'Electrical', 'sanitary' => 'Sanitary', 'mechanical' => 'Mechanical', 'electronics' => 'Electronics'] as $discipline => $label)
+                        <a href="{{ route('online.print.discipline', array_merge($routeParams, ['discipline' => $discipline])) }}" target="_blank" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                            <i class="fas fa-print w-4 text-gray-400"></i> {{ $loop->iteration + 1 }}. {{ $label }}
+                        </a>
+                        @endforeach
+                    </div>
+                </div>
                 @if(in_array($application->status, ['permit_generated', 'released']))
                 <a href="{{ route('online.download', $routeParams) }}" class="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">
                     <i class="fas fa-download mr-1"></i> Download Permit
@@ -217,6 +217,8 @@
             @endif
         </div>
     </div>
+
+    @include('partials.application-stepper')
 
     @if($application->status === 'returned' && $application->review_remarks)
     <div class="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">

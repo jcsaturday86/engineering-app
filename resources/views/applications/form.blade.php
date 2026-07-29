@@ -177,8 +177,8 @@
             </div>
             @endif
 
-            {{-- BP: Skip Locational Clearance --}}
-            @if($isBP)
+            {{-- BP: Skip Locational Clearance (staff only — not available to online clients) --}}
+            @if($isBP && $portal !== 'client')
             <div>
                 <label class="inline-flex items-start gap-2 cursor-pointer p-3 bg-amber-50 border border-amber-200 rounded-lg">
                     <input type="checkbox" name="skip_locational" value="1"

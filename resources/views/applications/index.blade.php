@@ -38,6 +38,14 @@
                 </select>
             </div>
             <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Source</label>
+                <select name="source" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                    <option value="">All</option>
+                    <option value="online" {{ request('source') === 'online' ? 'selected' : '' }}>Online</option>
+                    <option value="walk_in" {{ request('source') === 'walk_in' ? 'selected' : '' }}>Onsite</option>
+                </select>
+            </div>
+            <div>
                 <label class="block text-xs font-medium text-gray-500 mb-1">Date From</label>
                 <input type="date" name="date_from" value="{{ $dateFrom }}"
                     class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
@@ -50,7 +58,7 @@
             <button type="submit" class="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition">
                 <i class="fas fa-search mr-1"></i> Filter
             </button>
-            @if(request()->hasAny(['search', 'status']) || $dateFrom != now()->startOfYear()->toDateString() || $dateTo != now()->toDateString())
+            @if(request()->hasAny(['search', 'status', 'source']) || $dateFrom != now()->startOfYear()->toDateString() || $dateTo != now()->toDateString())
                 <a href="{{ route('applications.index') }}" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Clear</a>
             @endif
             <a href="{{ route('applications.report', request()->query()) }}" target="_blank" title="Generate PDF Report"
@@ -70,6 +78,7 @@
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Applicant</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Project</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Status</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-500">Source</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Date</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">TTA</th>
                         <th class="text-right px-4 py-3 font-medium text-gray-500">Actions</th>
@@ -104,6 +113,12 @@
                                 {{ ucfirst(str_replace('_', ' ', $app->status)) }}
                             </span>
                         </td>
+                        <td class="px-4 py-3">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $app->source === 'online' ? 'bg-sky-100 text-sky-700' : 'bg-slate-100 text-slate-600' }}">
+                                <i class="fas {{ $app->source === 'online' ? 'fa-globe' : 'fa-building' }} mr-1 text-[10px]"></i>
+                                {{ $app->source === 'online' ? 'Online' : 'Onsite' }}
+                            </span>
+                        </td>
                         <td class="px-4 py-3 text-gray-500">{{ $app->created_at->format('M d, Y') }}</td>
                         <td class="px-4 py-3 text-gray-600">
                             @php
@@ -121,7 +136,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="px-4 py-12 text-center text-gray-400">
+                        <td colspan="8" class="px-4 py-12 text-center text-gray-400">
                             <i class="fas fa-folder-open text-3xl mb-3"></i>
                             <p>No applications found</p>
                         </td>

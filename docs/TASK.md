@@ -559,6 +559,36 @@
 - Brought all 6 docs current with the Online Application Workflow buildout above: `DATABASE_SCHEMA.md`/`PROJECT_CONTEXT.md` updated in an earlier pass this session; `WORKFLOWS.md`, `CODEBASE.md`, `PROGRESS.md`, and this file updated in this pass
 - Corrected several now-stale statements found while updating: FP/AI's "no online self-service" notes in `WORKFLOWS.md`, SGP's "no `printForm()`"/"no scanned official form" notes in `CODEBASE.md`/`PROGRESS.md`, and the `application_requirements` "DP/SGP/FP never populate" note in `DATABASE_SCHEMA.md`'s morph-map section — all were true before this session's online-portal rebuild and are now corrected
 
+### Skip Locational Clearance: Hidden for Online Clients — COMPLETED
+
+- `resources/views/applications/form.blade.php`'s "Skip Locational Clearance" checkbox gate changed from `@if($isBP)` to `@if($isBP && $portal !== 'client')` — staff (default `$portal='staff'`) keep full access, including when editing an application that originated online; online clients (`/online/apply?type=BP`) never see the option, matching the requirement that self-service applicants cannot bypass Planning review themselves
+
+### Staff Monitoring: Source (Online/Onsite) Column + Filter — COMPLETED
+
+- All 6 staff application index tables (`/applications`, `/occupancy-applications`, `/fencing-applications`, `/demolition-applications`, `/signage-applications`, `/annual-inspection-applications`) gained a Source column (Online/Onsite badge, colored per module) and a `?source=` filter dropdown
+- Backend: identical one-line addition to each controller's existing `filteredQuery()` method (`if ($request->filled('source')) { $query->where('source', $request->source); }`) — no schema change, `source` already existed on all 6 tables
+- Frontend: filter `<select>` inserted before Date From, Clear-link `hasAny([...])` condition extended, new `<th>Source</th>` + badge `<td>`, empty-state `colspan` incremented — repeated identically across all 6 index views
+- Verified in browser as admin: `/applications` shows the column with correct per-row values; `/applications?source=online` and `/occupancy-applications?source=walk_in` both filter correctly
+
+### Print Forms Parity: Online Client Module + Staff SGP/AI Print Buttons — COMPLETED
+
+- Investigated "copy the staff print to the online client module for all 6 permit types" and found 5 of 6 types (OP/FP/DP/SGP/AI) already had a matching client "Print Application Form" button delegating through `OnlineApplicationController::printForm()` to the same staff `printForm()` method (identical PDF output) — no gap. The one real gap was **BP**: staff has a 7-item "Print Forms" dropdown (Application Form + 6 discipline forms), the client only had the single unified form.
+- Fixed the BP gap: new route `GET /online/application/{type}/{id}/print-discipline/{discipline}` → `online.print.discipline` → new `OnlineApplicationController::printDiscipline()` (`abort_unless($type === 'BP', 404)`, delegates to `ApplicationController::printDiscipline()`, the exact method staff's dropdown calls); `applications/show.blade.php`'s client branch now renders the identical Alpine "Print Forms" dropdown staff sees instead of a single link
+- Fixed an adjacent staff-side bug found during investigation: `signage-applications/show.blade.php` and `annual-inspection-applications/show.blade.php` had the `printForm()` route/controller wired up but **no button in the staff UI at all** — added the same single "Print" link every other type's staff show page has
+- **Follow-up feedback** ("in draft mode it needs to have print forms, it must not be hidden"): removed the `approved_at !== null` gate entirely, from both the Blade buttons (`@if($isApproved)` wrapper deleted on all 6 client show pages) and the backend (`OnlineApplicationController::printForm()`/`printDiscipline()`'s `abort_unless($model->approved_at !== null, 403)` removed) — print is now available to online clients at any application status, including `draft`
+- Verified end-to-end in browser: logged in as a test client, confirmed the BP "Print Forms" dropdown renders all 7 links and each discipline PDF downloads (HTTP 200, checked via network-request inspection) on a `draft`-status application; confirmed `online.print.discipline` 404s for a non-BP type; logged in as staff and confirmed the new SGP/AI Print buttons render and download correctly; `storage/logs/laravel.log` checked clean throughout
+
+### Systems Analysis and Design Documentation (Word Deliverable) — COMPLETED
+
+- Built `docs/EPMS_Systems_Analysis_and_Design.docx` for Jay's presentation — a full SAD package covering all 6 permit types: Introduction/Objectives/Scope, System Overview, Stakeholders table, System Architecture diagram, Use Case diagram + description table, Context + Level 1 DFDs, simplified ERD + data dictionary, BP workflow flowchart, shared OP/FP/DP/SGP/AI workflow + online submission/review-loop flowchart, Technology Stack table, Conclusion
+- Assembled with `phpoffice/phpword` (added as a **dev** Composer dependency — confirmed it doesn't affect the running app, `php artisan route:list` still boots clean) via a one-off scratchpad PHP script, not committed
+- All 7 diagrams hand-drawn as PNGs via PowerShell + `System.Drawing` (no Python/Ghostscript/pandoc available in this environment) and embedded as real images, not placeholders; verified the final `.docx`'s structural integrity via `unzip -l` (valid OOXML, all images present) and a PhpWord `IOFactory::load()` read-back before delivery
+- Delivered as an explicit draft ("not yet final," per Jay's own framing) for him to react to before the actual presentation
+
+### Documentation Refresh Round 2 (PROJECT_CONTEXT.md, DATABASE_SCHEMA.md, WORKFLOWS.md, CODEBASE.md, PROGRESS.md, TASK.md) — COMPLETED
+
+- Brought all 6 docs current with the three items above (Skip-LC client restriction, Source monitoring column/filter, print-forms parity + draft-mode visibility) — none of these changed the database schema, so `DATABASE_SCHEMA.md`'s edit was a documentation-only note (source column already existed and was already documented)
+
 ---
 
 ## Upcoming Tasks
