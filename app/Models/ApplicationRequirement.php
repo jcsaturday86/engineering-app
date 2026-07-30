@@ -12,6 +12,7 @@ class ApplicationRequirement extends Model
         'application_id',
         'applicationable_type',
         'applicationable_id',
+        'document_requirement_id',
         'requirement_name',
         'file_path',
         'original_filename',
@@ -36,6 +37,15 @@ class ApplicationRequirement extends Model
     public function getApplicationAttribute()
     {
         return $this->applicationable;
+    }
+
+    /**
+     * The configured requirement this upload satisfies. Null for legacy or
+     * free-form uploads made before the checklist existed.
+     */
+    public function documentRequirement(): BelongsTo
+    {
+        return $this->belongsTo(DocumentRequirement::class);
     }
 
     public function reviewedBy(): BelongsTo

@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             GeoDataSeeder::class,
             ReferenceDataSeeder::class,
             FeeScheduleSeeder::class,
+            DocumentRequirementSeeder::class,
             AdminUserSeeder::class,
             ApplicationSeeder::class,
         ]);

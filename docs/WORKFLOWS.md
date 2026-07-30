@@ -382,8 +382,8 @@ draft ──(submit, requirements uploaded)──> pending_approval ──(Engin
                                                   └──(Engineering disapprove, remarks required)──> returned ──(edit + resubmit)──> pending_approval
 ```
 
-1. **Draft** — a client fills out one of the 6 forms (identical to the staff form, parameterized by `$portal='client'`) and can save as draft, edit, and upload supporting documents (`ApplicationRequirement`, polymorphic) at any point while `draft` or `returned`.
-2. **Requirement-document gate** — `OnlineApplicationController::submit()` refuses to submit (`back()->with('error', ...)`) unless the client has uploaded at least one requirement document via `applicationRequirements()`. The Upload/Edit/Submit action bar is available while the application is `draft` or `returned` (previously Upload was only reachable after submission, which made the gate impossible to satisfy — fixed this session).
+1. **Draft** — a client fills out one of the 6 forms (identical to the staff form, parameterized by `$portal='client'`) and can save as draft, edit, and upload supporting documents (`ApplicationRequirement`, polymorphic) at any point while `draft` or `returned`. Saving the form (create **or** edit) redirects straight to the upload page — see "Client Creation Wizard" below.
+2. **Mandatory-requirement gate** — `OnlineApplicationController::submit()` refuses to submit (`back()->with('error', ...)`) unless every **mandatory** configured `DocumentRequirement` for that permit type has an upload, naming the missing documents in the error. The check is `ClientWizard::missingMandatory()`, the same method that drives the progress indicator, so the gate and the UI can never disagree. A permit type with no mandatory requirements configured (currently Annual Inspection) passes automatically — nothing is hardcoded per type. The Upload/Edit/Submit action bar is available while the application is `draft` or `returned` (previously Upload was only reachable after submission, which made the gate impossible to satisfy).
 3. **Submit** — moves the application to `pending_approval` and notifies Engineering.
 4. **Engineering Review** (`ApplicationReviewController`, `/application-review`, `approve-applications`/`reject-applications` permissions, granted to engineering-officer/engineering-staff/administrator/super-admin) — a queue of all `pending_approval` applications across all 6 types:
    - **Approve** — BP routes to `for_zoning_assessment` (needs Zoning first); the other 5 types route straight to `submitted` (their normal walk-in-equivalent starting point, since they skip zoning). Notifies the client (`ApplicationReviewedNotification`, database channel, via the existing notification bell).
@@ -406,9 +406,48 @@ Print is available at **any application status, including draft** — not gated 
 
 Once `permit_generated`/`released`, the client can also download the generated permit (`OnlineApplicationController::doDownloadPermit()`), carrying the same seal/logo/QR variables as the staff print path — this one remains gated to that status range, since there's nothing to download before a permit exists.
 
-### Client Dashboard
+### Client Creation Wizard (Details → Documents → Submit)
 
-`resources/views/online/dashboard.blade.php` (`OnlineApplicationController::dashboard()`) gained a status filter dropdown (`?status=`), a Turn-Around-Time column (same day-count logic as the staff application indexes), and icon-button Actions (view/edit/upload/track/download) with color-coded borders per action type, replacing plain text links.
+The client's path from blank form to submitted application is presented as an explicit 3-step wizard, defined once in `app/Support/ClientWizard.php` (`const STEPS`) and rendered by `resources/views/partials/client-wizard-stepper.blade.php`:
+
+| Step | Label | Current when |
+|------|-------|--------------|
+| 1 | Application Details | on a create/edit form (no saved application yet, or the client is editing) |
+| 2 | Upload Requirements | saved, but mandatory documents still outstanding |
+| 3 | Submit for Review | all mandatory documents attached |
+
+- **Saving redirects forward.** `store()` and `update()` both redirect to `online.upload` (via a private `redirectAfterSave()`), not to the detail page, so a client who saves the form lands on the document checklist instead of having to find it. `redirectAfterSave()` falls back to `online.show` if the user lacks `online-upload` — otherwise a successful save would redirect into a 403, which reads like lost work. (The seeded `client` role has both abilities, so the fallback is defensive only.)
+- **Step is derived, never stored.** `ClientWizard::currentStep()` recomputes from actual mandatory-document completion, so removing a document correctly moves the client back to step 2. No migration or status column was needed.
+- **Where it appears** — the 6 form views (`@if(($portal ?? 'staff') === 'client')`, hardcoded step 1), the upload page, and the 6 show pages while `draft`/`returned`. It disappears once submitted, leaving the lifecycle stepper (below) alone.
+- **Two indicators, different meanings.** This wizard is deliberately separate from `partials/application-stepper.blade.php`: the wizard is "what you still have to do", the lifecycle stepper is "where the permit is in the office". They share the same node/rail classes so they read as one system when both appear on a draft. The wizard also can't reuse the lifecycle stepper, which is status-driven and requires an `$application` that doesn't exist during `create()`.
+
+### Client Dashboard and Applications List
+
+Split into two pages, since the dashboard previously served as both landing page and full record list (and the sidebar already implied the split, with "My Dashboard" and "All Applications" both pointing at the same route):
+
+- **`online.dashboard`** (`resources/views/online/dashboard.blade.php`) — welcome banner, the 4 stat cards (Total/Pending/Returned/Approved), and a **Recent Applications** list of the last 5 with a "View All Applications" link.
+- **`online.applications`** (`resources/views/online/applications.blade.php`, new) — the full record list: status filter dropdown (`?status=`), Turn-Around-Time column (same day-count logic as the staff indexes), and icon-button Actions (view/edit/upload/track/download) with color-coded borders per action type.
+
+Both are fed by a shared private `OnlineApplicationController::getClientApplications()` helper that loads and unifies the client's records across all 6 types; `dashboard()` computes the stats from it, `applications()` applies the status filter. The sidebar's "All Applications" link and the "My Applications" breadcrumb/back-links on the apply, upload and track pages all point at `online.applications`.
+
+### Document Requirements Checklist (Settings-Driven)
+
+What a client must attach is **configuration, not code**. `Settings → Document Requirements` (`manage-document-requirements`) maintains, per permit type, the official Engineering Office document list; the client upload page renders exactly that list.
+
+- **Structure** — two levels: a top-level row is either a standalone requirement or a heading (`is_uploadable = false`) grouping child rows. BP, for example, has a non-uploadable "Survey plans, design plans…" heading over the 8 discipline documents, plus an uploadable "Fire Protection Plan" row over its 5 sub-items.
+- **Obligation levels** — `mandatory` (blocks submission), `conditional` (shown with its `condition_note`, e.g. "In case the applicant is not the registered owner of the lot.", never blocks), `optional` (never blocks).
+- **Client upload page** (`resources/views/online/upload.blade.php` + `partials/requirements-checklist.blade.php`) — a checklist with a per-row Upload control, replacing the old single form with a generic 11-option `requirement_name` dropdown. Each row shows its level badge, its condition note, and once attached the filename, review status, and View/Replace/Delete controls. A progress line reads "N of M mandatory uploaded".
+- **Replace vs. Delete** — uploading against a row that already has a file *replaces* it (old file deleted from disk first, so re-uploading never accumulates orphans). Delete removes both the DB row and the physical file, so it genuinely frees space; it is only offered while `draft`/`returned`.
+- **Empty list is data-driven** — a permit type with zero configured requirements shows "No documents are required for this application" and no upload form, and submits freely. Only Annual Inspection currently hits that path (the office has not defined its list yet), but there is **no type check in the code** — adding AI rows in Settings makes the checklist appear immediately, and the submit gate starts enforcing them.
+- **Validation** — `storeRequirement()` requires a `document_requirement_id` that is active, uploadable, **and belongs to this application's permit type**, so a hand-edited id borrowed from another service is rejected.
+
+### Viewing Uploaded Documents
+
+Documents are served through an access-checked route rather than their raw `/storage/...` URL: `GET /requirements/{id}/view` (inline) and `/requirements/{id}/download` (attachment), both on `ApplicationRequirementController`. Authorization is per-record — **staff** holding `view-applications`, or **the client who owns** the parent application (`client_user_id === Auth::id()`); anyone else gets 403, and a row whose file is missing from disk gets a 404 with a clear message.
+
+This matters because the files sit on the `public` disk behind randomized filenames: obscured, but not access-controlled. Since the documents are property titles, tax declarations and notarized affidavits, a signed-in client guessing a URL must not be able to read another applicant's paperwork.
+
+View/download links appear on the client checklist (the filename itself plus a View button — outside the editable gate, so a client can still open their documents after submitting, when Replace/Delete are correctly hidden) and in the Requirements card on all 6 application detail pages, via the shared `partials/requirements-uploaded-list.blade.php`. That last one closed a real gap: reviewers approving or disapproving an application previously had no way to open the document they were judging.
 
 ### Staff Monitoring: Online vs Onsite
 

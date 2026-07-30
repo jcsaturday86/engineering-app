@@ -24,7 +24,7 @@
         <a href="{{ route('online.apply') }}" class="block px-3 py-2 text-sm rounded-lg {{ $currentRoute === 'online.apply' ? 'text-primary-700 bg-primary-50 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
             New Application
         </a>
-        <a href="{{ route('online.dashboard') }}" class="block px-3 py-2 text-sm rounded-lg {{ $currentRoute === 'online.dashboard' ? 'text-primary-700 bg-primary-50 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
+        <a href="{{ route('online.applications') }}" class="block px-3 py-2 text-sm rounded-lg {{ $currentRoute === 'online.applications' ? 'text-primary-700 bg-primary-50 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
             All Applications
         </a>
     </div>
@@ -374,6 +374,9 @@
                 <a href="{{ route('settings.surcharge-fees') }}" class="block px-3 py-1.5 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Surcharge Fees</a>
             </div>
         </div>
+        @endcan
+        @can('manage-document-requirements')
+        <a href="{{ route('settings.document-requirements') }}" class="block px-3 py-2 text-sm rounded-lg {{ str_starts_with($currentRoute, 'settings.document-requirements') ? 'text-primary-700 bg-primary-50 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">Document Requirements</a>
         @endcan
         @can('manage-signatories')
         <a href="{{ route('settings.signatories') }}" class="block px-3 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-50">Signatories</a>

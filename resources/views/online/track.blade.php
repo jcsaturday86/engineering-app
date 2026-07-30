@@ -3,7 +3,7 @@
 @section('title', 'Track Application')
 
 @section('breadcrumbs')
-    <a href="{{ route('online.dashboard') }}" class="text-gray-500 hover:text-gray-700">My Applications</a>
+    <a href="{{ route('online.applications') }}" class="text-gray-500 hover:text-gray-700">My Applications</a>
     <i class="fas fa-chevron-right text-xs mx-2 text-gray-400"></i>
     <span class="text-gray-900 font-medium">Track {{ $application->application_number }}</span>
 @endsection
@@ -71,7 +71,7 @@
     </div>
 
     <div class="text-center">
-        <a href="{{ route('online.dashboard') }}" class="text-sm text-blue-600 hover:text-blue-800">
+        <a href="{{ route('online.applications') }}" class="text-sm text-blue-600 hover:text-blue-800">
             <i class="fas fa-arrow-left mr-1"></i> Back to My Applications
         </a>
     </div>

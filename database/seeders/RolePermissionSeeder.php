@@ -75,6 +75,7 @@ class RolePermissionSeeder extends Seeder
             'manage-roles',
             'manage-fee-schedules',
             'manage-signatories',
+            'manage-document-requirements',
 
             // Online (client-facing)
             'online-apply',

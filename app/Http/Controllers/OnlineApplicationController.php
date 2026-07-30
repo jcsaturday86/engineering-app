@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Application;
 use App\Models\AnnualInspectionApplication;
 use App\Models\DemolitionApplication;
+use App\Models\DocumentRequirement;
 use App\Models\FencingApplication;
 use App\Models\OccupancyApplication;
 use App\Models\Permit;
@@ -15,9 +16,16 @@ use App\Models\SignageApplication;
 use App\Notifications\ApplicationSubmittedNotification;
 use App\Models\User;
 use App\Support\ApplicationTimeline;
+use App\Support\ClientWizard;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class OnlineApplicationController extends Controller
 {
@@ -137,9 +145,8 @@ class OnlineApplicationController extends Controller
         return $model;
     }
 
-    public function dashboard(Request $request)
+    private function getClientApplications(User $user): Collection
     {
-        $user = Auth::user();
         $applications = collect();
 
         foreach (self::TYPES as $code => $meta) {
@@ -167,7 +174,12 @@ class OnlineApplicationController extends Controller
             }));
         }
 
-        $applications = $applications->sortByDesc('created_at')->values();
+        return $applications->sortByDesc('created_at')->values();
+    }
+
+    public function dashboard(Request $request)
+    {
+        $applications = $this->getClientApplications(Auth::user());
 
         $stats = [
             'total' => $applications->count(),
@@ -176,6 +188,15 @@ class OnlineApplicationController extends Controller
             'approved' => $applications->whereIn('status', ['permit_generated', 'released'])->count(),
         ];
 
+        $recentApplications = $applications->take(5);
+
+        return view('online.dashboard', compact('stats', 'recentApplications'));
+    }
+
+    public function applications(Request $request)
+    {
+        $applications = $this->getClientApplications(Auth::user());
+
         $statusFilter = $request->query('status');
         $statusOptions = $applications->pluck('status')->unique()->values();
 
@@ -183,7 +204,7 @@ class OnlineApplicationController extends Controller
             $applications = $applications->where('status', $statusFilter)->values();
         }
 
-        return view('online.dashboard', compact('applications', 'stats', 'statusFilter', 'statusOptions'));
+        return view('online.applications', compact('applications', 'statusFilter', 'statusOptions'));
     }
 
     /**
@@ -239,8 +260,23 @@ class OnlineApplicationController extends Controller
             return back()->withInput()->with('error', 'Failed to create application: ' . $e->getMessage());
         }
 
-        return redirect()->route('online.show', ['type' => $type, 'id' => $application->id])
-            ->with('success', "Application {$application->application_number} saved as draft. Review it and click Submit when you're ready.");
+        return $this->redirectAfterSave($type, $application->id)
+            ->with('success', "Application {$application->application_number} saved as draft. Next, upload your required documents.");
+    }
+
+    /**
+     * Where a client lands after saving the form.
+     *
+     * Straight to the document checklist, since that is step 2 of the three-step
+     * journey and mandatory documents now gate submission. Falls back to the
+     * detail page if this client lacks online-upload — otherwise a successful
+     * save would redirect into a 403, which reads like the work was lost.
+     */
+    private function redirectAfterSave(string $type, int $id): RedirectResponse
+    {
+        $route = Gate::allows('online-upload') ? 'online.upload' : 'online.show';
+
+        return redirect()->route($route, ['type' => $type, 'id' => $id]);
     }
 
     public function edit(string $type, int $id)
@@ -285,8 +321,8 @@ class OnlineApplicationController extends Controller
             return back()->withInput()->with('error', 'Failed to update application: ' . $e->getMessage());
         }
 
-        return redirect()->route('online.show', ['type' => $type, 'id' => $model->id])
-            ->with('success', 'Application updated successfully.');
+        return $this->redirectAfterSave($type, $model->id)
+            ->with('success', 'Application updated. Check your required documents below.');
     }
 
     public function submit(Request $request, string $type, int $id)
@@ -298,8 +334,13 @@ class OnlineApplicationController extends Controller
             return back()->with('error', 'Only draft or returned applications can be submitted.');
         }
 
-        if ($model->applicationRequirements()->count() === 0) {
-            return back()->with('error', 'Please upload at least one required document before submitting this application for review.');
+        // Gate on the configured mandatory documents rather than a bare count, so a
+        // service with none configured (currently Annual Inspection) submits freely.
+        $missing = ClientWizard::missingMandatory($model, $type);
+
+        if ($missing->isNotEmpty()) {
+            return back()->with('error', 'Please upload the following required document(s) before submitting: '
+                . $missing->map(fn ($name) => Str::limit($name, 80))->implode('; ') . '.');
         }
 
         $model->update([
@@ -333,16 +374,44 @@ class OnlineApplicationController extends Controller
         ]);
     }
 
+    /**
+     * The configured document checklist for a permit type, as a two-level tree.
+     *
+     * Entirely data-driven: a permit type with no configured rows simply requires
+     * nothing, which is how Annual Inspection currently behaves. No type is
+     * special-cased here, so adding rows in Settings takes effect immediately.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, DocumentRequirement>
+     */
+    private function requirementTreeFor(string $type)
+    {
+        return DocumentRequirement::query()
+            ->active()
+            ->whereNull('parent_id')
+            ->whereHas('permitType', fn ($q) => $q->where('code', strtoupper($type)))
+            ->with(['children' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order')])
+            ->orderBy('sort_order')
+            ->get();
+    }
+
     public function uploadRequirements(string $type, int $id)
     {
         $this->typeMeta($type) ?? abort(404);
         $model = $this->resolveModel($type, $id);
 
-        $application = $model;
-        $applicationType = $type;
-        $requirements = $model->applicationRequirements;
+        $checklist = $this->requirementTreeFor($type);
 
-        return view('online.upload', compact('application', 'applicationType', 'requirements'));
+        $uploads = $model->applicationRequirements()->get();
+
+        return view('online.upload', [
+            'application' => $model,
+            'applicationType' => $type,
+            'checklist' => $checklist,
+            // Keyed by requirement id for O(1) lookup while rendering the tree.
+            'uploadsByRequirement' => $uploads->whereNotNull('document_requirement_id')->keyBy('document_requirement_id'),
+            // Pre-checklist uploads still need to be visible to the client.
+            'legacyUploads' => $uploads->whereNull('document_requirement_id')->values(),
+        ]);
     }
 
     public function storeRequirement(Request $request, string $type, int $id)
@@ -351,20 +420,70 @@ class OnlineApplicationController extends Controller
         $model = $this->resolveModel($type, $id);
 
         $request->validate([
-            'requirement_name' => 'required|string|max:255',
+            'document_requirement_id' => [
+                'required',
+                // Must be an uploadable row belonging to THIS permit type — guards
+                // against a hand-edited id borrowed from another service.
+                Rule::exists('document_requirements', 'id')
+                    ->where('is_active', true)
+                    ->where('is_uploadable', true)
+                    ->whereIn('permit_type_id', PermitType::where('code', strtoupper($type))->pluck('id')),
+            ],
             'file' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png',
         ]);
 
+        $requirement = DocumentRequirement::findOrFail($request->document_requirement_id);
+
         $path = $request->file('file')->store('requirements/' . strtolower($type) . '-' . $model->id, 'public');
 
+        $existing = $model->applicationRequirements()
+            ->where('document_requirement_id', $requirement->id)
+            ->first();
+
+        if ($existing) {
+            // Replace rather than accumulate duplicates for the same requirement.
+            Storage::disk('public')->delete($existing->file_path);
+
+            $existing->update([
+                'requirement_name' => $requirement->name,
+                'file_path' => $path,
+                'original_filename' => $request->file('file')->getClientOriginalName(),
+                'status' => 'pending',
+                'reviewer_remarks' => null,
+                'reviewed_by' => null,
+                'reviewed_at' => null,
+            ]);
+
+            return back()->with('success', 'Document replaced.');
+        }
+
         $model->applicationRequirements()->create([
-            'requirement_name' => $request->requirement_name,
+            'document_requirement_id' => $requirement->id,
+            // Snapshot the label so the upload survives a later rename.
+            'requirement_name' => $requirement->name,
             'file_path' => $path,
             'original_filename' => $request->file('file')->getClientOriginalName(),
             'status' => 'pending',
         ]);
 
-        return back()->with('success', 'Requirement uploaded.');
+        return back()->with('success', 'Document uploaded.');
+    }
+
+    public function destroyRequirement(string $type, int $id, int $requirementId)
+    {
+        $this->typeMeta($type) ?? abort(404);
+        $model = $this->resolveModel($type, $id);
+
+        if (! in_array($model->status, ['draft', 'returned'], true)) {
+            return back()->with('error', 'Documents can only be removed while the application is a draft or has been returned.');
+        }
+
+        $upload = $model->applicationRequirements()->findOrFail($requirementId);
+
+        Storage::disk('public')->delete($upload->file_path);
+        $upload->delete();
+
+        return back()->with('success', 'Document removed.');
     }
 
     public function track(string $type, int $id)

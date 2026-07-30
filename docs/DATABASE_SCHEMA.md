@@ -284,7 +284,40 @@ Structurally closest to `demolition_applications` — has enterprise, design-pro
 Polymorphic (`applicationable_type` / `applicationable_id`), `occupancy_group_id`, `occupancy_sub_group_id`, `others_text`. BP and OP allow **multiple** rows per application (multi-select checkbox grid). AI also populates this table (added later) but only ever writes **one** row per application — its Character of Occupancy field is a single-select radio group, not a checkbox grid, reusing the same table/relation rather than a schema change. DP, SGP, and FP still have no occupancy-group concept at all.
 
 ### `application_requirements`
-Polymorphic, `requirement_name`, `file_path`, `original_filename`, `status` (pending/approved/rejected), `reviewer_remarks`, `reviewed_by`, `reviewed_at`. Now populated by the client portal for **all 6** permit types (previously online self-service only covered BP/OP) — `OnlineApplicationController::submit()` blocks submission with `back()->with('error', ...)` unless at least one requirement row exists for the application.
+Polymorphic, `document_requirement_id` (FK, nullable), `requirement_name`, `file_path`, `original_filename`, `status` (pending/approved/rejected), `reviewer_remarks`, `reviewed_by`, `reviewed_at`. Populated by the client portal for **all 6** permit types (previously online self-service only covered BP/OP).
+
+**`document_requirement_id`** (added via `2026_07_30_100002_add_document_requirement_id_to_application_requirements.php`) links an upload to the configured checklist row it satisfies. Deliberately **nullable with `nullOnDelete`**:
+- nullable so legacy/free-form uploads made before the checklist existed still render;
+- `nullOnDelete` so retiring a requirement in Settings never destroys a document a client already submitted — the upload survives with a null FK and is shown in an "Other Uploaded Documents" block.
+
+`requirement_name` is retained as a **denormalized snapshot** of the requirement's label at upload time, so an upload keeps meaningful text if the requirement is later renamed or deleted.
+
+**Files live on the filesystem, not in the database** — only `file_path` (varchar) is stored. Uploads go to the `public` disk under `requirements/{type}-{id}/{random}.{ext}` (e.g. `storage/app/public/requirements/bp-13/tbQIwwVS….png`), grouped one folder per application, with Laravel's randomized filename; the human-readable name lives in `original_filename`. The directory is web-reachable via the `public/storage → storage/app/public` symlink, but nothing links to it directly — reads go through the access-checked `requirements.view`/`requirements.download` routes instead (see `docs/WORKFLOWS.md`).
+
+Deleting or replacing a document through the client UI removes the physical file (`Storage::disk('public')->delete()`) as well as the row, so it genuinely reclaims disk space. Those two paths are the **only** places files are unlinked — an application delete (soft by design) and a Settings-side requirement delete both intentionally leave files on disk.
+
+### `document_requirements`
+
+The configurable, per-permit-type checklist of documents an online client must attach. A reference table: **no `softDeletes()`** (matching `permit_types`/`fee_types`; retire rows with `is_active = false`, or hard-delete them).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `permit_type_id` | FK → permit_types, cascadeOnDelete | Which service this requirement belongs to |
+| `parent_id` | FK → document_requirements, nullable, cascadeOnDelete | Second level; null = top level. Structure is capped at two levels |
+| `name` | text | `text`, not `string` — several official entries exceed 255 chars |
+| `condition_note` | text, nullable | The "(In case the applicant is not the registered owner…)" parenthetical, stored apart from the name so it can render as helper text |
+| `requirement_level` | enum(mandatory, conditional, optional) | Only `mandatory` blocks submission |
+| `is_uploadable` | boolean, default true | `false` = heading row that accepts no upload of its own (e.g. BP's "Survey plans, design plans…" grouping its 8 discipline documents). A row can be uploadable *and* have children — "Fire Protection Plan" is both |
+| `is_active` | boolean, default true | |
+| `sort_order` | integer, default 0 | New rows get `max(sort_order) + 1` within their parent |
+
+**Index:** `[permit_type_id, parent_id, sort_order]` (`doc_reqs_type_parent_sort_idx`)
+
+Seeded from the official Engineering Office lists by `DocumentRequirementSeeder` (idempotent, `updateOrCreate` on `permit_type_id` + `name`, so it is safe under the self-healing boot path and leaves staff-added rows untouched): **BP 30, FP 18, OP 6, DP 5, SGP 5, AI 0** rows. Annual Inspection is seeded empty because the office has not defined its list yet — but it is *not* special-cased anywhere; it appears in the settings UI like every other service and starts enforcing the moment rows are added.
+
+Requirements whose official text carries a parenthetical condition are seeded `conditional` with that text moved into `condition_note`; everything else is `mandatory`. Both are freely editable in Settings, so the seeded split is a starting point rather than a fixed rule.
+
+> **Two-level cap note:** in the source document BP's "Fire Protection Plan (if applicable)" is itself the 9th item *under* the survey-plans heading, with its own 5 sub-items — three levels. Flattened to fit the two-level model: Fire Protection Plan is a top-level row parenting its 5 sub-items, sitting immediately after the survey-plans group (which holds the other 8 disciplines). Rearrangeable in the editor.
 
 ---
 
@@ -295,6 +328,9 @@ Polymorphic, `requirement_name`, `file_path`, `original_filename`, `status` (pen
 - **`applications.source`** (and the equivalent column on the other 5 tables) distinguishes `walk_in` from `online` — set by `OnlineApplicationController` overrides passed into each controller's shared `persistApplication()`/`applyUpdate()` methods.
 - 12 draft test applications (2 per permit type) plus several advanced through submit/approve/disapprove were created in the dev database this session via the real online submission code path, to exercise the portal end-to-end — real rows, not seeded fixtures; not part of the schema.
 - **`source` surfaced in staff UI** (later session, no schema change): all 6 staff application index pages (`/applications`, `/occupancy-applications`, `/fencing-applications`, `/demolition-applications`, `/signage-applications`, `/annual-inspection-applications`) gained a Source column (Online/Onsite badge) and a matching `?source=` filter dropdown, added to each controller's existing `filteredQuery()` method — the column already existed, this only added it to the read path.
+- **Submission gate is now requirement-driven** (later session): `submit()` no longer checks a bare `applicationRequirements()->count()`. It calls `ClientWizard::missingMandatory()`, which compares the active + uploadable + `mandatory` `document_requirements` rows for the permit type against the application's `document_requirement_id` values, and blocks with the missing names listed. No new column — the gate is derived entirely from `document_requirements` + `application_requirements`.
+- **The client's creation progress is derived, not stored** (later session): the 3-step wizard (Details → Documents → Submit) computes its current step from mandatory-document completion via `ClientWizard::currentStep()`. Deliberately no `wizard_step`/progress column — removing a document correctly moves the client back a step, and no migration or backfill was needed.
+- **No new test data** was created for these later changes: one throwaway Signage application and its uploads were created during verification and then deleted, leaving the 12 dev applications from the 2026-07-28 session unchanged.
 
 ---
 

@@ -13,11 +13,12 @@ engineering-app/
 │   ├── DTOs/              (4 data transfer objects)
 │   ├── Enums/             (5 enums)
 │   ├── Exports/           (3 Excel export classes)
-│   ├── Http/Controllers/  (19 + Auth controllers)
-│   ├── Models/            (34 Eloquent models)
+│   ├── Http/Controllers/  (31 + Auth controllers)
+│   ├── Models/            (42 Eloquent models)
 │   ├── Notifications/     (5 notification classes)
 │   ├── Providers/         (AppServiceProvider, SelfHealingServiceProvider)
-│   └── Services/          (8 service classes)
+│   ├── Services/          (8 service classes)
+│   └── Support/           (2 view-facing helpers: ApplicationTimeline, ClientWizard)
 ├── database/
 │   ├── migrations/        (24+ migration files)
 │   ├── seeders/           (9 seeders)
@@ -30,7 +31,7 @@ engineering-app/
 
 ---
 
-## Models (34)
+## Models (42)
 
 ### Core Transaction Models
 
@@ -45,7 +46,7 @@ engineering-app/
 | AnnualInspectionPermitUnit | annual_inspection_permit_units | `belongsTo(AnnualInspectionApplication)`, `belongsTo(Permit)`, `belongsTo(AssessmentItem)` (via `assessment_item_id`, nullable). Built for the module's original multi-permit-generation design, went dormant during a single-permit interim, then **reactivated**: one row per generated certificate (`group_code` = `GE`/`ELN`/`MACH`/`ACREF`/`ELEV`/`ESC`), linking each `Permit` back to its slice of assessment data |
 | AnnualInspectionEquipmentItem | annual_inspection_equipment_items | `belongsTo(AnnualInspectionApplication)`. The declared "Equipment / Items to be Inspected" checklist captured on the application form — `fee_code`/`quantity`/`specification`/`sort_order`. Carries a public `CATEGORIES` const (5 groups of equipment-count fee codes) and `labelFor()`/`allCodes()` static helpers, reused by the form dropdown, show page, and assessment reference panel |
 | ApplicationOccupancyGroup | application_occupancy_groups | morphTo: applicationable |
-| ApplicationRequirement | application_requirements | morphTo: applicationable |
+| ApplicationRequirement | application_requirements | morphTo: applicationable; belongsTo: documentRequirement (nullable — null for legacy/free-form uploads predating the settings checklist). `requirement_name` is a denormalized snapshot of the requirement's label at upload time, so an upload stays meaningful if the requirement is later renamed or retired |
 | Assessment | assessments | morphTo: applicationable. hasMany: assessmentItems. SoftDeletes, LogsActivity |
 | AssessmentItem | assessment_items | belongsTo: assessment, feeCategory, feeType. SoftDeletes |
 | ZoningAssessment | zoning_assessments | belongsTo: application (1:1, BP only). SoftDeletes |
@@ -69,6 +70,7 @@ engineering-app/
 | OccupancySubGroup | occupancy_sub_groups |
 | OccupancyDivision | occupancy_divisions |
 | BuildingPart | building_parts |
+| DocumentRequirement | document_requirements | belongsTo: permitType, parent (self); hasMany: children (self, ordered by `sort_order`), applicationRequirements. Scopes `active()`/`uploadable()`/`mandatory()` and `levelColor()`/`levelLabel()` badge helpers. Plain `Model` — reference tables don't soft-delete; retire with `is_active = false` |
 | Signatory | signatories | 3 original roles (`building_official`, `planning_officer`, `treasury_officer`) plus 15 `ai_*` roles seeded for the Annual Inspection "General, Occupancy & Electrical" certificate's discipline/Chief signature blocks. Settings > Signatories UI is edit-only — no create/delete route (a Create/Delete pair was built then reverted at the user's request in the same session it was added) |
 | LandClassification | land_classifications |
 
@@ -232,11 +234,25 @@ index, updateSchedule, storeSchedule, destroySchedule, updateUnitLabel — `/set
 Also fixed: `AnnualInspectionApplication` doesn't have the split `applicant_first_name`/`applicant_last_name`/etc. or `building_street`/`buildingBarangay` fields other application types use — it stores a single `owner_name` and `location_street` instead. `show()` now duck-types on `isset($application->owner_name)` to branch between the split-name concatenation and the single `owner_name` field for the Applicant row; the Location row's blade falls back to `$application->building_street` OR `$application->location_street`.
 
 ### OnlineApplicationController (Client Portal, all 6 permit types)
-dashboard, apply (create), store, show, edit, update, submit, uploadRequirements/storeRequirement, printForm, printDiscipline, doDownloadPermit, track
+dashboard, applications, apply (create), store, show, edit, update, submit, uploadRequirements/storeRequirement/destroyRequirement, printForm, printDiscipline, doDownloadPermit, track
 
 A type-generic dispatcher, not 6 separate near-duplicate controllers — a private `const TYPES` map keys each permit code (`BP`/`OP`/`FP`/`DP`/`SGP`/`AI`) to its model class, staff-controller class, form view, show view, show-page eager-load relations, whether it needs a permit-type selector, occupancy-group options, and its PDF print template. Every method looks up the current `$type` against this map and delegates to the mapped staff controller's `persistApplication()`/`applyUpdate()`/`validateApplication()` (see above) rather than reimplementing per-type logic — this is what let all 6 types land in the portal at once instead of one at a time. `store()` sets `overrides` (`status = pending_approval` once requirements exist, `source = online`, `client_user_id = Auth::id()`); `submit()` blocks with a flashed error unless `applicationRequirements()->exists()`. `show()` eager-loads the same relations as each staff controller's own `show()` and renders the **staff** `show.blade.php` (parameterized `$portal='client'`) — `resources/views/online/show.blade.php` was deleted, no longer needed. `doDownloadPermit()` only allows the download once the application's permit(s) are generated, passing the same seal/logo/QR variables as `PermitController::print()`. Routes live under `/online/*`, `middleware('auth')` + `can:online-apply`.
 
+**Later-session changes.** `dashboard()` and the new `applications()` both draw on a shared private `getClientApplications()` helper (the per-type loading loop, extracted): `dashboard()` computes the 4 stat cards plus a 5-record "Recent Applications" slice, `applications()` renders the full filterable list in the new `online/applications.blade.php`. `store()` and `update()` no longer redirect to `online.show` — a private `redirectAfterSave()` sends the client to `online.upload` so saving the form lands them on the document checklist, falling back to `online.show` when `Gate::allows('online-upload')` is false (otherwise a successful save would redirect into a 403, reading like lost work). `submit()`'s gate moved from a bare `applicationRequirements()->count()` check to `ClientWizard::missingMandatory()`, listing the missing documents by name; the private `missingMandatoryRequirements()` it briefly held was moved into that helper so the gate and the progress stepper share one implementation. `uploadRequirements()` now passes a `DocumentRequirement` tree plus uploads keyed by `document_requirement_id`; `storeRequirement()` validates a `document_requirement_id` that must be active, uploadable **and** belong to this application's permit type (blocking a hand-edited id from another service), snapshots the requirement's name, and replaces rather than duplicates an existing upload (deleting the superseded file first); new `destroyRequirement()` deletes row + file, restricted to `draft`/`returned`.
+
 `printForm()`/`printDiscipline()` are **not** gated on approval — available at any status including `draft`, so a client can print/preview the form they've filled in before submitting (an earlier `abort_unless($model->approved_at !== null, 403)` gate was removed from both methods per follow-up feedback: "in draft mode it needs to have print forms, it must not be hidden"). `printDiscipline(string $type, int $id, string $discipline)` is new — `abort_unless($type === 'BP', 404)` since discipline forms (Architectural/Structural/Electrical/Sanitary/Mechanical/Electronics) only exist for BP, then delegates to `app(ApplicationController::class)->printDiscipline($model, $discipline)`, the exact same method the staff print dropdown calls. Route: `GET /online/application/{type}/{id}/print-discipline/{discipline}` → `online.print.discipline`.
+
+### DocumentRequirementController (Settings → Document Requirements)
+index, showType, store, update, destroy
+
+Maintains the per-permit-type checklist of documents an online client must attach (`DocumentRequirement` model / `document_requirements` table). `index()` is a drill-down landing page — one card per active permit type with total and mandatory counts (`withCount`, including a filtered `mandatory_requirements_count`) — modeled on `settings/fees.blade.php`. `showType(PermitType)` is the per-service editor, loading top-level rows with their `children` plus a `$parentOptions` list for the "nest under" picker (top-level rows only, since the structure is capped at two levels). Mutators follow the established `DemolitionFeeController` pattern: validate, mutate, `back()->with('success', …)`; new rows take `sort_order` via the `max('sort_order') + 1` idiom, scoped to their parent. A shared private `validated()` also enforces the two-level cap defensively — a row cannot become its own parent, and cannot nest under a row that already has a parent. Routes sit in the `settings.` group under `can:manage-document-requirements` (a new permission; `super-admin`/`administrator` inherit it automatically from the seeder's `reject()` pattern). Views: `settings/document-requirements.blade.php`, `settings/document-requirements-type.blade.php`, `settings/partials/document-requirement-row.blade.php`.
+
+### ApplicationRequirementController (uploaded-document viewing, both portals)
+view, download
+
+Serves uploaded requirement files: `GET /requirements/{applicationRequirement}/view` (inline `Content-Disposition`, so PDFs/images render in a browser tab) and `/requirements/{applicationRequirement}/download` (attachment, original filename). Routes sit directly in the `auth` group rather than under a portal prefix, because both staff and clients use them; authorization is **per-record** in a private `authorizeAccess()`: allowed for staff holding `view-applications`, or the client who owns the parent application (`client_user_id === Auth::id()`), 403 otherwise. It also 404s when the row exists but the file is gone from disk, which is clearer than the raw stream failure.
+
+Files are stored on the `public` disk behind randomized filenames, so they are technically web-reachable via the storage symlink — streaming through this controller instead means every read is access-checked, which matters because the documents are property titles, tax declarations and notarized affidavits. Consumed by `partials/requirements-checklist.blade.php` (client) and `partials/requirements-uploaded-list.blade.php` (all 6 detail pages, both portals).
 
 ### ApplicationReviewController (Engineering approve/disapprove queue, all 6 permit types)
 index, approve, disapprove
@@ -253,6 +269,17 @@ DashboardController, ReportController, SettingsController, FeeScheduleController
 `ReportController::auditLogs()` — `GET /reports/audit-logs`, gated by `can:view-audit-logs` (super-admin only; the permission is granted to no other role). Queries `Spatie\Activitylog\Models\Activity::with(['causer', 'subject'])` filtered by `search` (description), `causer_id`, `subject_type`, `event`, and a month range (`?month=YYYY-MM`, defaults to current month), paginated 20/page.
 
 `SettingsController::storeUser()` validates and applies an admin-supplied password (`Password::min(8)->mixedCase()->numbers()->symbols()`, `confirmed`) instead of hardcoding every new staff account to `password123`. `update()` (Settings → General file uploads) derives each file setting's storage path from its key via a `match` expression, rather than a single hardcoded path shared by all file settings.
+
+---
+
+## Support Helpers (2)
+
+Small static view-facing classes in `app/Support/` — not Services (no injected dependencies, no business transactions), just single sources of truth for things several Blade views and a controller all need to agree on.
+
+| Helper | Purpose |
+|--------|---------|
+| ApplicationTimeline | The lifecycle step sequence shown to applicants — `build($application, $type)` (BP includes the two Zoning steps; the other 5 skip them), plus `currentIndex()`/`percent()`. Consumed by `partials/application-stepper.blade.php` and the client Track page's vertical timeline |
+| ClientWizard | The client's 3-step submission journey — `const STEPS` (Details / Documents / Submit), `missingMandatory($application, $type)` (active + uploadable + mandatory `DocumentRequirement` rows with no matching upload), and `currentStep()`. `missingMandatory()` backs **both** `OnlineApplicationController::submit()`'s gate and `partials/client-wizard-stepper.blade.php`, so the blocking rule and the progress display cannot drift apart |
 
 ---
 
@@ -303,7 +330,9 @@ AI: `annual-inspection-applications/index`, `form`, `show` (directory renamed fr
 All 6 `form.blade.php`/`show.blade.php` pairs above are now shared between staff and the online client portal, parameterized by a `$portal` variable (`'staff'`/`'client'`) rather than each having a separate client-facing view — see `OnlineApplicationController` below and `docs/WORKFLOWS.md`'s Online Application Flow section.
 
 ### Online Portal Views
-`online/dashboard.blade.php` (status filter, TAT column, icon-button Actions), `online/apply.blade.php` (type picker), `online/upload.blade.php` (requirements upload + Submit for Review), `online/track.blade.php`. **`online/show.blade.php` no longer exists** — deleted once `OnlineApplicationController::show()` was rewritten to render the staff `show.blade.php` directly (with `$portal='client'`) instead of a separate thin view.
+`online/dashboard.blade.php` (welcome banner, 4 stat cards, Recent Applications ×5), `online/applications.blade.php` (the full list: status filter, TAT column, icon-button Actions — split out of the dashboard, which previously served as both landing page and record list), `online/apply.blade.php` (type picker), `online/upload.blade.php` (requirements checklist + Submit for Review), `online/track.blade.php`. **`online/show.blade.php` no longer exists** — deleted once `OnlineApplicationController::show()` was rewritten to render the staff `show.blade.php` directly (with `$portal='client'`) instead of a separate thin view.
+
+Shared partials added for the client document flow: `partials/client-wizard-stepper.blade.php` (3-step Details → Documents → Submit progress bar, included by the 6 form views, the upload page and the 6 show pages), `partials/requirements-checklist.blade.php` (the client's per-row upload/view/replace/delete checklist), and `partials/requirements-uploaded-list.blade.php` (the Requirements card on all 6 detail pages — extracted because the block was byte-identical in all six, and gaining View/download links there is what let staff reviewers actually open the documents they are judging).
 
 ### Application Review View
 `application-review/index.blade.php` — Engineering's approve/disapprove queue for all 6 permit types, backing `ApplicationReviewController`.
@@ -360,7 +389,7 @@ Every template above that carries an Official Seal / logo sources it dynamically
 
 `bootstrap/app.php` — `withExceptions()` renders any 419 `HttpException` (CSRF/session expiry) as a redirect to `login`/`staff.login` with a flash message. `routes/web.php` ends with `Route::fallback()`, redirecting any unmatched URL to the role-appropriate home or `login`.
 
-## Seeders (9)
+## Seeders (11)
 
 | Seeder | Data |
 |--------|------|
@@ -370,6 +399,7 @@ Every template above that carries an Official Seal / logo sources it dynamically
 | FeeScheduleSeeder | Complete fee structure: CONST, ELEC, MECH, MECH_INSP (29 INSP_* types/55 schedules from BOPMS ann_inspection_f* tables), PLUMB, ELEC_INSP, OCC, SURCHARGE, DEMO_FEE (6 types w/ unit_label), ZONING fee tables. SGP_FEE is seeded empty (category only, no rates) |
 | GeoDataSeeder | ~42K barangays (Philippine PSA data, 2.5MB) |
 | SettingsSeeder | System settings (electrical_inspection_percentage, filing/processing defaults, general.logo, general.favicon, general.dpwh_logo, general.national_govt_logo, general.city, general.province, general.area_number, general.zip_code, general.domain) — file-type settings use `firstOrCreate` so re-seeding never clobbers an uploaded logo |
+| DocumentRequirementSeeder | Per-permit-type document checklists from the official Engineering Office lists — BP 30, FP 18, OP 6, DP 5, SGP 5, AI 0 (64 rows). Idempotent (`updateOrCreate` on `permit_type_id` + `name`), so re-running never duplicates and never touches staff-added rows. AI is seeded empty because the office has not defined its list yet — deliberately still a first-class entry, not skipped |
 | AdminUserSeeder | Default admin user |
 | ApplicationSeeder | 5 BP + 5 OP test records |
 | AssessmentTestSeeder | Assessment test data |

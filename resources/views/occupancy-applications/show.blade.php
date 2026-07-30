@@ -192,6 +192,12 @@
         </div>
     </div>
 
+    @if(($portal ?? 'staff') === 'client' && in_array($application->status, ['draft', 'returned'], true))
+        @include('partials.client-wizard-stepper', [
+            'wizardStep' => \App\Support\ClientWizard::currentStep($application, $applicationType),
+        ])
+    @endif
+
     @include('partials.application-stepper')
 
     @if($application->status === 'returned' && $application->review_remarks)
@@ -206,18 +212,7 @@
     @endif
 
     <div class="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 class="text-sm font-semibold text-gray-900 mb-3">Requirements ({{ $application->applicationRequirements->count() }})</h3>
-        @forelse($application->applicationRequirements as $req)
-        <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-            <span class="text-sm text-gray-700">{{ $req->requirement_name }}</span>
-            <span class="text-xs px-2 py-0.5 rounded-full
-                @if($req->status === 'approved') bg-green-100 text-green-700
-                @elseif($req->status === 'rejected') bg-red-100 text-red-700
-                @else bg-yellow-100 text-yellow-700 @endif">{{ ucfirst($req->status) }}</span>
-        </div>
-        @empty
-        <p class="text-sm text-gray-400">No requirements uploaded.</p>
-        @endforelse
+        @include('partials.requirements-uploaded-list')
     </div>
 
     {{-- ================================================================== --}}

@@ -589,6 +589,57 @@
 
 - Brought all 6 docs current with the three items above (Skip-LC client restriction, Source monitoring column/filter, print-forms parity + draft-mode visibility) — none of these changed the database schema, so `DATABASE_SCHEMA.md`'s edit was a documentation-only note (source column already existed and was already documented)
 
+### Client Dashboard / Applications-List Split — COMPLETED
+
+- `online.dashboard` previously served as both the client's landing page *and* the full filterable record list. Split: the dashboard keeps the welcome banner, the 4 stat cards, and a new "Recent Applications" list (last 5, with a "View All Applications" link); the full table moved to a new `online.applications` route rendering a new `resources/views/online/applications.blade.php`
+- Controller: the per-type loading loop was extracted from `dashboard()` into a private `getClientApplications()` helper reused by both methods — `dashboard()` computes the stats, the new `applications()` keeps the existing `?status=` filter logic verbatim
+- The sidebar already implied this split — "My Dashboard" and "All Applications" both pointed at `online.dashboard`. "All Applications" now points at `online.applications` (with a corrected active-state check), as do the "My Applications" breadcrumb and back-links on the apply, upload and track pages
+- Verified in browser as the client: dashboard shows overview only, the new page shows all 12 records with working status filter and per-row actions, both sidebar links highlight correctly
+
+### Apply-Page Visual Polish — COMPLETED
+
+- `/online/apply`: "How it works" info icon enlarged to `text-2xl` (24px, roughly matching the 32px step circles, after an initial `text-lg` pass was judged too small), step-number circles switched from `bg-blue-600` to `bg-gray-400` with the connecting rail from `bg-blue-100` to `bg-gray-200`
+- A matching `fa-list-check` icon (same blue, same `text-2xl`) added beside the "Select a permit type" heading
+- Also fixed an "a annual inspection" article glitch in the new requirements editor's subheading while nearby (vowel check on the permit-type name)
+
+### Configurable Document Requirements per Service — COMPLETED
+
+- Jay supplied the official Engineering Office document lists for all 6 services. Built as **admin-configurable settings** rather than hardcoded lists: new `document_requirements` table (migration `2026_07_30_100001_*`), `DocumentRequirement` model, `DocumentRequirementSeeder`, `DocumentRequirementController`, and `Settings → Document Requirements` UI (drill-down index + per-service editor + row partial), behind a new `manage-document-requirements` permission
+- Structure decisions confirmed with Jay: **two levels** (headings + nested items via `parent_id`, with `is_uploadable=false` marking a pure heading), **three obligation levels** (`mandatory` blocks submission, `conditional` carries a `condition_note`, `optional`), and Annual Inspection included as a **fully manageable service seeded with zero rows** — explicitly *not* special-cased in code, so adding AI rows in Settings takes effect immediately
+- Seeded 64 rows: BP 30, FP 18, OP 6, DP 5, SGP 5, AI 0. Entries whose official text carries a parenthetical condition ("(In case…)", "(for 2-storey & above)", "(if along National Highway)") are seeded `conditional` with the parenthetical moved into `condition_note`. Idempotent — verified 64 rows across two consecutive seeder runs
+- `application_requirements` gained a nullable `document_requirement_id` FK (`nullOnDelete`) linking an upload to the checklist row it satisfies; `requirement_name` retained as a denormalized label snapshot. Nullable + `nullOnDelete` deliberately, so legacy uploads still render and retiring a requirement never destroys an already-submitted document
+- Client upload page rewritten from a single form + generic 11-option dropdown into a per-row checklist (`partials/requirements-checklist.blade.php`): level badges, condition notes, per-row Upload/Replace/Delete, and an "N of M mandatory uploaded" progress bar. Replace deletes the superseded file before storing the new one; Delete removes row **and** physical file. Empty-list state ("No documents are required for this application", no upload form) is data-driven with no type check
+- `submit()`'s gate moved from `applicationRequirements()->count() === 0` to a mandatory-requirements check naming the missing documents — necessary anyway, since AI's empty list would otherwise have made AI unsubmittable
+- Verified: BP checklist renders 18 mandatory / 29 uploadable with correct nesting; upload → replace (1 row, 1 file, old file deleted) → remove (0 rows, 0 files); submit refused listing all 18 missing; AI empty state submits freely. **Three negative checks** — a cross-service `document_requirement_id`, a heading row, and a nonexistent id — all rejected with nothing written to DB or disk. **AI configurability round-trip**: added a test requirement in Settings, confirmed it appeared on the client page and began blocking submission, then deleted it and confirmed the empty state returned
+- Per Jay's decision, the 4 pre-existing dev-DB test uploads (a `test.pdf` and three copies of a logo PNG) and their files were cleared so everything starts clean against the new checklist
+- Flagged to Jay: in the source document BP's "Fire Protection Plan (if applicable)" is itself the 9th item *under* the survey-plans heading with its own 5 sub-items — three levels. Flattened to fit the agreed two-level model (Fire Protection Plan is a top-level row parenting its 5 sub-items, sitting right after the survey-plans group), and noted as rearrangeable in the editor
+
+### Client Creation Wizard (Details → Documents → Submit) — COMPLETED
+
+- Request: saving the form should go straight to the upload page, with a progress indicator spanning the whole creation journey
+- New `app/Support/ClientWizard.php`: `const STEPS` (3 steps), `currentStep()`, and `missingMandatory()` — the latter **moved out of** `OnlineApplicationController` so the submit gate and the progress indicator share one implementation and cannot drift apart
+- `store()` and `update()` now redirect to `online.upload` via a private `redirectAfterSave()`, with the flash naming the next action. `redirectAfterSave()` falls back to `online.show` when `Gate::allows('online-upload')` is false — the seeded `client` role has both abilities, but without the guard a trimmed role would redirect from a successful save into a 403, which reads like lost work
+- New `partials/client-wizard-stepper.blade.php`, reusing `partials/application-stepper.blade.php`'s exact rail/node/caption classes so the two read as one system, with the same sub-`md` compact-bar fallback. Kept separate rather than extended because the lifecycle stepper is status-driven and requires an `$application` that doesn't exist during `create()` — and because the two answer different questions ("what you still have to do" vs "where the permit is in the office")
+- Wired in via one client-gated `@include` in each of the 6 form views (hardcoded step 1 — editing is still "working on the details"), the upload page, and the 6 show views (gated to `draft`/`returned`, so it disappears once submitted)
+- Verified: new SGP save lands on `/upload`; wizard advances 1 → 2 → 3 as mandatory documents complete; disappears after submit leaving the lifecycle stepper alone; a returned BP shows both indicators in agreement; edit saves also redirect to upload; **staff regression** — no wizard on staff create forms or staff detail pages (`$portal` defaults to `'staff'`); mobile 375px falls back to the compact bar with no horizontal overflow
+- Incidental finding, not changed: Signage's "Select at least one Scope of Work item" is a server-side-only rule (not marked `required` in HTML), so a client only learns of it after submitting the whole form
+
+### Uploaded Document Viewing — COMPLETED
+
+- Nothing linked to uploaded files anywhere: neither the client checklist nor the 6 detail pages, and no route served them. Staff reviewers approving or disapproving an application literally could not open the document they were judging
+- New `ApplicationRequirementController` with `view()` (inline `Content-Disposition`, renders in a browser tab) and `download()` (attachment, original filename), on `requirements.view`/`requirements.download` — placed directly in the `auth` group rather than a portal prefix since both portals use them
+- Chose an **access-checked streaming route over linking the raw `/storage/...` URL**: the files sit on the `public` disk behind randomized filenames — obscured but not access-controlled — and they are property titles, tax declarations and notarized affidavits, so a signed-in client guessing a URL must not be able to read another applicant's paperwork. Authorization is per-record: staff holding `view-applications`, or the client who owns the parent application; 404 (not a raw stream failure) when the row survives but the file is gone
+- Client checklist: filename became a link, plus a View button placed **outside** the `$canUpload` gate so a client can still open their documents after submitting, when Replace/Delete are correctly hidden
+- The Requirements block was byte-identical in all 6 `show.blade.php` files, so it was extracted into `partials/requirements-uploaded-list.blade.php` and now also shows the original filename, rejection remarks, and View + download buttons — one definition instead of six copies
+- Verified: client views own document (200, `image/png`, inline, byte count matching disk exactly); staff views inline and downloads as attachment; **different client gets 403 on both view and download**; unauthenticated request redirected to login; nonexistent record 404s; all 6 detail pages render with no Blade errors. For the cross-client test a second dev account's password was temporarily changed, then restored to the **exact original hash** (verified by comparison) — that account is untouched
+- Also made the delete confirmation explicit that it is permanent and frees server space, since that was the stated intent
+
+### Documentation Refresh Round 3 (all 6 docs) — COMPLETED
+
+- Brought all 6 docs current with the five items above (dashboard/applications split, apply-page polish, configurable document requirements, creation wizard, document viewing)
+- `DATABASE_SCHEMA.md` gained a full `document_requirements` table section, an expanded `application_requirements` entry documenting the new FK and — answering a direct question from Jay — **where uploaded files actually live** (filesystem under `requirements/{type}-{id}/`, not the database; only `file_path` is stored), plus which code paths do and do not unlink files
+- `CODEBASE.md` gained `DocumentRequirementController`, `ApplicationRequirementController`, a new "Support Helpers" section covering `ApplicationTimeline` + `ClientWizard`, and the new partials. Corrected stale counts found while updating: controllers 19 → 31, models 34 → 42, seeders 9 → 11, and added the previously-undocumented `app/Support/` directory to the structure tree
+
 ---
 
 ## Upcoming Tasks

@@ -48,4 +48,12 @@ class PermitType extends Model
     {
         return $this->hasMany(Application::class);
     }
+
+    /**
+     * Documents an online client must attach for this permit type.
+     */
+    public function documentRequirements(): HasMany
+    {
+        return $this->hasMany(DocumentRequirement::class);
+    }
 }

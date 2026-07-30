@@ -31,7 +31,9 @@ use App\Http\Controllers\AccFeeController;
 use App\Http\Controllers\SurchargeFeeController;
 use App\Http\Controllers\ElectronicsFeeController;
 use App\Http\Controllers\PlumbingFeeController;
+use App\Http\Controllers\ApplicationRequirementController;
 use App\Http\Controllers\DemolitionFeeController;
+use App\Http\Controllers\DocumentRequirementController;
 use App\Http\Controllers\VerifyController;
 use Illuminate\Support\Facades\Route;
 
@@ -410,14 +412,27 @@ Route::middleware('auth')->group(function () {
         Route::post('/plumbing-fees/type/{feeType}/schedule', [PlumbingFeeController::class, 'storeSchedule'])->name('plumbing-fees.schedule.store')->middleware('can:manage-fee-schedules');
         Route::delete('/plumbing-fees/schedule/{feeSchedule}', [PlumbingFeeController::class, 'destroySchedule'])->name('plumbing-fees.schedule.destroy')->middleware('can:manage-fee-schedules');
 
+        Route::get('/document-requirements', [DocumentRequirementController::class, 'index'])->name('document-requirements')->middleware('can:manage-document-requirements');
+        Route::get('/document-requirements/{permitType}', [DocumentRequirementController::class, 'showType'])->name('document-requirements.type')->middleware('can:manage-document-requirements');
+        Route::post('/document-requirements/{permitType}', [DocumentRequirementController::class, 'store'])->name('document-requirements.store')->middleware('can:manage-document-requirements');
+        Route::put('/document-requirements/item/{documentRequirement}', [DocumentRequirementController::class, 'update'])->name('document-requirements.update')->middleware('can:manage-document-requirements');
+        Route::delete('/document-requirements/item/{documentRequirement}', [DocumentRequirementController::class, 'destroy'])->name('document-requirements.destroy')->middleware('can:manage-document-requirements');
+
         Route::get('/signatories', [SettingsController::class, 'signatories'])->name('signatories')->middleware('can:manage-signatories');
         Route::post('/signatories/{signatory}', [SettingsController::class, 'updateSignatory'])->name('signatories.update')->middleware('can:manage-signatories');
     });
+
+    // Uploaded requirement documents. Shared by both portals — the controller
+    // authorizes per-record (staff who can view applications, or the owning
+    // client) rather than relying on a route-level ability.
+    Route::get('/requirements/{applicationRequirement}/view', [ApplicationRequirementController::class, 'view'])->name('requirements.view');
+    Route::get('/requirements/{applicationRequirement}/download', [ApplicationRequirementController::class, 'download'])->name('requirements.download');
 
     // Online Application Portal (Clients) — one type-generic route set for all
     // 6 permit types (BP/OP/FP/DP/SGP/AI), resolved via OnlineApplicationController::TYPES.
     Route::prefix('online')->name('online.')->middleware('can:online-apply')->group(function () {
         Route::get('/dashboard', [OnlineApplicationController::class, 'dashboard'])->name('dashboard');
+        Route::get('/applications', [OnlineApplicationController::class, 'applications'])->name('applications');
         Route::get('/apply', [OnlineApplicationController::class, 'create'])->name('apply');
         Route::post('/apply', [OnlineApplicationController::class, 'store'])->name('store');
 
@@ -427,6 +442,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/application/{type}/{id}/submit', [OnlineApplicationController::class, 'submit'])->name('submit');
         Route::get('/application/{type}/{id}/upload', [OnlineApplicationController::class, 'uploadRequirements'])->name('upload')->middleware('can:online-upload');
         Route::post('/application/{type}/{id}/upload', [OnlineApplicationController::class, 'storeRequirement'])->name('upload.store')->middleware('can:online-upload');
+        Route::delete('/application/{type}/{id}/upload/{requirementId}', [OnlineApplicationController::class, 'destroyRequirement'])->name('upload.destroy')->middleware('can:online-upload');
         Route::get('/application/{type}/{id}/track', [OnlineApplicationController::class, 'track'])->name('track')->middleware('can:online-track');
         Route::get('/application/{type}/{id}/download', [OnlineApplicationController::class, 'downloadPermit'])->name('download')->middleware('can:online-download');
         Route::get('/application/{type}/{id}/print', [OnlineApplicationController::class, 'printForm'])->name('print')->middleware('can:online-download');

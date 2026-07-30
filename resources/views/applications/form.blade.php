@@ -59,6 +59,10 @@
     <input type="hidden" name="permit_type_id" value="{{ $permitType->id }}">
 
     <div class="space-y-4">
+        @if(($portal ?? 'staff') === 'client')
+            @include('partials.client-wizard-stepper', ['wizardStep' => 1])
+        @endif
+
         {{-- Compact Form Header --}}
         <div class="bg-gray-50 rounded-xl border border-gray-200 px-5 py-4 flex items-center justify-between">
             <div class="flex items-center gap-3">
