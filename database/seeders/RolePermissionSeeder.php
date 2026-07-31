@@ -82,6 +82,7 @@ class RolePermissionSeeder extends Seeder
             'online-upload',
             'online-track',
             'online-download',
+            'online-delete',
         ];
 
         // Create permissions (idempotent)
@@ -162,7 +163,7 @@ class RolePermissionSeeder extends Seeder
             ],
 
             'client' => [
-                'online-apply', 'online-upload', 'online-track', 'online-download',
+                'online-apply', 'online-upload', 'online-track', 'online-download', 'online-delete',
             ],
         ];
 

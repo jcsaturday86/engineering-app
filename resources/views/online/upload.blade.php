@@ -119,6 +119,15 @@
                 'canUpload' => $canUpload,
             ])
         </div>
+
+        @if($canUpload)
+        <div class="flex justify-end">
+            <button type="submit" form="requirements-upload-form"
+                class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
+                <i class="fas fa-upload mr-1.5"></i> Save Documents
+            </button>
+        </div>
+        @endif
     @endif
 
     {{-- Uploads made before the checklist existed, or otherwise unmatched. --}}
@@ -151,7 +160,7 @@
                     </a>
                     @if($canUpload)
                     <form method="POST" action="{{ route('online.upload.destroy', ['type' => $applicationType, 'id' => $application->id, 'requirementId' => $upload->id]) }}"
-                        onsubmit="return confirm('Permanently delete this document? The file will be removed from the server.');">
+                        onsubmit="return confirm('This action cannot be undone. The document will be permanently removed from the system and cannot be recovered.');">
                         @csrf
                         @method('DELETE')
                         <button type="submit" title="Delete permanently"

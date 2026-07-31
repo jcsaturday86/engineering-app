@@ -528,7 +528,10 @@ class ReferenceDataSeeder extends Seeder
                 ]
             );
 
-            // Manual-entry fee type: no fixed schedule, staff types quantity/unit fee by hand.
+            // Manual-entry fee type — deactivated: replaced by the structured Erection/Anchorage
+            // and Installation fee schedule (reuses ASS_SIGN_ERECT/ASS_SIGN_INSTALL under ACC_FEE,
+            // see AssessmentController::addSignageFeeItem()). Kept as an inactive row rather than
+            // deleted so historical AssessmentItem rows referencing it via FK remain valid.
             FeeType::updateOrCreate(
                 ['code' => 'SGP_MANUAL'],
                 [
@@ -539,7 +542,7 @@ class ReferenceDataSeeder extends Seeder
                     'unit_label' => null,
                     'has_excess' => false,
                     'has_minimum' => false,
-                    'is_active' => true,
+                    'is_active' => false,
                     'sort_order' => 1,
                 ]
             );

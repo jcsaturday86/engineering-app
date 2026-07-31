@@ -26,6 +26,7 @@
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Application No.</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Applicant</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Status</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-500">Source</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Date</th>
                         <th class="text-right px-4 py-3 font-medium text-gray-500">Actions</th>
                     </tr>
@@ -66,6 +67,12 @@
                                 {{ $labels[$app->status] ?? ucfirst(str_replace('_', ' ', $app->status)) }}
                             </span>
                         </td>
+                        <td class="px-4 py-3">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $app->source === 'online' ? 'bg-sky-100 text-sky-700' : 'bg-slate-100 text-slate-600' }}">
+                                <i class="fas {{ $app->source === 'online' ? 'fa-globe' : 'fa-building' }} mr-1 text-[10px]"></i>
+                                {{ $app->source === 'online' ? 'Online' : 'Onsite' }}
+                            </span>
+                        </td>
                         <td class="px-4 py-3 text-gray-500">{{ $app->created_at->format('M d, Y') }}</td>
                         <td class="px-4 py-3 text-right">
                             <div class="inline-flex items-center gap-2">
@@ -83,7 +90,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="5" class="px-4 py-12 text-center text-gray-400">
+                        <td colspan="6" class="px-4 py-12 text-center text-gray-400">
                             <i class="fas fa-clipboard-check text-3xl mb-3"></i>
                             <p>No applications pending assessment</p>
                         </td>

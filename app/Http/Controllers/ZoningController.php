@@ -5,8 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Application;
 use App\Models\Assessment;
 use App\Models\AssessmentItem;
-use App\Models\CertificationZoningFee;
 use App\Models\FeeCategory;
+use App\Models\FeeSchedule;
+use App\Models\FeeType;
 use App\Models\LandUseAndZoningFee;
 use App\Models\LandUseAndZoningOtherFee;
 use App\Models\OccupancyGroup;
@@ -38,6 +39,26 @@ class ZoningController extends Controller
     private function feeCategoryId(string $code): ?int
     {
         return FeeCategory::where('code', $code)->value('id');
+    }
+
+    /**
+     * Zoning Certification Fee amount for a given Character of Occupancy group code (A-J).
+     * Reuses the ZONING_CERT_FEE FeeType, with one FeeSchedule row per group keyed by
+     * formula = group code (Settings > Fee Schedules > Zoning Certification).
+     */
+    private function zoningCertFeeAmount(string $groupCode): ?float
+    {
+        $feeType = FeeType::where('code', 'ZONING_CERT_FEE')->first();
+        if (! $feeType) {
+            return null;
+        }
+
+        $schedule = FeeSchedule::where('fee_type_id', $feeType->id)
+            ->where('formula', $groupCode)
+            ->where('is_active', true)
+            ->first();
+
+        return $schedule ? (float) $schedule->fixed_fee : null;
     }
 
     private function filteredQuery(Request $request): array
@@ -121,12 +142,15 @@ class ZoningController extends Controller
             ->orderBy('sort_order')
             ->get();
 
-        $certFee = CertificationZoningFee::where('is_active', true)->first();
+        $certFeeType = FeeType::where('code', 'ZONING_CERT_FEE')->first();
+        $certAmounts = $certFeeType
+            ? FeeSchedule::where('fee_type_id', $certFeeType->id)->where('is_active', true)->pluck('fixed_fee', 'formula')
+            : collect();
         $otherFees = LandUseAndZoningOtherFee::where('is_active', true)->get();
 
         return view('zoning.assess', compact(
             'application', 'zoningAssessment', 'assessment', 'assessmentItems',
-            'occupancyGroups', 'certFee', 'otherFees'
+            'occupancyGroups', 'certAmounts', 'otherFees'
         ));
     }
 
@@ -240,29 +264,47 @@ class ZoningController extends Controller
             }
         }
 
-        $certFee = CertificationZoningFee::where('is_active', true)->first();
-        if ($certFee) {
+        $certGroupIds = $application->applicationOccupancyGroups->pluck('occupancy_group_id')->unique();
+
+        foreach ($certGroupIds as $certGroupId) {
+            $certGroup = OccupancyGroup::find($certGroupId);
+            if (! $certGroup) {
+                continue;
+            }
+
+            $certAmount = $this->zoningCertFeeAmount($certGroup->code);
+            if ($certAmount === null) {
+                continue;
+            }
+
             $certExists = $assessment->assessmentItems()
                 ->where('fee_code', 'ZONING_CERT_FEE')
                 ->where('is_active', true)
+                ->whereJsonContains('computation_details->occupancy_group_id', $certGroupId)
                 ->exists();
 
-            if (!$certExists) {
-                AssessmentItem::create([
-                    'assessment_id' => $assessment->id,
-                    'fee_category_id' => $this->feeCategoryId('ZONING_CERT'),
-                    'fee_code' => 'ZONING_CERT_FEE',
-                    'description' => 'Zoning Certification Fee',
-                    'quantity' => 1,
-                    'unit_fee' => $certFee->amount,
-                    'excess_fee' => 0,
-                    'inspection_fee' => 0,
-                    'amount' => $certFee->amount,
-                    'computation_details' => ['method' => 'fixed'],
-                    'is_active' => true,
-                ]);
-                $added++;
+            if ($certExists) {
+                continue;
             }
+
+            AssessmentItem::create([
+                'assessment_id' => $assessment->id,
+                'fee_category_id' => $this->feeCategoryId('ZONING_CERT'),
+                'fee_code' => 'ZONING_CERT_FEE',
+                'description' => "Zoning Certification Fee ({$certGroup->code}: {$certGroup->name})",
+                'quantity' => 1,
+                'unit_fee' => $certAmount,
+                'excess_fee' => 0,
+                'inspection_fee' => 0,
+                'amount' => $certAmount,
+                'computation_details' => [
+                    'method' => 'fixed',
+                    'occupancy_group_id' => $certGroupId,
+                    'occupancy_group_code' => $certGroup->code,
+                ],
+                'is_active' => true,
+            ]);
+            $added++;
         }
 
         $total = $assessment->assessmentItems()->where('is_active', true)->sum('amount');
@@ -384,16 +426,17 @@ class ZoningController extends Controller
             'cert_sub_group_id' => 'required|exists:occupancy_sub_groups,id',
         ]);
 
-        $certFee = CertificationZoningFee::where('is_active', true)->first();
-        if (!$certFee) {
-            abort(back()->with('error', 'No certification fee configured.'));
+        $subGroup = OccupancySubGroup::with('occupancyGroup')->find($request->input('cert_sub_group_id'));
+        if (! $subGroup) {
+            abort(back()->with('error', 'Occupancy sub-group not found.'));
         }
 
-        $subGroup = OccupancySubGroup::with('occupancyGroup')->find($request->input('cert_sub_group_id'));
-        $desc = 'Zoning Certification Fee';
-        if ($subGroup) {
-            $desc .= ' (' . $subGroup->occupancyGroup->code . ': ' . $subGroup->name . ')';
+        $certAmount = $this->zoningCertFeeAmount($subGroup->occupancyGroup->code);
+        if ($certAmount === null) {
+            abort(back()->with('error', 'No certification fee configured for ' . $subGroup->occupancyGroup->code . '.'));
         }
+
+        $desc = 'Zoning Certification Fee (' . $subGroup->occupancyGroup->code . ': ' . $subGroup->name . ')';
 
         AssessmentItem::create([
             'assessment_id' => $assessment->id,
@@ -401,11 +444,15 @@ class ZoningController extends Controller
             'fee_code' => 'ZONING_CERT_FEE',
             'description' => $desc,
             'quantity' => 1,
-            'unit_fee' => $certFee->amount,
+            'unit_fee' => $certAmount,
             'excess_fee' => 0,
             'inspection_fee' => 0,
-            'amount' => $certFee->amount,
-            'computation_details' => ['method' => 'fixed'],
+            'amount' => $certAmount,
+            'computation_details' => [
+                'method' => 'fixed',
+                'occupancy_group_id' => $subGroup->occupancy_group_id,
+                'occupancy_group_code' => $subGroup->occupancyGroup->code,
+            ],
             'is_active' => true,
         ]);
     }

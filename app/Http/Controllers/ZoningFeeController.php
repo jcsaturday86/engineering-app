@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\CertificationZoningFee;
+use App\Models\FeeSchedule;
+use App\Models\FeeType;
 use App\Models\LandUseAndZoningFee;
 use App\Models\LandUseAndZoningOtherFee;
 use App\Models\OccupancyGroup;
@@ -23,10 +24,18 @@ class ZoningFeeController extends Controller
             ->get()
             ->groupBy('occupancy_sub_group_id');
 
-        $certFee = CertificationZoningFee::where('is_active', true)->first();
         $otherFees = LandUseAndZoningOtherFee::where('is_active', true)->get();
 
-        return view('settings.zoning-fees', compact('groups', 'lcSchedules', 'certFee', 'otherFees'));
+        $certFeeType = FeeType::where('code', 'ZONING_CERT_FEE')->first();
+        $certRows = collect();
+        if ($certFeeType) {
+            $certByCode = FeeSchedule::where('fee_type_id', $certFeeType->id)->where('is_active', true)->get()->keyBy('formula');
+            $certRows = $groups->map(fn ($g) => (object) ['group' => $g, 'schedule' => $certByCode->get($g->code)])
+                ->filter(fn ($row) => $row->schedule !== null)
+                ->values();
+        }
+
+        return view('settings.zoning-fees', compact('groups', 'lcSchedules', 'otherFees', 'certRows'));
     }
 
     public function update(Request $request, LandUseAndZoningFee $landUseAndZoningFee)
@@ -73,17 +82,6 @@ class ZoningFeeController extends Controller
         return back()->with('success', 'Fee schedule row added.');
     }
 
-    public function updateCert(Request $request, CertificationZoningFee $certificationZoningFee)
-    {
-        $validated = $request->validate([
-            'amount' => 'required|numeric|min:0',
-        ]);
-
-        $certificationZoningFee->update(['amount' => $validated['amount']]);
-
-        return back()->with('success', 'Certification fee updated.');
-    }
-
     public function destroy(LandUseAndZoningFee $landUseAndZoningFee)
     {
         $landUseAndZoningFee->delete();
@@ -100,5 +98,18 @@ class ZoningFeeController extends Controller
         $landUseAndZoningOtherFee->update(['amount' => $validated['amount']]);
 
         return back()->with('success', 'Other zoning fee updated.');
+    }
+
+    public function updateCert(Request $request, FeeSchedule $feeSchedule)
+    {
+        abort_unless($feeSchedule->feeType?->code === 'ZONING_CERT_FEE', 403);
+
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0',
+        ]);
+
+        $feeSchedule->update(['fixed_fee' => $validated['amount']]);
+
+        return back()->with('success', 'Certification fee updated.');
     }
 }

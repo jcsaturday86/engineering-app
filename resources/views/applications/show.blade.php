@@ -21,6 +21,7 @@
     $applicationType = $applicationType ?? $application->permitType->code;
     $routeParams = ['type' => $applicationType, 'id' => $application->id];
     $canEdit = in_array($application->status, ['draft', 'returned']);
+    $canCancel = ! in_array($application->status, ['paid', 'permit_generated', 'released', 'cancelled'], true);
     $isApproved = $application->approved_at !== null;
 @endphp
 
@@ -44,8 +45,8 @@
                 </div>
             </div>
             @if($portal === 'staff')
-            <div class="flex flex-wrap items-center gap-2" x-data="{ showRevertSubmitModal: false, revertSubmitPassword: '', showSubmitModal: false, submitPassword: '' }">
-                @if($application->status === 'draft')
+            <div class="flex flex-wrap items-center gap-2" x-data="{ showRevertSubmitModal: false, revertSubmitPassword: '', showSubmitModal: false, submitPassword: '', showDisapprove: false, disapproveRemarks: '' }">
+                @if($application->status === 'draft' && $application->source !== 'online')
                     <a href="{{ route('applications.edit', $application) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
                         <i class="fas fa-edit"></i> Edit
                     </a>
@@ -96,13 +97,56 @@
                         </div>
                     </div>
                 @endif
-                @if(!in_array($application->status, ['cancelled', 'paid', 'released', 'permit_generated']))
-                    <form method="POST" action="{{ route('applications.cancel', $application) }}" class="inline" onsubmit="return confirm('Are you sure you want to cancel this application? This action cannot be undone.')" autocomplete="off">
+                @if($application->status === 'pending_approval')
+                    @can('approve-applications')
+                    <form method="POST" action="{{ route('application-review.approve', ['type' => 'BP', 'id' => $application->id]) }}" class="inline" onsubmit="return confirm('Approve {{ $application->application_number }}? It will be routed into the normal assessment queue.');">
                         @csrf
-                        <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition">
-                            <i class="fas fa-times-circle"></i> Cancel
+                        <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition">
+                            <i class="fas fa-check"></i> Approve
                         </button>
                     </form>
+                    @endcan
+                    @can('reject-applications')
+                    <button type="button" @click="showDisapprove = true" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition">
+                        <i class="fas fa-times"></i> Disapprove
+                    </button>
+
+                    <div x-show="showDisapprove" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @keydown.escape.window="showDisapprove = false">
+                        <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6" @click.outside="showDisapprove = false">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="inline-flex items-center justify-center w-10 h-10 bg-red-100 rounded-full">
+                                    <i class="fas fa-circle-exclamation text-red-600"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900">Disapprove {{ $application->application_number }}</h3>
+                                    <p class="text-sm text-gray-500">The application will be returned to the client for revision.</p>
+                                </div>
+                            </div>
+
+                            @if($errors->has('review_remarks'))
+                                <div class="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                                    {{ $errors->first('review_remarks') }}
+                                </div>
+                            @endif
+
+                            <form method="POST" action="{{ route('application-review.disapprove', ['type' => 'BP', 'id' => $application->id]) }}" autocomplete="off">
+                                @csrf
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Remarks <span class="text-red-500">*</span></label>
+                                    <textarea name="review_remarks" x-model="disapproveRemarks" required rows="4"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                        placeholder="Explain what the client needs to correct before resubmitting"></textarea>
+                                </div>
+                                <div class="flex items-center justify-end gap-3">
+                                    <button type="button" @click="showDisapprove = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">Cancel</button>
+                                    <button type="submit" :disabled="!disapproveRemarks" class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <i class="fas fa-times"></i> Confirm Disapprove
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    @endcan
                 @endif
                 @can('revert-submission')
                 @if(in_array($application->status, ['submitted', 'for_zoning_assessment']))
@@ -154,48 +198,12 @@
                     </div>
                 @endif
                 @endcan
-                <div x-data="{ open: false }" class="relative ml-auto">
-                    <button type="button" @click="open = !open" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
-                        <i class="fas fa-print"></i> Print Forms <i class="fas fa-chevron-down text-xs text-gray-400"></i>
-                    </button>
-                    <div x-show="open" @click.outside="open = false" x-cloak class="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                        <a href="{{ route('applications.print', $application) }}" target="_blank" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                            <i class="fas fa-print w-4 text-gray-400"></i> 1. Application Form
-                        </a>
-                        @foreach(['architectural' => 'Architectural', 'structural' => 'Structural', 'electrical' => 'Electrical', 'sanitary' => 'Sanitary', 'mechanical' => 'Mechanical', 'electronics' => 'Electronics'] as $discipline => $label)
-                        <a href="{{ route('applications.print.discipline', [$application, $discipline]) }}" target="_blank" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                            <i class="fas fa-print w-4 text-gray-400"></i> {{ $loop->iteration + 1 }}. {{ $label }}
-                        </a>
-                        @endforeach
-                    </div>
-                </div>
             </div>
             @else
-            <div class="flex gap-2 flex-wrap">
-                @if($canEdit)
-                <a href="{{ route('online.edit', $routeParams) }}" class="px-3 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700">
-                    <i class="fas fa-pen mr-1"></i> Edit
-                </a>
-                <a href="{{ route('online.upload', $routeParams) }}" class="px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700">
-                    <i class="fas fa-upload mr-1"></i> Upload Requirements
-                </a>
-                <form method="POST" action="{{ route('online.submit', $routeParams) }}" class="inline" onsubmit="return confirm('Submit this application for Engineering review? You won\'t be able to edit it until it is reviewed.');">
-                    @csrf
-                    <button type="submit" class="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
-                        <i class="fas fa-paper-plane mr-1"></i> Submit for Review
-                    </button>
-                </form>
-                @else
-                <a href="{{ route('online.upload', $routeParams) }}" class="px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700">
-                    <i class="fas fa-upload mr-1"></i> Upload
-                </a>
-                <a href="{{ route('online.track', $routeParams) }}" class="px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200">
-                    <i class="fas fa-map-marker-alt mr-1"></i> Track
-                </a>
-                @endif
+            <div class="flex gap-1.5 flex-wrap items-center" x-data="{ showCancelModal: false, cancelPassword: '' }">
                 <div x-data="{ open: false }" class="relative">
-                    <button type="button" @click="open = !open" class="px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 inline-flex items-center gap-2">
-                        <i class="fas fa-print"></i> Print Forms <i class="fas fa-chevron-down text-xs text-gray-400"></i>
+                    <button type="button" @click="open = !open" class="px-2.5 py-1.5 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 inline-flex items-center gap-1.5">
+                        <i class="fas fa-print"></i> Print Forms <i class="fas fa-chevron-down text-[10px] text-white/70"></i>
                     </button>
                     <div x-show="open" @click.outside="open = false" x-cloak class="absolute left-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                         <a href="{{ route('online.print', $routeParams) }}" target="_blank" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
@@ -208,8 +216,74 @@
                         @endforeach
                     </div>
                 </div>
+                @if($canEdit)
+                <a href="{{ route('online.upload', $routeParams) }}" class="px-2.5 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700">
+                    <i class="fas fa-upload mr-1"></i> Upload Requirements
+                </a>
+                <form method="POST" action="{{ route('online.submit', $routeParams) }}" class="inline" onsubmit="return confirm('Submit this application for Engineering review? You won\'t be able to edit it until it is reviewed.');">
+                    @csrf
+                    <button type="submit" class="px-2.5 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-paper-plane mr-1"></i> Submit for Review
+                    </button>
+                </form>
+                <a href="{{ route('online.edit', $routeParams) }}" class="px-2.5 py-1.5 bg-amber-600 text-white text-xs rounded-lg hover:bg-amber-700">
+                    <i class="fas fa-pen mr-1"></i> Edit
+                </a>
+                @else
+                <a href="{{ route('online.upload', $routeParams) }}" class="px-2.5 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700">
+                    <i class="fas fa-upload mr-1"></i> Upload
+                </a>
+                @endif
+                @if($canCancel)
+                <button type="button" @click="showCancelModal = true; cancelPassword = ''" class="px-2.5 py-1.5 bg-white border border-red-300 text-red-600 text-xs rounded-lg hover:bg-red-50">
+                    <i class="fas fa-ban mr-1"></i> Cancel Application
+                </button>
+
+                <div x-show="showCancelModal" x-cloak
+                    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+                    @keydown.escape.window="showCancelModal = false">
+                    <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6" @click.outside="showCancelModal = false">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="inline-flex items-center justify-center w-10 h-10 bg-red-100 rounded-full">
+                                <i class="fas fa-lock text-red-600"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900">Cancel Application</h3>
+                                <p class="text-sm text-gray-500">This action cannot be undone. Your application will be marked as cancelled and any uploaded documents will be permanently removed.</p>
+                            </div>
+                        </div>
+
+                        @if($errors->has('password'))
+                            <div class="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                                {{ $errors->first('password') }}
+                            </div>
+                        @endif
+
+                        <form method="POST" action="{{ route('online.destroy', $routeParams) }}" autocomplete="off">
+                            @csrf
+                            @method('DELETE')
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
+                                <input type="password" name="password" x-model="cancelPassword" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                    placeholder="Enter your account password">
+                            </div>
+                            <div class="flex items-center justify-end gap-3">
+                                <button type="button" @click="showCancelModal = false"
+                                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                                    Back
+                                </button>
+                                <button type="submit" :disabled="!cancelPassword"
+                                    class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i class="fas fa-ban"></i> Confirm & Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                @endif
                 @if(in_array($application->status, ['permit_generated', 'released']))
-                <a href="{{ route('online.download', $routeParams) }}" class="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">
+                <a href="{{ route('online.download', $routeParams) }}" class="px-2.5 py-1.5 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700">
                     <i class="fas fa-download mr-1"></i> Download Permit
                 </a>
                 @endif

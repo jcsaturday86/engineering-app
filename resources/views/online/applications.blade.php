@@ -91,10 +91,6 @@
                                    class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-indigo-200 text-xs font-medium text-indigo-700 hover:bg-indigo-50">
                                     <i class="fas fa-upload"></i>
                                 </a>
-                                <a href="{{ route('online.track', $routeParams) }}" title="Track Status"
-                                   class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50">
-                                    <i class="fas fa-route"></i>
-                                </a>
                                 @endif
                                 @if(in_array($app->status, ['permit_generated', 'released']))
                                 <a href="{{ route('online.download', $routeParams) }}" title="Download Permit"

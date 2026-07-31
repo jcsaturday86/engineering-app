@@ -1046,6 +1046,72 @@
                 </form>
             </div>
             @endif
+            @elseif($cat->code === 'SGP_FEE')
+            {{-- Signage Permit Fee Form — reuses the ASS_SIGN_ERECT/ASS_SIGN_INSTALL rates from
+                 Settings > Fee Schedules > Accessory. --}}
+            @if(!$isFinalized)
+            <div x-data="{
+                feeCode: '',
+                unitLabels: {
+                    ASS_SIGN_ERECT: 'sq.m. of signboard area',
+                    'ASS_SIGN_INSTALL|Business|Neon': 'sq.m. of display surface',
+                    'ASS_SIGN_INSTALL|Advertising|Neon': 'sq.m. of display surface',
+                    'ASS_SIGN_INSTALL|Business|Illuminated': 'sq.m. of display surface',
+                    'ASS_SIGN_INSTALL|Advertising|Illuminated': 'sq.m. of display surface',
+                    'ASS_SIGN_INSTALL|Business|Painted-on': 'sq.m. of display surface',
+                    'ASS_SIGN_INSTALL|Advertising|Painted-on': 'sq.m. of display surface',
+                    'ASS_SIGN_INSTALL|Business|Others': 'sq.m. of display surface',
+                    'ASS_SIGN_INSTALL|Advertising|Others': 'sq.m. of display surface',
+                },
+                get unitLabel() { return this.unitLabels[this.feeCode] || 'unit'; }
+            }">
+                <h4 class="text-sm font-semibold text-gray-700 mb-3">
+                    <i class="fas fa-plus-circle text-blue-500 mr-1"></i> Add Signage Fee Item
+                </h4>
+                <form action="{{ route('assessments.addSignageFeeItem.sgp', $application) }}" method="POST" autocomplete="off">
+                    @csrf
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Signage Fee <span class="text-red-500">*</span></label>
+                            <select name="signage_fee_type" @change="feeCode = $event.target.value" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">-- Select --</option>
+                                <optgroup label="Erection/Anchorage:">
+                                    <option value="ASS_SIGN_ERECT">Erection/Anchorage of Display Surface</option>
+                                </optgroup>
+                                <optgroup label="Installation Fee (per sq.m.) - Business Signs:">
+                                    <option value="ASS_SIGN_INSTALL|Business|Neon">Neon</option>
+                                    <option value="ASS_SIGN_INSTALL|Business|Illuminated">Illuminated</option>
+                                    <option value="ASS_SIGN_INSTALL|Business|Painted-on">Painted-on</option>
+                                    <option value="ASS_SIGN_INSTALL|Business|Others">Others</option>
+                                </optgroup>
+                                <optgroup label="Installation Fee (per sq.m.) - Advertising Signs:">
+                                    <option value="ASS_SIGN_INSTALL|Advertising|Neon">Neon</option>
+                                    <option value="ASS_SIGN_INSTALL|Advertising|Illuminated">Illuminated</option>
+                                    <option value="ASS_SIGN_INSTALL|Advertising|Painted-on">Painted-on</option>
+                                    <option value="ASS_SIGN_INSTALL|Advertising|Others">Others</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">
+                                Unit
+                                <span x-show="feeCode" x-cloak class="ml-1 text-blue-600 font-semibold" x-text="'(' + unitLabel + ')'"></span>
+                                <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number" name="unit" step="0.01" min="0.01" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit" class="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">Fee and amount are auto-computed based on the Accessory fee schedule.</p>
+                </form>
+            </div>
+            @endif
             @elseif(in_array($cat->code, ['AINSP_GEN', 'AINSP_ELECTRONICS', 'AINSP_MECH']))
             {{-- Annual Inspection Fees (NBC schedule) — reuses the existing AINSP_* FeeType/FeeSchedule
                  rows from Settings > Fee Schedules > Annual Inspection Fees (category 13, BP-scoped). --}}

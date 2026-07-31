@@ -1,5 +1,8 @@
 {{--
-    Client-facing document checklist with a per-row upload control.
+    Client-facing document checklist, backed by one shared form. Every row's
+    file input is linked to the carrier form below via the HTML `form`
+    attribute rather than nesting — each row still needs its own small
+    <form> for Delete, and forms cannot nest in HTML.
 
     Expects:
       $checklist            — two-level tree of active DocumentRequirement rows
@@ -7,6 +10,13 @@
       $application, $applicationType
       $canUpload            — whether the application is still editable
 --}}
+@if($canUpload)
+<form id="requirements-upload-form" method="POST" enctype="multipart/form-data"
+    action="{{ route('online.upload.storeAll', ['type' => $applicationType, 'id' => $application->id]) }}">
+    @csrf
+</form>
+@endif
+
 <div class="divide-y divide-gray-100">
     @foreach($checklist as $requirement)
         @foreach(collect([$requirement])->concat($requirement->children) as $item)
@@ -56,6 +66,10 @@
                             @else bg-yellow-100 text-yellow-700 @endif">
                             {{ ucfirst($upload->status) }}
                         </span>
+                        <a href="{{ route('requirements.view', $upload) }}" target="_blank"
+                           class="inline-flex items-center gap-1 text-xs text-blue-700 hover:text-blue-900 hover:underline">
+                            <i class="fas fa-eye"></i> View
+                        </a>
                     </div>
                     @if($upload->status === 'rejected' && $upload->reviewer_remarks)
                     <p class="text-xs text-red-600 mt-1 ml-6">{{ $upload->reviewer_remarks }}</p>
@@ -63,52 +77,27 @@
                     @endif
                 </div>
 
-                {{-- Actions. View sits outside the $canUpload gate so a client can
-                     still open their documents after submitting, when the upload
-                     and remove controls are correctly hidden. --}}
-                @if($item->is_uploadable && ($canUpload || $upload))
-                <div x-data="{ open: false }" class="shrink-0 w-full sm:w-auto">
-                    <div x-show="!open" class="flex items-center gap-1.5">
+                {{-- File picker + Delete. The file input is tied to the shared
+                     form via form="requirements-upload-form" rather than
+                     living inside its own <form>. --}}
+                @if($item->is_uploadable && $canUpload)
+                <div class="shrink-0 w-full sm:w-auto flex items-center gap-1.5">
+                    <div class="flex flex-col">
+                        <input type="file" name="files[{{ $item->id }}]" form="requirements-upload-form"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            class="text-xs border border-gray-300 rounded-lg px-2 py-1.5 max-w-[220px]">
                         @if($upload)
-                        <a href="{{ route('requirements.view', $upload) }}" target="_blank" title="View document"
-                           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-200 text-xs font-medium text-blue-700 hover:bg-blue-50 transition">
-                            <i class="fas fa-eye"></i> View
-                        </a>
-                        @endif
-                        @if($canUpload)
-                        <button @click="open = true" type="button"
-                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition
-                                {{ $upload ? 'border-gray-200 text-gray-600 hover:bg-gray-50' : 'border-blue-200 text-blue-700 hover:bg-blue-50' }}">
-                            <i class="fas {{ $upload ? 'fa-rotate' : 'fa-upload' }}"></i>
-                            {{ $upload ? 'Replace' : 'Upload' }}
-                        </button>
-                        @endif
-                        @if($upload && $canUpload)
-                        <form method="POST" action="{{ route('online.upload.destroy', ['type' => $applicationType, 'id' => $application->id, 'requirementId' => $upload->id]) }}"
-                            onsubmit="return confirm('Permanently delete this document? The file will be removed from the server.');">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" title="Delete permanently"
-                                class="px-2.5 py-1.5 rounded-lg border border-red-200 text-xs text-red-600 hover:bg-red-50">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </form>
+                        <span class="text-[11px] text-gray-400 mt-0.5">Choosing a file replaces the current one</span>
                         @endif
                     </div>
-
-                    @if($canUpload)
-                    <form x-show="open" x-cloak method="POST" enctype="multipart/form-data"
-                        action="{{ route('online.upload.store', ['type' => $applicationType, 'id' => $application->id]) }}"
-                        class="flex items-center gap-1.5 flex-wrap" autocomplete="off">
+                    @if($upload)
+                    <form method="POST" action="{{ route('online.upload.destroy', ['type' => $applicationType, 'id' => $application->id, 'requirementId' => $upload->id]) }}"
+                        onsubmit="return confirm('This action cannot be undone. The document will be permanently removed from the system and cannot be recovered.');">
                         @csrf
-                        <input type="hidden" name="document_requirement_id" value="{{ $item->id }}">
-                        <input type="file" name="file" required accept=".pdf,.jpg,.jpeg,.png"
-                            class="text-xs border border-gray-300 rounded-lg px-2 py-1.5 max-w-[220px]">
-                        <button type="submit" class="px-2.5 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700">
-                            <i class="fas fa-check"></i>
-                        </button>
-                        <button type="button" @click="open = false" class="px-2.5 py-1.5 bg-gray-400 text-white text-xs rounded-lg hover:bg-gray-500">
-                            <i class="fas fa-times"></i>
+                        @method('DELETE')
+                        <button type="submit" title="Delete permanently"
+                            class="px-2.5 py-1.5 rounded-lg border border-red-200 text-xs text-red-600 hover:bg-red-50">
+                            <i class="fas fa-trash"></i>
                         </button>
                     </form>
                     @endif

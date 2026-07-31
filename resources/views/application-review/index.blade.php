@@ -55,7 +55,9 @@
                         <td class="px-4 py-3 text-gray-700">{{ $app->applicant_full_name ?: '-' }}</td>
                         <td class="px-4 py-3 text-gray-500">{{ $app->submitted_at?->format('M d, Y h:i A') ?? '-' }}</td>
                         <td class="px-4 py-3 text-right space-x-2 whitespace-nowrap">
-                            <a href="{{ route($app->show_route, $app->id) }}" class="text-gray-600 hover:text-gray-800 text-xs">View</a>
+                            <a href="{{ route($app->show_route, $app->id) }}" class="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-200 transition">
+                                <i class="fas fa-eye"></i> View
+                            </a>
 
                             <form method="POST" action="{{ route('application-review.approve', ['type' => $app->type, 'id' => $app->id]) }}" class="inline" onsubmit="return confirm('Approve {{ $app->application_number }}? It will be routed into the normal assessment queue.');">
                                 @csrf

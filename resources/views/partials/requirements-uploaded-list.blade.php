@@ -27,10 +27,6 @@
            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-blue-200 text-xs font-medium text-blue-700 hover:bg-blue-50 transition">
             <i class="fas fa-eye"></i> View
         </a>
-        <a href="{{ route('requirements.download', $req) }}" title="Download document"
-           class="inline-flex items-center px-2.5 py-1 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50 transition">
-            <i class="fas fa-download"></i>
-        </a>
     </div>
 </div>
 @empty

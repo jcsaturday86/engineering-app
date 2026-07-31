@@ -2,16 +2,12 @@
 
 namespace App\Notifications;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class ApplicationSubmittedNotification extends Notification implements ShouldQueue
+class ApplicationSubmittedNotification extends Notification
 {
-    use Queueable;
-
     public function __construct(private Model $application)
     {
     }
@@ -38,11 +34,16 @@ class ApplicationSubmittedNotification extends Notification implements ShouldQue
 
     public function toArray(object $notifiable): array
     {
+        $permitCode = method_exists($this->application, 'getPermitTypeCode')
+            ? $this->application->getPermitTypeCode()
+            : 'BP';
+
         return [
             'type' => 'application_submitted',
             'application_id' => $this->application->id,
             'application_number' => $this->application->application_number,
-            'message' => "New application submitted: {$this->application->application_number}",
+            'message' => "{$permitCode} application {$this->application->application_number} is awaiting your review.",
+            'url' => route('application-review.index'),
         ];
     }
 }

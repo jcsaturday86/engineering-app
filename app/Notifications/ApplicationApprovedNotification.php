@@ -3,16 +3,12 @@
 namespace App\Notifications;
 
 use App\Models\Permit;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class ApplicationApprovedNotification extends Notification implements ShouldQueue
+class ApplicationApprovedNotification extends Notification
 {
-    use Queueable;
-
     public function __construct(
         private Model $application,
         private Permit $permit,

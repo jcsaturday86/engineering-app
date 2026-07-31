@@ -1370,6 +1370,142 @@ class AssessmentController extends Controller
             ->with('success', 'Fencing fee item added.');
     }
 
+    // SGP Signage Permit Fees — reuses the existing ASS_SIGN_ERECT/ASS_SIGN_INSTALL FeeType/
+    // FeeSchedule rows (Settings > Fee Schedules > Accessory) as the single source of truth for
+    // rates; no new FeeType rows are seeded here. Tags the resulting AssessmentItem under the
+    // SGP-scoped SGP_FEE category instead of ACC_FEE.
+    public function addSignageFeeItem(Request $request, SignageApplication $signageApplication)
+    {
+        $allCodes = [
+            'ASS_SIGN_ERECT',
+            'ASS_SIGN_INSTALL|Business|Neon',       'ASS_SIGN_INSTALL|Advertising|Neon',
+            'ASS_SIGN_INSTALL|Business|Illuminated', 'ASS_SIGN_INSTALL|Advertising|Illuminated',
+            'ASS_SIGN_INSTALL|Business|Painted-on',  'ASS_SIGN_INSTALL|Advertising|Painted-on',
+            'ASS_SIGN_INSTALL|Business|Others',      'ASS_SIGN_INSTALL|Advertising|Others',
+        ];
+
+        $validated = $request->validate([
+            'signage_fee_type' => ['required', 'string', Rule::in($allCodes)],
+            'unit' => 'required|numeric|min:0.01',
+        ]);
+
+        $assessment = Assessment::firstOrCreate(
+            [
+                'applicationable_type' => 'sgp',
+                'applicationable_id' => $signageApplication->id,
+                'assessment_type' => 'signage',
+            ],
+            ['status' => 'draft', 'assessed_by' => Auth::id()]
+        );
+
+        if ($r = $this->redirectIfFinalized($assessment, $signageApplication)) return $r;
+
+        $rawCode     = $validated['signage_fee_type'];
+        $unit        = (float) $validated['unit'];
+        $signFormula = null;
+
+        if (str_contains($rawCode, '|')) {
+            $parts       = explode('|', $rawCode, 3);
+            $feeTypeCode = $parts[0];
+            $signFormula = $parts[1] . '|' . $parts[2];
+        } else {
+            $feeTypeCode = $rawCode;
+        }
+
+        $feeType = FeeType::where('code', $feeTypeCode)->first();
+        if (! $feeType) {
+            return back()->with('error', 'Fee type not found: ' . $feeTypeCode);
+        }
+
+        $sgpFeeCategory = FeeCategory::where('code', 'SGP_FEE')->first();
+        $isRangeBased   = $feeType->computation_method === 'range_based';
+
+        $scheduleQuery = FeeSchedule::where('fee_type_id', $feeType->id)->where('is_active', true);
+        if ($isRangeBased) {
+            $scheduleQuery->where('range_from', '<=', $unit)->where('range_to', '>=', $unit);
+        } elseif ($signFormula) {
+            $scheduleQuery->where('formula', $signFormula);
+        }
+        $schedule = $scheduleQuery->orderBy('id')->first();
+
+        if (! $schedule && $isRangeBased) {
+            $schedule = FeeSchedule::where('fee_type_id', $feeType->id)
+                ->where('is_active', true)
+                ->where('range_from', '<=', $unit)
+                ->orderBy('range_from', 'desc')
+                ->first();
+        }
+
+        if (! $schedule) {
+            return back()->with('error', 'No fee schedule found for ' . $feeType->name . '.');
+        }
+
+        $excessFee = 0;
+        $unitFee = 0;
+
+        switch ($feeType->computation_method) {
+            case 'per_unit':
+                $unitFee = (float) $schedule->fee_per_unit;
+                $baseFee = round($unit * $unitFee, 2);
+                break;
+
+            case 'range_based':
+                $threshold = (float) $schedule->excess_threshold;
+                if ($threshold > 0 && $unit > $threshold) {
+                    $excess = $unit - $threshold;
+                    $excessFee = round($excess * (float) $schedule->excess_fee, 2);
+                    $baseFee = round((float) $schedule->fixed_fee + $excessFee, 2);
+                } elseif ((float) $schedule->fee_per_unit > 0) {
+                    $unitFee = (float) $schedule->fee_per_unit;
+                    $baseFee = round($unit * $unitFee, 2);
+                } else {
+                    $baseFee = round((float) $schedule->fixed_fee, 2);
+                    $unitFee = 0;
+                }
+                break;
+
+            case 'fixed':
+                $unitFee = (float) $schedule->fixed_fee;
+                $baseFee = round($unit * $unitFee, 2);
+                break;
+
+            default:
+                $baseFee = 0;
+        }
+
+        $description = $feeType->name
+            . ($signFormula ? ' (' . str_replace('|', ' - ', $signFormula) . ')' : '');
+
+        AssessmentItem::create([
+            'assessment_id' => $assessment->id,
+            'fee_category_id' => $sgpFeeCategory->id,
+            'fee_type_id' => $feeType->id,
+            'fee_code' => $feeType->code,
+            'description' => $description,
+            'quantity' => $unit,
+            'unit_fee' => $unitFee,
+            'excess_fee' => $excessFee,
+            'inspection_fee' => 0,
+            'amount' => $baseFee,
+            'computation_details' => [
+                'fee_type_code' => $feeTypeCode,
+                'sign_formula' => $signFormula,
+                'fee_schedule_id' => $schedule->id,
+                'input_unit' => $unit,
+                'computation_method' => $feeType->computation_method,
+                'fixed_fee' => (float) $schedule->fixed_fee,
+                'fee_per_unit' => (float) $schedule->fee_per_unit,
+                'excess_threshold' => (float) $schedule->excess_threshold,
+                'excess_fee_rate' => (float) $schedule->excess_fee,
+                'range' => $isRangeBased ? ($schedule->range_from . '–' . $schedule->range_to) : null,
+            ],
+            'is_active' => true,
+        ]);
+
+        return redirect()->route('assessments.assess.sgp', ['signageApplication' => $signageApplication->id, 'tab' => 'SGP_FEE'])
+            ->with('success', 'Signage fee item added.');
+    }
+
     // AI Annual Inspection Fees (NBC schedule) — one method handling all 3 tabs (General/Occupancy/
     // Electrical, Electronics, Mechanical). Reuses the existing AINSP_* FeeType/FeeSchedule rows
     // (Settings > Fee Schedules > Annual Inspection Fees, BP-scoped) by code, tagging the resulting

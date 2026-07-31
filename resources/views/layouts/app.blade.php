@@ -111,7 +111,7 @@
                                         $notifications = auth()->user()->unreadNotifications->take(10);
                                     @endphp
                                     @forelse($notifications as $notification)
-                                        <a href="#" class="block px-4 py-3 hover:bg-gray-50 border-b border-gray-100">
+                                        <a href="{{ $notification->data['url'] ?? '#' }}" class="block px-4 py-3 hover:bg-gray-50 border-b border-gray-100">
                                             <p class="text-sm text-gray-900">{{ $notification->data['message'] ?? 'Notification' }}</p>
                                             <p class="text-xs text-gray-400 mt-1">{{ $notification->created_at->diffForHumans() }}</p>
                                         </a>

@@ -19,28 +19,58 @@
         </div>
     </div>
 
-    {{-- Zoning Certification Fee --}}
-    @if($certFee)
+    {{-- Zoning Certification Fee — per Character of Occupancy (A-J) --}}
+    @if($certRows->count())
     <div class="bg-white rounded-xl border border-gray-200 p-5">
         <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
             <span class="inline-flex items-center justify-center w-7 h-7 bg-green-600 text-white text-xs font-bold rounded-full mr-2"><i class="fas fa-certificate text-xs"></i></span>
-            Zoning Certification Fee
+            Zoning Certification Fee — by Character of Occupancy
         </h3>
-        <form action="{{ route('settings.zoning-fees.updateCert', $certFee) }}" method="POST" class="flex items-end gap-3" autocomplete="off">
-            @csrf
-            @method('PUT')
-            <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Fixed Fee (all sub-groups)</label>
-                <div class="flex items-center gap-2">
-                    <span class="text-sm text-gray-500">&#8369;</span>
-                    <input type="number" name="amount" value="{{ $certFee->amount }}" step="0.01" min="0"
-                        class="w-40 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-            </div>
-            <button type="submit" class="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
-                <i class="fas fa-save text-xs"></i> Update
-            </button>
-        </form>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                        <th class="text-left px-4 py-2 font-medium text-gray-500">Group</th>
+                        <th class="text-left px-4 py-2 font-medium text-gray-500">Character of Occupancy</th>
+                        <th class="text-right px-4 py-2 font-medium text-gray-500">Amount</th>
+                        <th class="text-right px-4 py-2 font-medium text-gray-500">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @foreach($certRows as $row)
+                    <tr x-data="{ editing: false }">
+                        <td class="px-4 py-2">
+                            <span class="inline-flex items-center justify-center w-6 h-6 bg-green-100 text-green-700 text-xs font-bold rounded-full">{{ $row->group->code }}</span>
+                        </td>
+                        <td class="px-4 py-2 text-gray-900">{{ $row->group->name }}</td>
+                        <td class="px-4 py-2 text-right font-semibold text-gray-900" x-show="!editing">&#8369;{{ number_format($row->schedule->fixed_fee, 2) }}</td>
+                        <td class="px-4 py-2 text-right" x-show="!editing">
+                            <button @click="editing = true" class="text-blue-500 hover:text-blue-700" title="Edit">
+                                <i class="fas fa-pencil-alt"></i>
+                            </button>
+                        </td>
+                        <template x-if="editing">
+                            <td class="px-4 py-2" colspan="2">
+                                <form action="{{ route('settings.zoning-fees.updateCert', $row->schedule) }}" method="POST" class="flex items-center justify-end gap-2" autocomplete="off">
+                                    @csrf
+                                    @method('PUT')
+                                    <span class="text-sm text-gray-500">&#8369;</span>
+                                    <input type="number" name="amount" value="{{ $row->schedule->fixed_fee }}" step="0.01" min="0"
+                                        class="w-32 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500">
+                                    <button type="submit" class="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    <button type="button" @click="editing = false" class="px-2 py-1 bg-gray-400 text-white text-xs rounded hover:bg-gray-500">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </template>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
     </div>
     @endif
 

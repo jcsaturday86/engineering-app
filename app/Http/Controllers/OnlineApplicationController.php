@@ -22,10 +22,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 
 class OnlineApplicationController extends Controller
 {
@@ -139,7 +139,7 @@ class OnlineApplicationController extends Controller
         $meta = $this->typeMeta($type);
         abort_unless($meta, 404);
 
-        $model = $meta['model']::findOrFail($id);
+        $model = $meta['model']::withTrashed()->findOrFail($id);
         abort_if($model->client_user_id !== Auth::id(), 403);
 
         return $model;
@@ -150,7 +150,7 @@ class OnlineApplicationController extends Controller
         $applications = collect();
 
         foreach (self::TYPES as $code => $meta) {
-            $rows = $meta['model']::where('client_user_id', $user->id)->latest()->get();
+            $rows = $meta['model']::withTrashed()->where('client_user_id', $user->id)->latest()->get();
 
             $applications = $applications->concat($rows->map(function ($app) use ($code) {
                 $permit = $app->permits->sortByDesc('created_at')->first();
@@ -325,6 +325,54 @@ class OnlineApplicationController extends Controller
             ->with('success', 'Application updated. Check your required documents below.');
     }
 
+    /**
+     * Cancel an application — available any time before payment (a Collection
+     * row and status=paid are only ever created together, in the same DB
+     * transaction, so nothing eligible here can already have a real payment
+     * on record). The application and its detail rows are soft-deleted
+     * (recoverable), but uploaded files are removed from disk permanently.
+     * Password-gated like the staff-side Submit/Revert Submission actions.
+     */
+    public function destroy(Request $request, string $type, int $id)
+    {
+        $this->typeMeta($type) ?? abort(404);
+        $model = $this->resolveModel($type, $id);
+        abort_if(in_array($model->status, ['paid', 'permit_generated', 'released', 'cancelled'], true), 403);
+
+        $request->validate(['password' => 'required|string']);
+
+        if (! Hash::check($request->password, Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
+        Storage::disk('public')->deleteDirectory('requirements/' . strtolower($type) . '-' . $model->id);
+
+        $model->applicationRequirements()->delete();
+        $model->applicationOccupancyGroups()->delete();
+        $model->documents()->delete();
+
+        // Soft-delete rather than purge — "cancelled", not destroyed. In practice
+        // these are empty for any status eligible here (see method docblock).
+        foreach (['assessments', 'billings', 'collections', 'permits'] as $relation) {
+            $model->{$relation}()->get()->each->delete();
+        }
+
+        $applicationNumber = $model->application_number;
+
+        $model->update([
+            'status' => 'cancelled',
+            'cancelled_at' => now(),
+            'cancellation_reason' => 'Cancelled by client via online portal',
+        ]);
+
+        activity()->causedBy(Auth::user())->performedOn($model)->log("Application {$applicationNumber} cancelled by client");
+
+        $model->delete();
+
+        return redirect()->route('online.applications')
+            ->with('success', "Application {$applicationNumber} has been cancelled.");
+    }
+
     public function submit(Request $request, string $type, int $id)
     {
         $this->typeMeta($type) ?? abort(404);
@@ -414,47 +462,32 @@ class OnlineApplicationController extends Controller
         ]);
     }
 
-    public function storeRequirement(Request $request, string $type, int $id)
+    /**
+     * Store a single requirement's file, replacing any existing upload for the
+     * same requirement rather than accumulating duplicates.
+     */
+    private function persistRequirementUpload($model, string $type, DocumentRequirement $requirement, \Illuminate\Http\UploadedFile $file): string
     {
-        $this->typeMeta($type) ?? abort(404);
-        $model = $this->resolveModel($type, $id);
-
-        $request->validate([
-            'document_requirement_id' => [
-                'required',
-                // Must be an uploadable row belonging to THIS permit type — guards
-                // against a hand-edited id borrowed from another service.
-                Rule::exists('document_requirements', 'id')
-                    ->where('is_active', true)
-                    ->where('is_uploadable', true)
-                    ->whereIn('permit_type_id', PermitType::where('code', strtoupper($type))->pluck('id')),
-            ],
-            'file' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png',
-        ]);
-
-        $requirement = DocumentRequirement::findOrFail($request->document_requirement_id);
-
-        $path = $request->file('file')->store('requirements/' . strtolower($type) . '-' . $model->id, 'public');
+        $path = $file->store('requirements/' . strtolower($type) . '-' . $model->id, 'public');
 
         $existing = $model->applicationRequirements()
             ->where('document_requirement_id', $requirement->id)
             ->first();
 
         if ($existing) {
-            // Replace rather than accumulate duplicates for the same requirement.
             Storage::disk('public')->delete($existing->file_path);
 
             $existing->update([
                 'requirement_name' => $requirement->name,
                 'file_path' => $path,
-                'original_filename' => $request->file('file')->getClientOriginalName(),
+                'original_filename' => $file->getClientOriginalName(),
                 'status' => 'pending',
                 'reviewer_remarks' => null,
                 'reviewed_by' => null,
                 'reviewed_at' => null,
             ]);
 
-            return back()->with('success', 'Document replaced.');
+            return 'replaced';
         }
 
         $model->applicationRequirements()->create([
@@ -462,11 +495,59 @@ class OnlineApplicationController extends Controller
             // Snapshot the label so the upload survives a later rename.
             'requirement_name' => $requirement->name,
             'file_path' => $path,
-            'original_filename' => $request->file('file')->getClientOriginalName(),
+            'original_filename' => $file->getClientOriginalName(),
             'status' => 'pending',
         ]);
 
-        return back()->with('success', 'Document uploaded.');
+        return 'uploaded';
+    }
+
+    /**
+     * Upload one or many requirements' files in a single submit — the client
+     * checklist has one shared form and one save button for the whole list.
+     */
+    public function storeAllRequirements(Request $request, string $type, int $id)
+    {
+        $this->typeMeta($type) ?? abort(404);
+        $model = $this->resolveModel($type, $id);
+
+        $request->validate([
+            'files' => 'nullable|array',
+            'files.*' => 'file|max:10240|mimes:pdf,jpg,jpeg,png',
+        ]);
+
+        $validRequirements = $this->requirementTreeFor($type)
+            ->flatMap(fn ($r) => collect([$r])->concat($r->children))
+            ->filter(fn ($r) => $r->is_uploadable)
+            ->keyBy('id');
+
+        $uploaded = 0;
+        $replaced = 0;
+
+        foreach ($request->file('files', []) as $requirementId => $file) {
+            $requirement = $validRequirements->get((int) $requirementId);
+
+            if (! $requirement || ! $file || ! $file->isValid()) {
+                continue;
+            }
+
+            $outcome = $this->persistRequirementUpload($model, $type, $requirement, $file);
+            $outcome === 'replaced' ? $replaced++ : $uploaded++;
+        }
+
+        if ($uploaded === 0 && $replaced === 0) {
+            return back()->with('error', 'No files were selected.');
+        }
+
+        $parts = [];
+        if ($uploaded > 0) {
+            $parts[] = "{$uploaded} document(s) uploaded";
+        }
+        if ($replaced > 0) {
+            $parts[] = "{$replaced} replaced";
+        }
+
+        return back()->with('success', implode(', ', $parts) . '.');
     }
 
     public function destroyRequirement(string $type, int $id, int $requirementId)

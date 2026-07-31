@@ -16,9 +16,66 @@
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h2 class="text-xl font-bold text-gray-900">Zoning Assessment</h2>
-        <a href="{{ route('zoning.index') }}" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
-            <i class="fas fa-arrow-left"></i> Back to List
-        </a>
+        <div class="flex flex-wrap items-center gap-2">
+            @can('revert-submission')
+            @if($application->status === 'for_zoning_assessment')
+            <div x-data="{ open: false, pw: '' }" class="inline-block">
+                <button @click="open = true; pw = ''"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-amber-300 text-amber-700 text-sm font-medium rounded-lg hover:bg-amber-50 transition">
+                    <i class="fas fa-arrow-left"></i> Send Back to Engineering
+                </button>
+
+                <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center"
+                    @keydown.escape.window="open = false">
+                    <div class="absolute inset-0 bg-black/40" @click="open = false"></div>
+                    <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 z-10">
+                        <div class="flex items-start gap-3 mb-4">
+                            <span class="flex-shrink-0 w-10 h-10 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <div>
+                                <h3 class="text-base font-semibold text-gray-900">Confirm Send Back</h3>
+                                <p class="text-sm text-gray-500 mt-0.5">This will return the application to Engineering for editing the application form and permanently delete all Zoning Assessment fee entries.</p>
+                            </div>
+                        </div>
+
+                        @if($errors->has('password'))
+                            <div class="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                                {{ $errors->first('password') }}
+                            </div>
+                        @endif
+
+                        <form action="{{ route('zoning.sendBack', $application) }}" method="POST" autocomplete="off">
+                            @csrf
+                            <div class="mb-4">
+                                <label class="block text-xs font-medium text-gray-600 mb-1">
+                                    Your Password <span class="text-red-500">*</span>
+                                </label>
+                                <input type="password" name="password" x-model="pw" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                    placeholder="Enter your password">
+                            </div>
+                            <div class="flex justify-end gap-2">
+                                <button type="button" @click="open = false"
+                                    class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                                    Cancel
+                                </button>
+                                <button type="submit" :disabled="!pw"
+                                    class="inline-flex items-center gap-1 px-4 py-2 text-sm font-semibold text-white bg-amber-600 rounded-lg hover:bg-amber-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i class="fas fa-arrow-left"></i> Confirm & Send Back
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            @endif
+            @endcan
+
+            <a href="{{ route('zoning.index') }}" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
+                <i class="fas fa-arrow-left"></i> Back to List
+            </a>
+        </div>
     </div>
 
     {{-- Application Details --}}
@@ -418,7 +475,166 @@
     <div class="space-y-4">
 
         {{-- ================================================================== --}}
-        {{-- 5. ZONING ASSESSMENT FEES --}}
+        {{-- 5. ADD FEE ITEM --}}
+        {{-- ================================================================== --}}
+        @if(!$isFinalized)
+        @php $zSectionNum++ @endphp
+        @php
+            $subGroupsJs = $occupancyGroups->flatMap(fn($g) => $g->subGroups->map(fn($sg) => [
+                'id' => $sg->id,
+                'label' => $g->code . ': ' . $sg->name,
+                'group' => $g->code . ' - ' . $g->name,
+                'groupCode' => $g->code,
+            ]));
+            $otherFeesJs = $otherFees->map(fn($f) => ['id' => $f->id, 'name' => $f->name, 'amount' => (float) $f->amount]);
+        @endphp
+        <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3" x-data="{
+            feeType: '',
+            subGroups: @js($subGroupsJs),
+            otherFees: @js($otherFeesJs),
+            certAmounts: @js($certAmounts),
+            selectedSubGroup: '',
+            selectedOtherFee: '',
+            manualDescription: '',
+            manualAmount: 0,
+            get selectedOtherFeeAmount() {
+                if (!this.selectedOtherFee) return 0;
+                const fee = this.otherFees.find(f => f.id == this.selectedOtherFee);
+                return fee ? fee.amount : 0;
+            },
+            get certAmount() {
+                const sg = this.subGroups.find(s => s.id == this.selectedSubGroup);
+                return sg ? (this.certAmounts[sg.groupCode] || 0) : 0;
+            },
+            formatPeso(val) {
+                return parseFloat(val || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            },
+            resetFields() {
+                this.selectedSubGroup = '';
+                this.selectedOtherFee = '';
+                this.manualDescription = '';
+                this.manualAmount = 0;
+            }
+        }" x-init="$watch('feeType', () => resetFields())">
+            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
+                <span class="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white text-xs font-bold rounded-full mr-2">{{ $zSectionNum }}</span>Add Fee Item
+            </h3>
+
+            <form action="{{ route('zoning.addItem', $application) }}" method="POST" autocomplete="off">
+                @csrf
+
+                {{-- Fee Type Selector --}}
+                <div class="mb-4">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Fee Type <span class="text-red-500">*</span></label>
+                    <select x-model="feeType" name="fee_type" required
+                        class="w-full sm:w-80 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">-- Select Fee Type --</option>
+                        <option value="lc">Locational Clearance</option>
+                        <option value="lc_manual">Locational Clearance (Manual Entry)</option>
+                        <option value="cert">Zoning Certification</option>
+                        <option value="others">Others</option>
+                    </select>
+                </div>
+
+                {{-- LC: Choose Sub-group → auto-compute --}}
+                <div x-show="feeType === 'lc'" x-cloak class="space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Occupancy Sub-Group <span class="text-red-500">*</span></label>
+                            <select name="occupancy_sub_group_id" x-model="selectedSubGroup" :required="feeType === 'lc'" :disabled="feeType !== 'lc'"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">-- Select Sub-Group --</option>
+                                <template x-for="sg in subGroups" :key="sg.id">
+                                    <option :value="sg.id" x-text="sg.label"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Total Estimated Cost</label>
+                            <div class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 font-medium">
+                                &#8369;{{ number_format($application->total_estimated_cost, 2) }}
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Amount will be auto-computed based on fee schedule.</p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- LC Manual: Enter description + amount --}}
+                <div x-show="feeType === 'lc_manual'" x-cloak class="space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Description <span class="text-red-500">*</span></label>
+                            <input type="text" name="manual_description" x-model="manualDescription" :required="feeType === 'lc_manual'" :disabled="feeType !== 'lc_manual'"
+                                placeholder="Enter fee description"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Amount <span class="text-red-500">*</span></label>
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm text-gray-500">&#8369;</span>
+                                <input type="number" name="manual_amount" x-model.number="manualAmount" step="0.01" min="0.01" :required="feeType === 'lc_manual'" :disabled="feeType !== 'lc_manual'"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Certification: Choose Sub-group → flat fee --}}
+                <div x-show="feeType === 'cert'" x-cloak class="space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Occupancy Sub-Group <span class="text-red-500">*</span></label>
+                            <select name="cert_sub_group_id" x-model="selectedSubGroup" :required="feeType === 'cert'" :disabled="feeType !== 'cert'"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">-- Select Sub-Group --</option>
+                                <template x-for="sg in subGroups" :key="sg.id">
+                                    <option :value="sg.id" x-text="sg.label"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Certification Fee</label>
+                            <div class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 font-medium">
+                                &#8369;<span x-text="formatPeso(certAmount)">0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Others: Variance / Non-Conforming --}}
+                <div x-show="feeType === 'others'" x-cloak class="space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Select Fee <span class="text-red-500">*</span></label>
+                            <select name="other_fee_id" x-model="selectedOtherFee" :required="feeType === 'others'" :disabled="feeType !== 'others'"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">-- Select --</option>
+                                <template x-for="fee in otherFees" :key="fee.id">
+                                    <option :value="fee.id" x-text="fee.name"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Amount</label>
+                            <div class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 font-medium">
+                                &#8369;<span x-text="formatPeso(selectedOtherFeeAmount)">0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Submit --}}
+                <div x-show="feeType" x-cloak class="mt-4">
+                    <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
+                        <i class="fas fa-plus"></i> Add Fee Item
+                    </button>
+                </div>
+            </form>
+        </div>
+        @endif
+
+        {{-- ================================================================== --}}
+        {{-- 6. ZONING ASSESSMENT FEES --}}
         {{-- ================================================================== --}}
         @php $zSectionNum++ @endphp
         @if($isFinalized)
@@ -517,7 +733,7 @@
                         <tr>
                             <td colspan="7" class="px-4 py-8 text-center text-gray-400">
                                 <i class="fas fa-receipt text-2xl mb-2"></i>
-                                <p>No fee items yet. Use the form below to add fee items.</p>
+                                <p>No fee items yet. Use the form above to add fee items.</p>
                             </td>
                         </tr>
                         @endforelse
@@ -535,163 +751,8 @@
             </div>
         </div>
 
-        {{-- ================================================================== --}}
-        {{-- 6. ADD FEE ITEM --}}
-        {{-- ================================================================== --}}
-        @if(!$isFinalized)
-        @php $zSectionNum++ @endphp
-        @php
-            $subGroupsJs = $occupancyGroups->flatMap(fn($g) => $g->subGroups->map(fn($sg) => [
-                'id' => $sg->id,
-                'label' => $g->code . ': ' . $sg->name,
-                'group' => $g->code . ' - ' . $g->name,
-            ]));
-            $otherFeesJs = $otherFees->map(fn($f) => ['id' => $f->id, 'name' => $f->name, 'amount' => (float) $f->amount]);
-            $certAmount = $certFee ? (float) $certFee->amount : 0;
-        @endphp
-        <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-3" x-data="{
-            feeType: '',
-            subGroups: @js($subGroupsJs),
-            otherFees: @js($otherFeesJs),
-            certAmount: {{ $certAmount }},
-            selectedSubGroup: '',
-            selectedOtherFee: '',
-            manualDescription: '',
-            manualAmount: 0,
-            get selectedOtherFeeAmount() {
-                if (!this.selectedOtherFee) return 0;
-                const fee = this.otherFees.find(f => f.id == this.selectedOtherFee);
-                return fee ? fee.amount : 0;
-            },
-            formatPeso(val) {
-                return parseFloat(val || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            },
-            resetFields() {
-                this.selectedSubGroup = '';
-                this.selectedOtherFee = '';
-                this.manualDescription = '';
-                this.manualAmount = 0;
-            }
-        }" x-init="$watch('feeType', () => resetFields())">
-            <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-3 flex items-center">
-                <span class="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white text-xs font-bold rounded-full mr-2">{{ $zSectionNum }}</span>Add Fee Item
-            </h3>
-
-            <form action="{{ route('zoning.addItem', $application) }}" method="POST" autocomplete="off">
-                @csrf
-
-                {{-- Fee Type Selector --}}
-                <div class="mb-4">
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Fee Type <span class="text-red-500">*</span></label>
-                    <select x-model="feeType" name="fee_type" required
-                        class="w-full sm:w-80 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">-- Select Fee Type --</option>
-                        <option value="lc">Locational Clearance</option>
-                        <option value="lc_manual">Locational Clearance (Manual Entry)</option>
-                        <option value="cert">Zoning Certification</option>
-                        <option value="others">Others</option>
-                    </select>
-                </div>
-
-                {{-- LC: Choose Sub-group → auto-compute --}}
-                <div x-show="feeType === 'lc'" x-cloak class="space-y-3">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">Occupancy Sub-Group <span class="text-red-500">*</span></label>
-                            <select name="occupancy_sub_group_id" x-model="selectedSubGroup"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <option value="">-- Select Sub-Group --</option>
-                                <template x-for="sg in subGroups" :key="sg.id">
-                                    <option :value="sg.id" x-text="sg.label"></option>
-                                </template>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">Total Estimated Cost</label>
-                            <div class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 font-medium">
-                                &#8369;{{ number_format($application->total_estimated_cost, 2) }}
-                            </div>
-                            <p class="text-xs text-gray-400 mt-1">Amount will be auto-computed based on fee schedule.</p>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- LC Manual: Enter description + amount --}}
-                <div x-show="feeType === 'lc_manual'" x-cloak class="space-y-3">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">Description <span class="text-red-500">*</span></label>
-                            <input type="text" name="manual_description" x-model="manualDescription"
-                                placeholder="Enter fee description"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">Amount <span class="text-red-500">*</span></label>
-                            <div class="flex items-center gap-2">
-                                <span class="text-sm text-gray-500">&#8369;</span>
-                                <input type="number" name="manual_amount" x-model.number="manualAmount" step="0.01" min="0.01"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Certification: Choose Sub-group → flat fee --}}
-                <div x-show="feeType === 'cert'" x-cloak class="space-y-3">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">Occupancy Sub-Group <span class="text-red-500">*</span></label>
-                            <select name="cert_sub_group_id" x-model="selectedSubGroup"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <option value="">-- Select Sub-Group --</option>
-                                <template x-for="sg in subGroups" :key="sg.id">
-                                    <option :value="sg.id" x-text="sg.label"></option>
-                                </template>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">Certification Fee</label>
-                            <div class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 font-medium">
-                                &#8369;<span x-text="formatPeso(certAmount)">0.00</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Others: Variance / Non-Conforming --}}
-                <div x-show="feeType === 'others'" x-cloak class="space-y-3">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">Select Fee <span class="text-red-500">*</span></label>
-                            <select name="other_fee_id" x-model="selectedOtherFee"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <option value="">-- Select --</option>
-                                <template x-for="fee in otherFees" :key="fee.id">
-                                    <option :value="fee.id" x-text="fee.name"></option>
-                                </template>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">Amount</label>
-                            <div class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 font-medium">
-                                &#8369;<span x-text="formatPeso(selectedOtherFeeAmount)">0.00</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Submit --}}
-                <div x-show="feeType" x-cloak class="mt-4">
-                    <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
-                        <i class="fas fa-plus"></i> Add Fee Item
-                    </button>
-                </div>
-            </form>
-        </div>
-        @endif
-
         {{-- Action Buttons --}}
-        <div class="flex flex-wrap items-center gap-3" x-data="{ showFinalizeModal: false, finalizePassword: '', passwordError: '', showRevertModal: false, revertPassword: '', showSendBackModal: false, sendBackPassword: '', showSkipModal: false, skipPassword: '' }">
+        <div class="flex flex-wrap items-center justify-end gap-3" x-data="{ showFinalizeModal: false, finalizePassword: '', passwordError: '', showRevertModal: false, revertPassword: '', showSkipModal: false, skipPassword: '' }">
             @if($assessment && $assessment->status !== 'finalized' && $assessmentItems->count())
                 <button @click="showFinalizeModal = true; finalizePassword = ''; passwordError = ''"
                     class="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition shadow-sm">
@@ -796,63 +857,6 @@
                                 <button type="submit" :disabled="!revertPassword"
                                     class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
                                     <i class="fas fa-undo"></i> Confirm & Revert
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            @endif
-            @endcan
-
-            @can('revert-submission')
-            @if($application->status === 'for_zoning_assessment')
-                <button @click="showSendBackModal = true; sendBackPassword = ''"
-                    class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-amber-300 text-amber-700 text-sm font-medium rounded-lg hover:bg-amber-50 transition shadow-sm">
-                    <i class="fas fa-arrow-left"></i> Send Back to Engineering
-                </button>
-
-                {{-- Send Back Password Confirmation Modal --}}
-                <div x-show="showSendBackModal" x-cloak
-                    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-                    @keydown.escape.window="showSendBackModal = false">
-                    <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6" @click.outside="showSendBackModal = false">
-                        <div class="flex items-center gap-3 mb-4">
-                            <div class="inline-flex items-center justify-center w-10 h-10 bg-amber-100 rounded-full">
-                                <i class="fas fa-lock text-amber-600"></i>
-                            </div>
-                            <div>
-                                <h3 class="text-lg font-semibold text-gray-900">Confirm Send Back</h3>
-                                <p class="text-sm text-gray-500">This will return the application to Engineering for editing the application form and permanently delete all Zoning Assessment fee entries.</p>
-                            </div>
-                        </div>
-
-                        <p class="text-sm text-gray-600 mb-4">
-                            Enter your password to confirm sending
-                            <strong>{{ $application->application_number }}</strong> back to Engineering (status will revert to Draft).
-                        </p>
-
-                        @if($errors->has('password'))
-                            <div class="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
-                                {{ $errors->first('password') }}
-                            </div>
-                        @endif
-
-                        <form action="{{ route('zoning.sendBack', $application) }}" method="POST" autocomplete="off">
-                            @csrf
-                            <div class="mb-4">
-                                <label for="sendback_password" class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
-                                <input type="password" name="password" id="sendback_password" x-model="sendBackPassword" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                                    placeholder="Enter your account password">
-                            </div>
-                            <div class="flex items-center justify-end gap-3">
-                                <button type="button" @click="showSendBackModal = false"
-                                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
-                                    Cancel
-                                </button>
-                                <button type="submit" :disabled="!sendBackPassword"
-                                    class="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                                    <i class="fas fa-arrow-left"></i> Confirm & Send Back
                                 </button>
                             </div>
                         </form>

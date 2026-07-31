@@ -1378,13 +1378,16 @@ class FeeScheduleSeeder extends Seeder
         $this->syncSchedules($feeTypeId, [['fixed_fee' => 500]]);
 
         // --- Certification / Zoning Fees ---
-        // All sub-groups get the same P500 flat fee
+        // One flat fee per Character of Occupancy group (A-J), keyed by formula = group code.
         $feeTypeId = $this->upsertFeeType(
             'ZONING_CERT', 'ZONING_CERT_FEE', 'Zoning Certification Fee',
             'fixed', false, false, 1,
-            'Flat P500 fee applicable to all occupancy sub-groups'
+            'Flat fee per Character of Occupancy (A-J)'
         );
-        $this->syncSchedules($feeTypeId, [['fixed_fee' => 500]]);
+        $certGroupCodes = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+        $this->syncSchedules($feeTypeId, collect($certGroupCodes)
+            ->map(fn ($code) => ['formula' => $code, 'fixed_fee' => 500])
+            ->all());
     }
 
     // =========================================================================

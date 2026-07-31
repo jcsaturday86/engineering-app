@@ -234,6 +234,7 @@ Route::middleware('auth')->group(function () {
         // SGP assessment
         Route::get('/sgp/{signageApplication}', [AssessmentController::class, 'assessSgp'])->name('assess.sgp')->middleware('can:create-assessments');
         Route::post('/sgp/{signageApplication}/item', [AssessmentController::class, 'addItemSgp'])->name('addItem.sgp')->middleware('can:create-assessments');
+        Route::post('/sgp/{signageApplication}/signage-fee-item', [AssessmentController::class, 'addSignageFeeItem'])->name('addSignageFeeItem.sgp')->middleware('can:create-assessments');
         Route::get('/sgp/{signageApplication}/summary', [AssessmentController::class, 'summarySgp'])->name('summary.sgp');
         Route::post('/sgp/{signageApplication}/finalize', [AssessmentController::class, 'finalizeSgp'])->name('finalize.sgp')->middleware('can:finalize-assessments');
         Route::post('/sgp/{signageApplication}/revert-finalize', [AssessmentController::class, 'revertEngineeringSgp'])->name('revertFinalize.sgp')->middleware('can:revert-assessments');
@@ -371,10 +372,10 @@ Route::middleware('auth')->group(function () {
         Route::delete('/fees/schedule/{feeSchedule}', [FeeScheduleController::class, 'destroySchedule'])->name('fees.schedule.destroy')->middleware('can:manage-fee-schedules');
         Route::get('/zoning-fees', [ZoningFeeController::class, 'index'])->name('zoning-fees')->middleware('can:manage-fee-schedules');
         Route::put('/zoning-fees/{landUseAndZoningFee}', [ZoningFeeController::class, 'update'])->name('zoning-fees.update')->middleware('can:manage-fee-schedules');
-        Route::put('/zoning-fees/cert/{certificationZoningFee}', [ZoningFeeController::class, 'updateCert'])->name('zoning-fees.updateCert')->middleware('can:manage-fee-schedules');
         Route::post('/zoning-fees/{occupancySubGroup}', [ZoningFeeController::class, 'store'])->name('zoning-fees.store')->middleware('can:manage-fee-schedules');
         Route::delete('/zoning-fees/{landUseAndZoningFee}', [ZoningFeeController::class, 'destroy'])->name('zoning-fees.destroy')->middleware('can:manage-fee-schedules');
         Route::put('/zoning-fees/other/{landUseAndZoningOtherFee}', [ZoningFeeController::class, 'updateOther'])->name('zoning-fees.updateOther')->middleware('can:manage-fee-schedules');
+        Route::put('/zoning-fees/cert/{feeSchedule}', [ZoningFeeController::class, 'updateCert'])->name('zoning-fees.updateCert')->middleware('can:manage-fee-schedules');
 
         Route::get('/mech-insp-fees', [MechInspFeeController::class, 'index'])->name('mech-insp-fees')->middleware('can:manage-fee-schedules');
         Route::put('/mech-insp-fees/schedule/{feeSchedule}', [MechInspFeeController::class, 'updateSchedule'])->name('mech-insp-fees.schedule.update')->middleware('can:manage-fee-schedules');
@@ -439,9 +440,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/application/{type}/{id}', [OnlineApplicationController::class, 'show'])->name('show');
         Route::get('/application/{type}/{id}/edit', [OnlineApplicationController::class, 'edit'])->name('edit');
         Route::put('/application/{type}/{id}', [OnlineApplicationController::class, 'update'])->name('update');
+        Route::delete('/application/{type}/{id}', [OnlineApplicationController::class, 'destroy'])->name('destroy')->middleware('can:online-delete');
         Route::post('/application/{type}/{id}/submit', [OnlineApplicationController::class, 'submit'])->name('submit');
         Route::get('/application/{type}/{id}/upload', [OnlineApplicationController::class, 'uploadRequirements'])->name('upload')->middleware('can:online-upload');
-        Route::post('/application/{type}/{id}/upload', [OnlineApplicationController::class, 'storeRequirement'])->name('upload.store')->middleware('can:online-upload');
+        Route::post('/application/{type}/{id}/upload/all', [OnlineApplicationController::class, 'storeAllRequirements'])->name('upload.storeAll')->middleware('can:online-upload');
         Route::delete('/application/{type}/{id}/upload/{requirementId}', [OnlineApplicationController::class, 'destroyRequirement'])->name('upload.destroy')->middleware('can:online-upload');
         Route::get('/application/{type}/{id}/track', [OnlineApplicationController::class, 'track'])->name('track')->middleware('can:online-track');
         Route::get('/application/{type}/{id}/download', [OnlineApplicationController::class, 'downloadPermit'])->name('download')->middleware('can:online-download');
