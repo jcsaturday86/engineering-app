@@ -33,6 +33,10 @@
                 <a href="{{ route('online.track', $routeParams) }}" class="text-xs text-blue-600 hover:text-blue-800">
                     <i class="fas fa-clock-rotate-left mr-1"></i> View full history
                 </a>
+            @else
+                <a href="{{ route('history.track', $routeParams) }}" class="text-xs text-blue-600 hover:text-blue-800">
+                    <i class="fas fa-clock-rotate-left mr-1"></i> View full history
+                </a>
             @endif
         </div>
 
@@ -54,15 +58,19 @@
                             $isCurrent = $stepperCurrent !== null && $i === $stepperCurrent;
                             $isComplete = $stepperCurrent !== null && $i < $stepperCurrent;
                             $isReturned = $isCurrent && $application->status === 'returned';
+                            $isReleased = $isCurrent && $step['status'] === 'released';
                         @endphp
                         <div class="flex flex-col items-center flex-1 min-w-0">
                             <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 border-white
                                 @if($isReturned) bg-red-500 text-white ring-2 ring-red-200
+                                @elseif($isReleased) bg-green-500 text-white ring-2 ring-green-200
                                 @elseif($isCurrent) bg-blue-600 text-white ring-2 ring-blue-200
                                 @elseif($isComplete) bg-green-500 text-white
                                 @else bg-gray-200 text-gray-400 @endif">
                                 @if($isReturned)
                                     <i class="fas fa-rotate-left text-xs"></i>
+                                @elseif($isReleased)
+                                    <i class="fas fa-check text-xs"></i>
                                 @elseif($isCurrent)
                                     <i class="fas fa-circle text-xs animate-pulse"></i>
                                 @elseif($isComplete)
@@ -73,6 +81,7 @@
                             </div>
                             <p class="mt-2 text-[11px] leading-tight text-center px-1
                                 @if($isReturned) text-red-700 font-semibold
+                                @elseif($isReleased) text-green-700 font-semibold
                                 @elseif($isCurrent) text-blue-700 font-semibold
                                 @elseif($isComplete) text-green-700
                                 @else text-gray-400 @endif">
@@ -92,6 +101,7 @@
                     <span class="font-medium text-gray-700">{{ $stepperTimeline[$stepperCurrent]['label'] }}</span>
                 </p>
             @endif
+
         </div>
 
         {{-- ===== below md: compact bar ===== --}}
@@ -106,5 +116,19 @@
                 <div class="h-2 rounded-full transition-all {{ $application->status === 'returned' ? 'bg-red-500' : 'bg-green-500' }}" style="width:{{ max($stepperPercent, 4) }}%"></div>
             </div>
         </div>
+
+        @if($stepperPortal === 'client')
+            @php
+                $turnaroundStart = $application->approved_at;
+                $turnaroundEnd = $application->permits->sortBy('created_at')->first()?->created_at;
+                $turnaroundDays = ($turnaroundStart && $turnaroundEnd) ? (int) floor($turnaroundStart->diffInDays($turnaroundEnd)) : null;
+            @endphp
+            @if($turnaroundDays !== null)
+                <p class="mt-3 text-xs text-gray-500 text-center">
+                    <i class="fas fa-stopwatch mr-1"></i> Turnaround Time (Approval &rarr; Permit Generation):
+                    <span class="font-medium text-gray-700">{{ $turnaroundDays < 1 ? 'Less than a day' : $turnaroundDays . ' day' . ($turnaroundDays === 1 ? '' : 's') }}</span>
+                </p>
+            @endif
+        @endif
     @endif
 </div>

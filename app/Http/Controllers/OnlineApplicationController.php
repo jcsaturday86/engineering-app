@@ -574,11 +574,32 @@ class OnlineApplicationController extends Controller
         $model->load('permits', 'collections');
 
         $timeline = ApplicationTimeline::build($model, $type);
+        $processedBy = ApplicationTimeline::processedBy($model);
 
         $application = $model;
         $applicationType = $type;
 
-        return view('online.track', compact('application', 'applicationType', 'timeline'));
+        return view('online.track', compact('application', 'applicationType', 'timeline', 'processedBy'));
+    }
+
+    /**
+     * Online payment entry point (LandBank Link.Biz). Not yet wired to the
+     * gateway — shows a coming-soon page with the outstanding billing amount
+     * so the client has somewhere to go once billed.
+     */
+    public function pay(string $type, int $id)
+    {
+        $this->typeMeta($type) ?? abort(404);
+        $model = $this->resolveModel($type, $id);
+
+        abort_unless($model->status === 'billed', 403);
+
+        $billing = $model->billings()->latest()->first();
+        $application = $model;
+        $applicationType = strtoupper($type);
+        $routeParams = ['type' => $type, 'id' => $id];
+
+        return view('online.pay', compact('application', 'billing', 'applicationType', 'routeParams'));
     }
 
     public function downloadPermit(string $type, int $id)
@@ -590,6 +611,10 @@ class OnlineApplicationController extends Controller
 
         if (! $permit) {
             return back()->with('error', 'Permit not yet generated.');
+        }
+
+        if ($model->status === 'permit_generated') {
+            $model->update(['status' => 'released', 'released_at' => now()]);
         }
 
         $model->load('applicationRequirements', 'collections.collectionDetails');
@@ -623,7 +648,7 @@ class OnlineApplicationController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($template, compact('permit', 'application', 'signatories', 'settings', 'sealImage', 'dpwhLogo', 'qrImage'));
         $pdf->setPaper('a4', 'landscape');
 
-        return $pdf->download("permit_{$permit->permit_number}.pdf");
+        return $pdf->stream("permit_{$permit->permit_number}.pdf");
     }
 
     /**
@@ -641,6 +666,32 @@ class OnlineApplicationController extends Controller
         abort_unless(method_exists($ctrl, 'printForm'), 404);
 
         return $ctrl->printForm($model);
+    }
+
+    /**
+     * Print the Summary of Computation PDF — the same document staff generate
+     * from the assessment Summary tab. Only available once billed, since that's
+     * when the fee computation is finalized and Assessment/Billing records exist.
+     */
+    public function printAssessmentSummary(string $type, int $id)
+    {
+        $meta = $this->typeMeta($type);
+        abort_unless($meta, 404);
+
+        $model = $this->resolveModel($type, $id);
+
+        abort_unless(in_array($model->status, ['billed', 'paid', 'permit_generated', 'released'], true), 403);
+
+        $assessmentController = app(AssessmentController::class);
+
+        return match (strtoupper($type)) {
+            'OP' => $assessmentController->printOp($model, true),
+            'DP' => $assessmentController->printDp($model, true),
+            'SGP' => $assessmentController->printSgp($model, true),
+            'FP' => $assessmentController->printFp($model, true),
+            'AI' => $assessmentController->printAi($model, true),
+            default => $assessmentController->print($model, true),
+        };
     }
 
     /**

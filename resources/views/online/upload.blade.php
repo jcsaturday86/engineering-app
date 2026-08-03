@@ -18,6 +18,7 @@
     $mandatoryItems = $uploadableItems->where('requirement_level', 'mandatory');
     $mandatoryDone = $mandatoryItems->filter(fn ($r) => isset($uploadsByRequirement[$r->id]))->count();
     $totalUploaded = $uploadableItems->filter(fn ($r) => isset($uploadsByRequirement[$r->id]))->count();
+    $canSubmit = $canUpload && $mandatoryDone === $mandatoryItems->count();
 @endphp
 <div class="space-y-6">
 
@@ -38,37 +39,13 @@
         @if($canUpload)
         <form method="POST" action="{{ route('online.submit', ['type' => $applicationType, 'id' => $application->id]) }}" onsubmit="return confirm('Submit this application for Engineering review? You won\'t be able to edit it until it is reviewed.');">
             @csrf
-            <button type="submit" class="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
+            <button type="submit" @disabled(!$canSubmit) title="{{ $canSubmit ? '' : 'Upload all mandatory documents before submitting' }}"
+                class="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600">
                 <i class="fas fa-paper-plane mr-1"></i> Submit for Review
             </button>
         </form>
         @endif
     </div>
-
-    @if(session('error'))
-    <div class="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-        <i class="fas fa-circle-exclamation text-red-500 mt-0.5"></i>
-        <p class="text-sm text-red-800">{{ session('error') }}</p>
-    </div>
-    @endif
-
-    @if(session('success'))
-    <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)"
-        class="flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
-        <i class="fas fa-check-circle text-green-500"></i>
-        {{ session('success') }}
-    </div>
-    @endif
-
-    @if($errors->any())
-    <div class="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
-        <ul class="list-disc list-inside space-y-0.5">
-            @foreach($errors->all() as $error)
-            <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    </div>
-    @endif
 
     @if($checklist->isEmpty())
         {{-- Data-driven, not type-specific: any service with nothing configured lands here. --}}

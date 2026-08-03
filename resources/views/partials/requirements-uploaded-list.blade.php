@@ -19,10 +19,15 @@
         @endif
     </div>
     <div class="flex items-center gap-2 shrink-0">
+        @php
+            $applicationApproved = ! in_array($application->status, ['draft', 'pending_approval', 'returned', 'cancelled'], true);
+        @endphp
+        @if(! ($req->status === 'pending' && $applicationApproved))
         <span class="text-xs px-2 py-0.5 rounded-full
             @if($req->status === 'approved') bg-green-100 text-green-700
             @elseif($req->status === 'rejected') bg-red-100 text-red-700
             @else bg-yellow-100 text-yellow-700 @endif">{{ ucfirst($req->status) }}</span>
+        @endif
         <a href="{{ route('requirements.view', $req) }}" target="_blank" title="View document"
            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-blue-200 text-xs font-medium text-blue-700 hover:bg-blue-50 transition">
             <i class="fas fa-eye"></i> View

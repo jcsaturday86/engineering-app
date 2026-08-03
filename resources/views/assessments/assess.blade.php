@@ -136,6 +136,58 @@
             @endif
             @endcan
 
+            {{-- Revert Finalization Button + Password Modal (finalized only) --}}
+            @can('revert-assessments')
+            @if($assessment && $assessment->status === 'finalized' && in_array($application->status, ['engineering_assessed', 'billed']))
+            <div x-data="{ open: false, pw: '' }" class="inline-block">
+                <button @click="open = true; pw = ''"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition">
+                    <i class="fas fa-undo"></i> Revert Finalization
+                </button>
+
+                <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center"
+                    @keydown.escape.window="open = false">
+                    <div class="absolute inset-0 bg-black/40" @click="open = false"></div>
+                    <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 z-10">
+                        <div class="flex items-start gap-3 mb-4">
+                            <span class="flex-shrink-0 w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <div>
+                                <h3 class="text-base font-semibold text-gray-900">Confirm Revert</h3>
+                                <p class="text-sm text-gray-500 mt-0.5">
+                                    This will unlock the assessment for editing and delete the auto-generated billing (if unpaid). Enter your password to proceed.
+                                </p>
+                            </div>
+                        </div>
+
+                        <form action="{{ $revertRoute }}" method="POST" autocomplete="off">
+                            @csrf
+                            <div class="mb-4">
+                                <label class="block text-xs font-medium text-gray-600 mb-1">
+                                    Your Password <span class="text-red-500">*</span>
+                                </label>
+                                <input type="password" name="password" x-model="pw" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                    placeholder="Enter your password">
+                            </div>
+                            <div class="flex justify-end gap-2">
+                                <button type="button" @click="open = false"
+                                    class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                                    Cancel
+                                </button>
+                                <button type="submit" :disabled="!pw"
+                                    class="inline-flex items-center gap-1 px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i class="fas fa-undo"></i> Revert
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            @endif
+            @endcan
+
             <a href="{{ $backRoute }}" class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition">
                 <i class="fas fa-arrow-left"></i> Back to List
             </a>
@@ -1712,7 +1764,7 @@
                             <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('amount'), 2) }}</td>
                             <td></td>
                             @elseif($cat->code === 'ELEC')
-                            <td colspan="4" class="px-4 py-3 text-right font-semibold text-gray-700">Subtotal</td>
+                            <td colspan="5" class="px-4 py-3 text-right font-semibold text-gray-700">Subtotal</td>
                             <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('amount'), 2) }}</td>
                             <td></td>
                             @elseif($cat->code === 'PLUMB')
@@ -1736,7 +1788,7 @@
                             <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('amount'), 2) }}</td>
                             <td></td>
                             @elseif($cat->code === 'MECH')
-                            <td colspan="4" class="px-4 py-3 text-right font-semibold text-gray-700">Subtotal</td>
+                            <td colspan="5" class="px-4 py-3 text-right font-semibold text-gray-700">Subtotal</td>
                             <td class="px-4 py-3 text-right font-bold text-gray-900">&#8369;{{ number_format($catItems->sum('amount'), 2) }}</td>
                             <td></td>
                             @elseif(in_array($cat->code, ['AINSP_GEN', 'AINSP_ELECTRONICS', 'AINSP_MECH', 'AINSP_ELEC']))
@@ -1913,57 +1965,6 @@
                    class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition shadow-sm">
                     <i class="fas fa-print"></i> Print Summary of Computation
                 </a>
-
-                @can('revert-assessments')
-                @if(in_array($application->status, ['engineering_assessed', 'billed']))
-                <div x-data="{ open: false, pw: '' }">
-                    <button @click="open = true; pw = ''"
-                        class="inline-flex items-center gap-2 px-6 py-3 bg-white border border-red-300 text-red-600 text-sm font-semibold rounded-lg hover:bg-red-50 transition shadow-sm">
-                        <i class="fas fa-undo"></i> Revert Finalization
-                    </button>
-
-                    <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center"
-                        @keydown.escape.window="open = false">
-                        <div class="absolute inset-0 bg-black/40" @click="open = false"></div>
-                        <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 z-10">
-                            <div class="flex items-start gap-3 mb-4">
-                                <span class="flex-shrink-0 w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-lock"></i>
-                                </span>
-                                <div>
-                                    <h3 class="text-base font-semibold text-gray-900">Confirm Revert</h3>
-                                    <p class="text-sm text-gray-500 mt-0.5">
-                                        This will unlock the assessment for editing and delete the auto-generated billing (if unpaid). Enter your password to proceed.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <form action="{{ $revertRoute }}" method="POST" autocomplete="off">
-                                @csrf
-                                <div class="mb-4">
-                                    <label class="block text-xs font-medium text-gray-600 mb-1">
-                                        Your Password <span class="text-red-500">*</span>
-                                    </label>
-                                    <input type="password" name="password" x-model="pw" required
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                        placeholder="Enter your password">
-                                </div>
-                                <div class="flex justify-end gap-2">
-                                    <button type="button" @click="open = false"
-                                        class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
-                                        Cancel
-                                    </button>
-                                    <button type="submit" :disabled="!pw"
-                                        class="inline-flex items-center gap-1 px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                                        <i class="fas fa-undo"></i> Revert
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-                @endif
-                @endcan
             </div>
             @endif
 

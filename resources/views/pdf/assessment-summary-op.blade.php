@@ -157,6 +157,7 @@ $grandTotal += $occSub;
 </div>
 
 {{-- ═══════════════ SIGNATURES ═══════════════ --}}
+@if(!($isOnlinePrint ?? false))
 <table class="sig-wrap" cellpadding="0" cellspacing="0">
     <tr>
         <td>
@@ -174,6 +175,9 @@ $grandTotal += $occSub;
         </td>
     </tr>
 </table>
+@endif
+
+<div style="margin-top:20px; text-align:center; font-size:6pt; color:#555;">This is a computer-generated document. Printed on: {{ now()->format('m/d/Y') }} | Printed by: {{ auth()->user()?->full_name }}</div>
 
 </body>
 </html>

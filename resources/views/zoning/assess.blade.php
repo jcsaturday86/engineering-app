@@ -649,7 +649,7 @@
                     <span class="inline-flex items-center justify-center w-7 h-7 bg-blue-600 text-white text-xs font-bold rounded-full mr-2">{{ $zSectionNum }}</span>Zoning Assessment Fees
                 </h3>
                 @if(!$isFinalized)
-                <form action="{{ route('zoning.autoCompute', $application) }}" method="POST" class="inline" autocomplete="off">
+                <form action="{{ route('zoning.autoCompute', $application) }}" method="POST" class="inline" autocomplete="off" data-preserve-scroll>
                     @csrf
                     <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 transition">
                         <i class="fas fa-calculator"></i> Auto Compute
@@ -674,8 +674,8 @@
                     </p>
                     @if(!$isFinalized)
                     <form x-show="selected.length > 0" x-cloak
-                        action="{{ route('zoning.removeItems', $application) }}" method="POST" class="inline"
-                        @submit.prevent="if(confirm('Remove ' + selected.length + ' selected item(s)?')) { $el.submit(); }" autocomplete="off">
+                        action="{{ route('zoning.removeItems', $application) }}" method="POST" class="inline" data-preserve-scroll
+                        @submit.prevent="if(confirm('Remove ' + selected.length + ' selected item(s)?')) { sessionStorage.setItem('scrollPos:' + window.location.pathname, window.scrollY); $el.submit(); }" autocomplete="off">
                         @csrf
                         @method('DELETE')
                         <template x-for="id in selected" :key="id">
@@ -719,7 +719,7 @@
                             <td class="px-4 py-3 text-right font-medium text-gray-900">&#8369;{{ number_format($item->amount, 2) }}</td>
                             <td class="px-4 py-3 text-right">
                                 @if(!$isFinalized)
-                                <form action="{{ route('zoning.removeItem', $item) }}" method="POST" class="inline" onsubmit="return confirm('Remove this item?');" autocomplete="off">
+                                <form action="{{ route('zoning.removeItem', $item) }}" method="POST" class="inline" onsubmit="return confirm('Remove this item?');" autocomplete="off" data-preserve-scroll>
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-red-500 hover:text-red-700" title="Remove">
@@ -941,3 +941,21 @@
 </script>
 @endpush
 @endif
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const key = 'scrollPos:' + window.location.pathname;
+        const saved = sessionStorage.getItem(key);
+        if (saved !== null) {
+            window.scrollTo(0, parseInt(saved, 10));
+            sessionStorage.removeItem(key);
+        }
+        document.addEventListener('submit', (e) => {
+            if (e.target.matches('form[data-preserve-scroll]')) {
+                sessionStorage.setItem(key, window.scrollY);
+            }
+        });
+    });
+</script>
+@endpush

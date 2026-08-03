@@ -86,14 +86,16 @@
                                    class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-indigo-200 text-xs font-medium text-indigo-700 hover:bg-indigo-50">
                                     <i class="fas fa-upload"></i>
                                 </a>
-                                @else
-                                <a href="{{ route('online.upload', $routeParams) }}" title="Upload Requirements"
-                                   class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-indigo-200 text-xs font-medium text-indigo-700 hover:bg-indigo-50">
-                                    <i class="fas fa-upload"></i>
+                                @endif
+                                @if($app->status === 'billed')
+                                <a href="{{ route('online.pay', $routeParams) }}" title="Pay Online"
+                                   class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-emerald-200 text-xs font-medium text-emerald-700 hover:bg-emerald-50">
+                                    <i class="fas fa-credit-card"></i>
                                 </a>
                                 @endif
                                 @if(in_array($app->status, ['permit_generated', 'released']))
-                                <a href="{{ route('online.download', $routeParams) }}" title="Download Permit"
+                                <a href="{{ route('online.download', $routeParams) }}" title="Generate Permit" target="_blank"
+                                   onclick="setTimeout(() => window.location.reload(), 1200)"
                                    class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-green-200 text-xs font-medium text-green-700 hover:bg-green-50">
                                     <i class="fas fa-download"></i>
                                 </a>

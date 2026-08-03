@@ -196,10 +196,13 @@
                 @endif
 
                 @if($errors->any())
-                    <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                        <div class="flex items-center gap-2 mb-2">
-                            <i class="fas fa-exclamation-circle text-red-500"></i>
-                            <p class="text-sm font-medium text-red-700">Please fix the following errors:</p>
+                    <div x-data="{ show: true }" x-show="show" class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-exclamation-circle text-red-500"></i>
+                                <p class="text-sm font-medium text-red-700">Please fix the following errors:</p>
+                            </div>
+                            <button @click="show = false" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button>
                         </div>
                         <ul class="list-disc list-inside text-sm text-red-600 space-y-1">
                             @foreach($errors->all() as $error)

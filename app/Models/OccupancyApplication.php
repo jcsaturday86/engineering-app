@@ -73,7 +73,6 @@ class OccupancyApplication extends Model implements PermitApplicationContract
         'fsec_no',
         'fsec_issued_date',
         'fsic_no',
-        'applies_for',
         'completion_date',
         // Misc
         'remarks',

@@ -75,4 +75,131 @@ class ApplicationTimeline
 
         return (int) round($index / ($steps - 1) * 100);
     }
+
+    /**
+     * Who processed each step, derived from the model's own Spatie activity
+     * log rather than a dedicated column — every status change is already
+     * recorded there (via logAll()->logOnlyDirty() on the model) together
+     * with the authenticated causer, so this needs no schema change.
+     *
+     * Later activity for the same status overwrites earlier ones, so a
+     * step that was reached more than once (e.g. reverted and redone)
+     * reports the most recent occurrence.
+     *
+     * @return array<string, array{user: ?\App\Models\User, at: ?\Illuminate\Support\Carbon}>
+     */
+    public static function processedBy($application): array
+    {
+        $activities = \Spatie\Activitylog\Models\Activity::where('subject_type', $application->getMorphClass())
+            ->where('subject_id', $application->id)
+            ->where('created_at', '>=', $application->created_at)
+            ->whereIn('event', ['created', 'updated'])
+            ->with('causer')
+            ->orderBy('id')
+            ->get();
+
+        $map = [];
+
+        foreach ($activities as $activity) {
+            $newStatus = $activity->properties['attributes']['status'] ?? null;
+
+            if ($newStatus === null) {
+                continue;
+            }
+
+            $map[$newStatus] = [
+                'user' => $activity->causer,
+                'at' => $activity->created_at,
+            ];
+        }
+
+        return $map;
+    }
+
+    /**
+     * Human-readable role label for who performed a step: the staff
+     * member's position/role, or "Applicant" when the causer is the
+     * client who owns the application.
+     */
+    public static function processedByLabel($application, ?\App\Models\User $user): string
+    {
+        if (! $user) {
+            return 'System';
+        }
+
+        if ($application->client_user_id && $user->id === $application->client_user_id) {
+            return 'Applicant';
+        }
+
+        return $user->position ?: (ucwords(str_replace('-', ' ', $user->getRoleNames()->first() ?? '')) ?: 'Staff');
+    }
+
+    /**
+     * Full chronological event log, every status change the application
+     * has ever gone through — including disapproval/resubmission cycles
+     * that the linear progress stepper in build() collapses away (since
+     * it only shows the *current* returned state, if any). Sourced from
+     * the same activity log as processedBy(), so no schema change.
+     *
+     * This is the "full transparency" audit trail: a BP application that
+     * was returned three times and resubmitted three times before being
+     * approved shows all six of those events here, in order, each with
+     * the reviewer's remarks and who acted.
+     *
+     * @return array<int, array{from: ?string, to: string, label: string, remarks: ?string, user: ?\App\Models\User, at: ?\Illuminate\Support\Carbon}>
+     */
+    public static function fullHistory($application): array
+    {
+        $activities = \Spatie\Activitylog\Models\Activity::where('subject_type', $application->getMorphClass())
+            ->where('subject_id', $application->id)
+            ->where('created_at', '>=', $application->created_at)
+            ->whereIn('event', ['created', 'updated'])
+            ->with('causer')
+            ->orderBy('id')
+            ->get();
+
+        $history = [];
+
+        foreach ($activities as $activity) {
+            $newStatus = $activity->properties['attributes']['status'] ?? null;
+
+            if ($newStatus === null) {
+                continue;
+            }
+
+            $oldStatus = $activity->properties['old']['status'] ?? null;
+
+            $history[] = [
+                'from' => $oldStatus,
+                'to' => $newStatus,
+                'label' => self::eventLabel($oldStatus, $newStatus),
+                'remarks' => $newStatus === 'returned' ? ($activity->properties['attributes']['review_remarks'] ?? null) : null,
+                'user' => $activity->causer,
+                'at' => $activity->created_at,
+            ];
+        }
+
+        return $history;
+    }
+
+    /**
+     * Describes a single status transition in plain language, distinguishing
+     * a disapproval and its resubmission from the generic status label.
+     */
+    protected static function eventLabel(?string $from, string $to): string
+    {
+        if ($to === 'returned') {
+            return 'Returned for Revision';
+        }
+
+        if ($from === 'returned' && $to === 'pending_approval') {
+            return 'Resubmitted by Applicant';
+        }
+
+        if ($from !== null && $to === 'draft') {
+            return 'Reverted to Draft';
+        }
+
+        return \App\Enums\ApplicationStatus::tryFrom($to)?->label() ?? ucfirst(str_replace('_', ' ', $to));
+    }
 }

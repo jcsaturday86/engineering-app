@@ -2606,42 +2606,42 @@ class AssessmentController extends Controller
     }
 
     // BP print
-    public function print(Application $application)
+    public function print(Application $application, bool $isOnlinePrint = false)
     {
-        return $this->doPrint($application);
+        return $this->doPrint($application, $isOnlinePrint);
     }
 
     // OP print
-    public function printOp(OccupancyApplication $occupancyApplication)
+    public function printOp(OccupancyApplication $occupancyApplication, bool $isOnlinePrint = false)
     {
-        return $this->doPrint($occupancyApplication);
+        return $this->doPrint($occupancyApplication, $isOnlinePrint);
     }
 
     // DP print
-    public function printDp(DemolitionApplication $demolitionApplication)
+    public function printDp(DemolitionApplication $demolitionApplication, bool $isOnlinePrint = false)
     {
-        return $this->doPrint($demolitionApplication);
+        return $this->doPrint($demolitionApplication, $isOnlinePrint);
     }
 
     // SGP print
-    public function printSgp(SignageApplication $signageApplication)
+    public function printSgp(SignageApplication $signageApplication, bool $isOnlinePrint = false)
     {
-        return $this->doPrint($signageApplication);
+        return $this->doPrint($signageApplication, $isOnlinePrint);
     }
 
     // FP print
-    public function printFp(FencingApplication $fencingApplication)
+    public function printFp(FencingApplication $fencingApplication, bool $isOnlinePrint = false)
     {
-        return $this->doPrint($fencingApplication);
+        return $this->doPrint($fencingApplication, $isOnlinePrint);
     }
 
     // AI print
-    public function printAi(AnnualInspectionApplication $annualInspectionApplication)
+    public function printAi(AnnualInspectionApplication $annualInspectionApplication, bool $isOnlinePrint = false)
     {
-        return $this->doPrint($annualInspectionApplication);
+        return $this->doPrint($annualInspectionApplication, $isOnlinePrint);
     }
 
-    private function doPrint(PermitApplicationContract $application)
+    private function doPrint(PermitApplicationContract $application, bool $isOnlinePrint = false)
     {
         $settings = Setting::where('group', 'general')->pluck('value', 'key');
         $isOp = $application->getPermitTypeCode() === 'OP';
@@ -2651,23 +2651,23 @@ class AssessmentController extends Controller
         $isMp = $application->getPermitTypeCode() === 'AI';
 
         if ($isDp) {
-            return $this->doPrintDp($application, $settings);
+            return $this->doPrintDp($application, $settings, $isOnlinePrint);
         }
 
         if ($isSgp) {
-            return $this->doPrintSgp($application, $settings);
+            return $this->doPrintSgp($application, $settings, $isOnlinePrint);
         }
 
         if ($isFp) {
-            return $this->doPrintFp($application, $settings);
+            return $this->doPrintFp($application, $settings, $isOnlinePrint);
         }
 
         if ($isMp) {
-            return $this->doPrintAi($application, $settings);
+            return $this->doPrintAi($application, $settings, $isOnlinePrint);
         }
 
         if ($isOp) {
-            return $this->doPrintOp($application, $settings);
+            return $this->doPrintOp($application, $settings, $isOnlinePrint);
         }
 
         $buildingAssessment = $application->assessments()
@@ -2712,14 +2712,14 @@ class AssessmentController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary', compact(
             'application', 'settings', 'sealImage', 'buildingAssessment',
             'zoningAssessment', 'itemsByCategory', 'zoningByCategory',
-            'barangayName', 'preparedBy', 'buildingOfficial', 'barcodeImage'
+            'barangayName', 'preparedBy', 'buildingOfficial', 'barcodeImage', 'isOnlinePrint'
         ));
         $pdf->setPaper('a4', 'portrait');
 
         return $pdf->stream("assessment_{$application->application_number}.pdf");
     }
 
-    private function doPrintOp(PermitApplicationContract $application, $settings)
+    private function doPrintOp(PermitApplicationContract $application, $settings, bool $isOnlinePrint = false)
     {
         $occupancyAssessment = $application->assessments()
             ->where('assessment_type', 'occupancy')
@@ -2754,14 +2754,14 @@ class AssessmentController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary-op', compact(
             'application', 'settings', 'sealImage', 'occupancyAssessment',
             'itemsByCategory', 'barangayName', 'preparedBy',
-            'buildingOfficial', 'barcodeImage'
+            'buildingOfficial', 'barcodeImage', 'isOnlinePrint'
         ));
         $pdf->setPaper('a4', 'portrait');
 
         return $pdf->stream("assessment_{$application->application_number}.pdf");
     }
 
-    private function doPrintDp(PermitApplicationContract $application, $settings)
+    private function doPrintDp(PermitApplicationContract $application, $settings, bool $isOnlinePrint = false)
     {
         $demolitionAssessment = $application->assessments()
             ->where('assessment_type', 'demolition')
@@ -2796,14 +2796,14 @@ class AssessmentController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary-dp', compact(
             'application', 'settings', 'sealImage', 'demolitionAssessment',
             'itemsByCategory', 'barangayName', 'preparedBy',
-            'buildingOfficial', 'barcodeImage'
+            'buildingOfficial', 'barcodeImage', 'isOnlinePrint'
         ));
         $pdf->setPaper('a4', 'portrait');
 
         return $pdf->stream("assessment_{$application->application_number}.pdf");
     }
 
-    private function doPrintSgp(PermitApplicationContract $application, $settings)
+    private function doPrintSgp(PermitApplicationContract $application, $settings, bool $isOnlinePrint = false)
     {
         $signageAssessment = $application->assessments()
             ->where('assessment_type', 'signage')
@@ -2834,14 +2834,14 @@ class AssessmentController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary-sgp', compact(
             'application', 'settings', 'sealImage', 'signageAssessment',
             'itemsByCategory', 'barangayName', 'preparedBy',
-            'buildingOfficial', 'barcodeImage'
+            'buildingOfficial', 'barcodeImage', 'isOnlinePrint'
         ));
         $pdf->setPaper('a4', 'portrait');
 
         return $pdf->stream("assessment_{$application->application_number}.pdf");
     }
 
-    private function doPrintFp(PermitApplicationContract $application, $settings)
+    private function doPrintFp(PermitApplicationContract $application, $settings, bool $isOnlinePrint = false)
     {
         $fencingAssessment = $application->assessments()
             ->where('assessment_type', 'fencing')
@@ -2872,14 +2872,14 @@ class AssessmentController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary-fp', compact(
             'application', 'settings', 'sealImage', 'fencingAssessment',
             'itemsByCategory', 'barangayName', 'preparedBy',
-            'buildingOfficial', 'barcodeImage'
+            'buildingOfficial', 'barcodeImage', 'isOnlinePrint'
         ));
         $pdf->setPaper('a4', 'portrait');
 
         return $pdf->stream("assessment_{$application->application_number}.pdf");
     }
 
-    private function doPrintAi(PermitApplicationContract $application, $settings)
+    private function doPrintAi(PermitApplicationContract $application, $settings, bool $isOnlinePrint = false)
     {
         $mechanicalAssessment = $application->assessments()
             ->where('assessment_type', 'mechanical')
@@ -2910,7 +2910,7 @@ class AssessmentController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary-ai', compact(
             'application', 'settings', 'sealImage', 'mechanicalAssessment',
             'itemsByCategory', 'barangayName', 'preparedBy',
-            'buildingOfficial', 'barcodeImage'
+            'buildingOfficial', 'barcodeImage', 'isOnlinePrint'
         ));
         $pdf->setPaper('a4', 'portrait');
 

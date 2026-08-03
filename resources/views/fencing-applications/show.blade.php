@@ -18,6 +18,7 @@
     $applicationType = $applicationType ?? 'FP';
     $routeParams = ['type' => $applicationType, 'id' => $application->id];
     $canEdit = in_array($application->status, ['draft', 'returned']);
+    $canSubmit = $canEdit && \App\Support\ClientWizard::missingMandatory($application, $applicationType)->isEmpty();
     $canCancel = ! in_array($application->status, ['paid', 'permit_generated', 'released', 'cancelled'], true);
     $isApproved = $application->approved_at !== null;
 @endphp
@@ -198,6 +199,16 @@
             </div>
             @else
             <div class="flex gap-1.5 flex-wrap items-center" x-data="{ showCancelModal: false, cancelPassword: '' }">
+                @if($application->status === 'billed')
+                <a href="{{ route('online.pay', $routeParams) }}" class="px-2.5 py-1.5 bg-emerald-600 text-white text-xs rounded-lg hover:bg-emerald-700">
+                    <i class="fas fa-credit-card mr-1"></i> Pay Online
+                </a>
+                @endif
+                @if(in_array($application->status, ['billed', 'paid', 'permit_generated', 'released']))
+                <a href="{{ route('online.printAssessment', $routeParams) }}" target="_blank" class="px-2.5 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700">
+                    <i class="fas fa-print mr-1"></i> Print Summary of Computation
+                </a>
+                @endif
                 <a href="{{ route('online.print', $routeParams) }}" class="px-2.5 py-1.5 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700" target="_blank">
                     <i class="fas fa-print mr-1"></i> Print Application Form
                 </a>
@@ -207,16 +218,13 @@
                 </a>
                 <form method="POST" action="{{ route('online.submit', $routeParams) }}" class="inline" onsubmit="return confirm('Submit this application for Engineering review? You won\'t be able to edit it until it is reviewed.');">
                     @csrf
-                    <button type="submit" class="px-2.5 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700">
+                    <button type="submit" @disabled(!$canSubmit) title="{{ $canSubmit ? '' : 'Upload all mandatory documents before submitting' }}"
+                        class="px-2.5 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600">
                         <i class="fas fa-paper-plane mr-1"></i> Submit for Review
                     </button>
                 </form>
                 <a href="{{ route('online.edit', $routeParams) }}" class="px-2.5 py-1.5 bg-amber-600 text-white text-xs rounded-lg hover:bg-amber-700">
                     <i class="fas fa-pen mr-1"></i> Edit
-                </a>
-                @else
-                <a href="{{ route('online.upload', $routeParams) }}" class="px-2.5 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700">
-                    <i class="fas fa-upload mr-1"></i> Upload
                 </a>
                 @endif
                 @if($canCancel)
@@ -268,8 +276,8 @@
                 </div>
                 @endif
                 @if(in_array($application->status, ['permit_generated', 'released']))
-                <a href="{{ route('online.download', $routeParams) }}" class="px-2.5 py-1.5 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700">
-                    <i class="fas fa-download mr-1"></i> Download Permit
+                <a href="{{ route('online.download', $routeParams) }}" target="_blank" onclick="setTimeout(() => window.location.reload(), 1200)" class="px-2.5 py-1.5 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700">
+                    <i class="fas fa-download mr-1"></i> Generate Permit
                 </a>
                 @endif
             </div>
@@ -572,7 +580,7 @@
     {{-- ================================================================== --}}
     {{-- ASSESSMENT SUMMARY --}}
     {{-- ================================================================== --}}
-    @if($application->assessments && $application->assessments->count())
+    @if($portal === 'staff' && $application->assessments && $application->assessments->count())
     @php $sectionNum++ @endphp
     <div class="bg-white rounded-xl border border-gray-200 p-5">
         <h3 class="text-base font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4 flex items-center">

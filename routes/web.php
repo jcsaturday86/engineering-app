@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ApplicationController;
+use App\Http\Controllers\ApplicationHistoryController;
 use App\Http\Controllers\ApplicationReviewController;
 use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\Auth\ChangePasswordController;
@@ -82,6 +83,12 @@ Route::middleware('auth')->group(function () {
     // Profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+
+    // Full activity history — staff counterpart to the client portal's online.track,
+    // shared across all 6 permit types via {type}/{id} just like OnlineApplicationController.
+    Route::get('/history/{type}/{id}/track', [ApplicationHistoryController::class, 'track'])
+        ->name('history.track')
+        ->middleware('can:view-applications');
 
     // Building Permit Applications (BP)
     Route::prefix('applications')->name('applications.')->group(function () {
@@ -447,8 +454,10 @@ Route::middleware('auth')->group(function () {
         Route::delete('/application/{type}/{id}/upload/{requirementId}', [OnlineApplicationController::class, 'destroyRequirement'])->name('upload.destroy')->middleware('can:online-upload');
         Route::get('/application/{type}/{id}/track', [OnlineApplicationController::class, 'track'])->name('track')->middleware('can:online-track');
         Route::get('/application/{type}/{id}/download', [OnlineApplicationController::class, 'downloadPermit'])->name('download')->middleware('can:online-download');
+        Route::get('/application/{type}/{id}/pay', [OnlineApplicationController::class, 'pay'])->name('pay')->middleware('can:online-download');
         Route::get('/application/{type}/{id}/print', [OnlineApplicationController::class, 'printForm'])->name('print')->middleware('can:online-download');
         Route::get('/application/{type}/{id}/print-discipline/{discipline}', [OnlineApplicationController::class, 'printDiscipline'])->name('print.discipline')->middleware('can:online-download');
+        Route::get('/application/{type}/{id}/print-assessment', [OnlineApplicationController::class, 'printAssessmentSummary'])->name('printAssessment')->middleware('can:online-download');
     });
 });
 
