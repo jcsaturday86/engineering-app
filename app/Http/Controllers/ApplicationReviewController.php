@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ApplicationStatus;
 use App\Models\Application;
 use App\Models\AnnualInspectionApplication;
 use App\Models\DemolitionApplication;
@@ -11,6 +12,7 @@ use App\Models\SignageApplication;
 use App\Notifications\ApplicationReviewedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 /**
  * Engineering's approve/disapprove gate for applications submitted through
@@ -76,19 +78,26 @@ class ApplicationReviewController extends Controller
 
     public function approve(Request $request, string $type, int $id)
     {
+        $request->validate(['password' => 'required|string']);
+
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
         $meta = $this->typeMeta($type);
         abort_unless($meta, 404);
 
         $model = $meta['model']::findOrFail($id);
 
-        if ($model->status !== 'pending_approval') {
+        $nextStatus = $meta['uses_zoning'] ? ApplicationStatus::FOR_ZONING_ASSESSMENT : ApplicationStatus::SUBMITTED;
+        $currentStatus = ApplicationStatus::tryFrom($model->status);
+
+        if (! $currentStatus || ! $currentStatus->canTransitionToFor($nextStatus, $type)) {
             return back()->with('error', 'Only applications awaiting approval can be approved.');
         }
 
-        $nextStatus = $meta['uses_zoning'] ? 'for_zoning_assessment' : 'submitted';
-
         $model->update([
-            'status' => $nextStatus,
+            'status' => $nextStatus->value,
             'approved_at' => now(),
             'approved_by' => Auth::id(),
             'review_remarks' => null,
@@ -107,17 +116,24 @@ class ApplicationReviewController extends Controller
     public function disapprove(Request $request, string $type, int $id)
     {
         $request->validate([
+            'password' => 'required|string',
             'review_remarks' => 'required|string|max:1000',
         ], [
             'review_remarks.required' => 'Please explain why this application is being returned.',
         ]);
+
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
 
         $meta = $this->typeMeta($type);
         abort_unless($meta, 404);
 
         $model = $meta['model']::findOrFail($id);
 
-        if ($model->status !== 'pending_approval') {
+        $currentStatus = ApplicationStatus::tryFrom($model->status);
+
+        if (! $currentStatus || ! $currentStatus->canTransitionToFor(ApplicationStatus::RETURNED, $type)) {
             return back()->with('error', 'Only applications awaiting approval can be returned.');
         }
 

@@ -2702,9 +2702,12 @@ class AssessmentController extends Controller
             ->where('is_active', true)
             ->first();
 
+        $referenceNo = $application->billings()->latest()->value('collection_reference_no')
+            ?? $application->application_number;
+
         $generator    = new BarcodeGeneratorPNG();
         $barcodeImage = base64_encode(
-            $generator->getBarcode($application->application_number, $generator::TYPE_CODE_128, 2, 80)
+            $generator->getBarcode($referenceNo, $generator::TYPE_CODE_128, 2, 80)
         );
 
         $sealImage = Setting::imageDataUri($settings, 'general.logo');
@@ -2712,7 +2715,7 @@ class AssessmentController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary', compact(
             'application', 'settings', 'sealImage', 'buildingAssessment',
             'zoningAssessment', 'itemsByCategory', 'zoningByCategory',
-            'barangayName', 'preparedBy', 'buildingOfficial', 'barcodeImage', 'isOnlinePrint'
+            'barangayName', 'preparedBy', 'buildingOfficial', 'barcodeImage', 'referenceNo', 'isOnlinePrint'
         ));
         $pdf->setPaper('a4', 'portrait');
 
@@ -2744,9 +2747,12 @@ class AssessmentController extends Controller
             ->where('is_active', true)
             ->first();
 
+        $referenceNo = $application->billings()->latest()->value('collection_reference_no')
+            ?? $application->application_number;
+
         $generator    = new BarcodeGeneratorPNG();
         $barcodeImage = base64_encode(
-            $generator->getBarcode($application->application_number, $generator::TYPE_CODE_128, 2, 80)
+            $generator->getBarcode($referenceNo, $generator::TYPE_CODE_128, 2, 80)
         );
 
         $sealImage = Setting::imageDataUri($settings, 'general.logo');
@@ -2754,7 +2760,7 @@ class AssessmentController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary-op', compact(
             'application', 'settings', 'sealImage', 'occupancyAssessment',
             'itemsByCategory', 'barangayName', 'preparedBy',
-            'buildingOfficial', 'barcodeImage', 'isOnlinePrint'
+            'buildingOfficial', 'barcodeImage', 'referenceNo', 'isOnlinePrint'
         ));
         $pdf->setPaper('a4', 'portrait');
 
@@ -2786,9 +2792,12 @@ class AssessmentController extends Controller
             ->where('is_active', true)
             ->first();
 
+        $referenceNo = $application->billings()->latest()->value('collection_reference_no')
+            ?? $application->application_number;
+
         $generator    = new BarcodeGeneratorPNG();
         $barcodeImage = base64_encode(
-            $generator->getBarcode($application->application_number, $generator::TYPE_CODE_128, 2, 80)
+            $generator->getBarcode($referenceNo, $generator::TYPE_CODE_128, 2, 80)
         );
 
         $sealImage = Setting::imageDataUri($settings, 'general.logo');
@@ -2796,7 +2805,7 @@ class AssessmentController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary-dp', compact(
             'application', 'settings', 'sealImage', 'demolitionAssessment',
             'itemsByCategory', 'barangayName', 'preparedBy',
-            'buildingOfficial', 'barcodeImage', 'isOnlinePrint'
+            'buildingOfficial', 'barcodeImage', 'referenceNo', 'isOnlinePrint'
         ));
         $pdf->setPaper('a4', 'portrait');
 
@@ -2824,9 +2833,12 @@ class AssessmentController extends Controller
             ->where('is_active', true)
             ->first();
 
+        $referenceNo = $application->billings()->latest()->value('collection_reference_no')
+            ?? $application->application_number;
+
         $generator    = new BarcodeGeneratorPNG();
         $barcodeImage = base64_encode(
-            $generator->getBarcode($application->application_number, $generator::TYPE_CODE_128, 2, 80)
+            $generator->getBarcode($referenceNo, $generator::TYPE_CODE_128, 2, 80)
         );
 
         $sealImage = Setting::imageDataUri($settings, 'general.logo');
@@ -2834,7 +2846,7 @@ class AssessmentController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary-sgp', compact(
             'application', 'settings', 'sealImage', 'signageAssessment',
             'itemsByCategory', 'barangayName', 'preparedBy',
-            'buildingOfficial', 'barcodeImage', 'isOnlinePrint'
+            'buildingOfficial', 'barcodeImage', 'referenceNo', 'isOnlinePrint'
         ));
         $pdf->setPaper('a4', 'portrait');
 
@@ -2862,9 +2874,12 @@ class AssessmentController extends Controller
             ->where('is_active', true)
             ->first();
 
+        $referenceNo = $application->billings()->latest()->value('collection_reference_no')
+            ?? $application->application_number;
+
         $generator    = new BarcodeGeneratorPNG();
         $barcodeImage = base64_encode(
-            $generator->getBarcode($application->application_number, $generator::TYPE_CODE_128, 2, 80)
+            $generator->getBarcode($referenceNo, $generator::TYPE_CODE_128, 2, 80)
         );
 
         $sealImage = Setting::imageDataUri($settings, 'general.logo');
@@ -2872,7 +2887,7 @@ class AssessmentController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary-fp', compact(
             'application', 'settings', 'sealImage', 'fencingAssessment',
             'itemsByCategory', 'barangayName', 'preparedBy',
-            'buildingOfficial', 'barcodeImage', 'isOnlinePrint'
+            'buildingOfficial', 'barcodeImage', 'referenceNo', 'isOnlinePrint'
         ));
         $pdf->setPaper('a4', 'portrait');
 
@@ -2900,9 +2915,12 @@ class AssessmentController extends Controller
             ->where('is_active', true)
             ->first();
 
+        $referenceNo = $application->billings()->latest()->value('collection_reference_no')
+            ?? $application->application_number;
+
         $generator    = new BarcodeGeneratorPNG();
         $barcodeImage = base64_encode(
-            $generator->getBarcode($application->application_number, $generator::TYPE_CODE_128, 2, 80)
+            $generator->getBarcode($referenceNo, $generator::TYPE_CODE_128, 2, 80)
         );
 
         $sealImage = Setting::imageDataUri($settings, 'general.logo');
@@ -2910,7 +2928,7 @@ class AssessmentController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.assessment-summary-ai', compact(
             'application', 'settings', 'sealImage', 'mechanicalAssessment',
             'itemsByCategory', 'barangayName', 'preparedBy',
-            'buildingOfficial', 'barcodeImage', 'isOnlinePrint'
+            'buildingOfficial', 'barcodeImage', 'referenceNo', 'isOnlinePrint'
         ));
         $pdf->setPaper('a4', 'portrait');
 

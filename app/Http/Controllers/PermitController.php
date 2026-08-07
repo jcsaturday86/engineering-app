@@ -135,6 +135,8 @@ class PermitController extends Controller
 
     public function zoningIndex(Request $request)
     {
+        abort_unless(Auth::user()->can('view-permits') || Auth::user()->can('generate-zoning-permits'), 403);
+
         $query = Application::with('zoningAssessment')
             ->whereIn('status', ['paid', 'permit_generated', 'released'])
             ->where(function ($q) {
@@ -153,6 +155,8 @@ class PermitController extends Controller
 
     public function generateZoningDocuments(Application $application)
     {
+        abort_unless(Auth::user()->can('generate-zoning-permits'), 403);
+
         if (! in_array($application->status, ['paid', 'permit_generated', 'released'])) {
             return back()->with('error', 'Application must be paid before generating zoning documents.');
         }
@@ -209,37 +213,37 @@ class PermitController extends Controller
     }
 
     // BP permit generation
-    public function generate(Application $application)
+    public function generate(Request $request, Application $application)
     {
-        return $this->doGenerate($application, 'BP');
+        return $this->doGenerate($request, $application, 'BP');
     }
 
     // OP permit generation
-    public function generateOp(OccupancyApplication $occupancyApplication)
+    public function generateOp(Request $request, OccupancyApplication $occupancyApplication)
     {
-        return $this->doGenerate($occupancyApplication, 'OP');
+        return $this->doGenerate($request, $occupancyApplication, 'OP');
     }
 
     // DP permit generation
-    public function generateDp(DemolitionApplication $demolitionApplication)
+    public function generateDp(Request $request, DemolitionApplication $demolitionApplication)
     {
-        return $this->doGenerate($demolitionApplication, 'DP');
+        return $this->doGenerate($request, $demolitionApplication, 'DP');
     }
 
     // SGP permit generation
-    public function generateSgp(SignageApplication $signageApplication)
+    public function generateSgp(Request $request, SignageApplication $signageApplication)
     {
-        return $this->doGenerate($signageApplication, 'SGP');
+        return $this->doGenerate($request, $signageApplication, 'SGP');
     }
 
-    public function generateFp(FencingApplication $fencingApplication)
+    public function generateFp(Request $request, FencingApplication $fencingApplication)
     {
-        return $this->doGenerate($fencingApplication, 'FP');
+        return $this->doGenerate($request, $fencingApplication, 'FP');
     }
 
-    public function generateAi(AnnualInspectionApplication $annualInspectionApplication)
+    public function generateAi(Request $request, AnnualInspectionApplication $annualInspectionApplication)
     {
-        return $this->doGenerateAi($annualInspectionApplication);
+        return $this->doGenerateAi($request, $annualInspectionApplication);
     }
 
     // AI certificate group definitions: General+Electrical / Electronics / Machinery (minus
@@ -324,8 +328,14 @@ class PermitController extends Controller
         return $groups;
     }
 
-    private function doGenerateAi(AnnualInspectionApplication $application)
+    private function doGenerateAi(Request $request, AnnualInspectionApplication $application)
     {
+        $request->validate(['password' => 'required|string']);
+
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
         if ($application->status !== 'paid') {
             return back()->with('error', 'Application must be paid before generating permit.');
         }
@@ -418,8 +428,14 @@ class PermitController extends Controller
         return back()->with('success', 'Permit certificates generated successfully.');
     }
 
-    private function doGenerate(PermitApplicationContract $application, string $permitCode)
+    private function doGenerate(Request $request, PermitApplicationContract $application, string $permitCode)
     {
+        $request->validate(['password' => 'required|string']);
+
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
+
         if ($application->status !== 'paid') {
             return back()->with('error', 'Application must be paid before generating permit.');
         }
@@ -786,6 +802,8 @@ class PermitController extends Controller
 
     public function zoningCertification(Application $application)
     {
+        abort_unless(Auth::user()->can('view-permits') || Auth::user()->can('generate-zoning-permits'), 403);
+
         $application->load('zoningAssessment', 'collections.collectionDetails', 'buildingBarangay');
         $signatories = Signatory::where('is_active', true)->get()->keyBy('role');
 
@@ -804,6 +822,8 @@ class PermitController extends Controller
 
     public function locationalClearance(Application $application)
     {
+        abort_unless(Auth::user()->can('view-permits') || Auth::user()->can('generate-zoning-permits'), 403);
+
         $application->load('zoningAssessment', 'collections.collectionDetails', 'buildingBarangay', 'applicantBarangay', 'applicantCity');
         $signatories = Signatory::where('is_active', true)->get()->keyBy('role');
 
@@ -822,6 +842,8 @@ class PermitController extends Controller
 
     public function evaluationReport(Application $application)
     {
+        abort_unless(Auth::user()->can('view-permits') || Auth::user()->can('generate-zoning-permits'), 403);
+
         $application->load('zoningAssessment', 'buildingBarangay', 'applicantBarangay', 'applicantCity');
         $signatories = Signatory::where('is_active', true)->get()->keyBy('role');
 

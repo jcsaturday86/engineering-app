@@ -2,6 +2,12 @@
     $currentRoute = request()->route()?->getName() ?? '';
     $currentType = request()->get('type', '');
     $currentUrl = request()->url();
+    $isPlanningOnly = auth()->user()->hasAnyRole(['planning-officer', 'planning-staff'])
+        && ! auth()->user()->hasAnyRole(['super-admin', 'administrator', 'engineering-officer', 'engineering-staff']);
+    $isTreasuryOnly = auth()->user()->hasAnyRole(['treasury-officer', 'treasury-staff'])
+        && ! auth()->user()->hasAnyRole(['super-admin', 'administrator', 'engineering-officer', 'engineering-staff']);
+    $isEngineeringOnly = auth()->user()->hasAnyRole(['engineering-officer', 'engineering-staff'])
+        && ! auth()->user()->hasAnyRole(['super-admin', 'administrator']);
 @endphp
 
 {{-- Online Portal (Client) --}}
@@ -33,12 +39,12 @@
 @endcan
 
 {{-- Dashboard (Staff/Admin) --}}
-@can('view-applications')
+@unless(auth()->user()->hasRole('client'))
 <a href="{{ route('dashboard') }}" class="sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition {{ str_starts_with($currentRoute, 'dashboard') ? 'active' : 'text-gray-700' }}">
     <i class="fas fa-tachometer-alt w-5 text-center"></i>
     <span x-show="sidebarOpen || mobileMenuOpen">Dashboard</span>
 </a>
-@endcan
+@endunless
 
 {{-- Application Review (Engineering approve/disapprove of online submissions) --}}
 @can('approve-applications')
@@ -55,6 +61,7 @@
 @endcan
 
 {{-- Building Permit Applications (Staff/Admin) --}}
+@unless($isPlanningOnly)
 @canany(['view-applications', 'create-applications'])
 <div x-data="{ open: {{ str_starts_with($currentRoute, 'applications') ? 'true' : 'false' }} }">
     <button @click="open = !open" class="sidebar-link flex items-center justify-between w-full px-3 py-2.5 text-sm font-medium rounded-lg transition text-gray-700">
@@ -203,10 +210,11 @@
     </div>
 </div>
 @endcanany
+@endunless
 
 {{-- Zoning Assessment --}}
 @canany(['view-zoning', 'create-zoning'])
-<div x-data="{ open: {{ str_starts_with($currentRoute, 'zoning') ? 'true' : 'false' }} }">
+<div x-data="{ open: {{ str_starts_with($currentRoute, 'zoning') || $currentRoute === 'permits.zoning' ? 'true' : 'false' }} }">
     <button @click="open = !open" class="sidebar-link flex items-center justify-between w-full px-3 py-2.5 text-sm font-medium rounded-lg transition text-gray-700">
         <div class="flex items-center gap-3">
             <i class="fas fa-map-marked-alt w-5 text-center"></i>
@@ -218,6 +226,14 @@
         <a href="{{ route('zoning.index') }}" class="block px-3 py-2 text-sm rounded-lg {{ $currentRoute === 'zoning.index' ? 'text-primary-700 bg-primary-50 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
             Assessment List
         </a>
+        <a href="{{ route('zoning.report') }}" class="block px-3 py-2 text-sm rounded-lg {{ $currentRoute === 'zoning.report' ? 'text-primary-700 bg-primary-50 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
+            Zoning Report
+        </a>
+        @if($isPlanningOnly && auth()->user()->can('generate-zoning-permits'))
+        <a href="{{ route('permits.zoning') }}" class="block px-3 py-2 text-sm rounded-lg {{ $currentRoute === 'permits.zoning' ? 'text-primary-700 bg-primary-50 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
+            Zoning Permit Generation
+        </a>
+        @endif
     </div>
 </div>
 @endcanany
@@ -307,14 +323,17 @@
         <a href="{{ route('permits.annualInspection') }}" class="block px-3 py-2 text-sm rounded-lg {{ $currentRoute === 'permits.annualInspection' ? 'text-primary-700 bg-primary-50 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
             Annual Inspection Permits
         </a>
+        @unless($isEngineeringOnly)
         <a href="{{ route('permits.zoning') }}" class="block px-3 py-2 text-sm rounded-lg {{ $currentRoute === 'permits.zoning' ? 'text-primary-700 bg-primary-50 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
             Zoning
         </a>
+        @endunless
     </div>
 </div>
 @endcanany
 
 {{-- Reports --}}
+@unless($isPlanningOnly)
 @can('view-reports')
 <div x-data="{ open: {{ str_starts_with($currentRoute, 'reports') ? 'true' : 'false' }} }">
     <button @click="open = !open" class="sidebar-link flex items-center justify-between w-full px-3 py-2.5 text-sm font-medium rounded-lg transition text-gray-700">
@@ -334,6 +353,14 @@
     </div>
 </div>
 @endcan
+@endunless
+
+@if($isTreasuryOnly)
+<a href="{{ route('reports.revenue') }}" class="sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition {{ $currentRoute === 'reports.revenue' ? 'text-primary-700 bg-primary-50' : 'text-gray-700 hover:bg-gray-50' }}">
+    <i class="fas fa-chart-bar w-5 text-center"></i>
+    <span x-show="sidebarOpen || mobileMenuOpen">Revenue Report</span>
+</a>
+@endif
 
 {{-- Settings --}}
 @can('manage-settings')

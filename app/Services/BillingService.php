@@ -46,6 +46,14 @@ class BillingService
 
             $billingNumber = sprintf('%s%05d', $prefix, $counter);
 
+            $refPrefix = '40000' . now()->format('ym');
+            $lastRef = Billing::withTrashed()
+                    ->where('collection_reference_no', 'like', $refPrefix . '%')
+                    ->orderByDesc('collection_reference_no')
+                    ->value('collection_reference_no');
+            $refCounter = $lastRef ? ((int) substr($lastRef, -4)) + 1 : 1;
+            $referenceNo = sprintf('%s%04d', $refPrefix, $refCounter);
+
             $morphType = match ($application->getPermitTypeCode()) {
                 'OP' => 'op',
                 'DP' => 'dp',
@@ -60,6 +68,7 @@ class BillingService
                 'applicationable_id' => $application->id,
                 'application_id' => $application->id,
                 'billing_number' => $billingNumber,
+                'collection_reference_no' => $referenceNo,
                 'total_amount' => 0,
                 'status' => 'unpaid',
                 'generated_by' => Auth::id(),

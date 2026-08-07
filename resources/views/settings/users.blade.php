@@ -20,6 +20,58 @@
         </a>
     </div>
 
+    {{-- Tabs --}}
+    <div class="border-b border-gray-200">
+        <nav class="flex gap-6">
+            <a href="{{ route('settings.users', ['tab' => 'staff']) }}"
+               class="px-1 py-3 text-sm font-medium border-b-2 transition {{ $tab === 'staff' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
+                <i class="fas fa-user-tie mr-1"></i> Staff
+            </a>
+            <a href="{{ route('settings.users', ['tab' => 'client']) }}"
+               class="px-1 py-3 text-sm font-medium border-b-2 transition {{ $tab === 'client' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
+                <i class="fas fa-globe mr-1"></i> Online Clients
+            </a>
+        </nav>
+    </div>
+
+    {{-- Search & Filter --}}
+    <form method="GET" action="{{ route('settings.users') }}" class="bg-white rounded-xl border border-gray-200 p-4">
+        <input type="hidden" name="tab" value="{{ $tab }}">
+        <div class="flex flex-col sm:flex-row gap-3">
+            <div class="flex-1">
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by name or email..."
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            @if($tab === 'staff')
+            <div class="sm:w-48">
+                <select name="role" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">All Roles</option>
+                    @foreach($roles as $role)
+                        <option value="{{ $role->name }}" {{ request('role') === $role->name ? 'selected' : '' }}>{{ $role->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
+            <div class="sm:w-40">
+                <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">All Status</option>
+                    <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Active</option>
+                    <option value="inactive" {{ request('status') === 'inactive' ? 'selected' : '' }}>Inactive</option>
+                </select>
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-lg hover:bg-gray-900 transition">
+                    <i class="fas fa-search"></i> Filter
+                </button>
+                @if(request('search') || request('role') || request('status'))
+                <a href="{{ route('settings.users', ['tab' => $tab]) }}" class="px-4 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-200 transition">
+                    Clear
+                </a>
+                @endif
+            </div>
+        </div>
+    </form>
+
     {{-- Table --}}
     <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div class="overflow-x-auto">
@@ -29,7 +81,9 @@
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Name</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Email</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Role</th>
+                        @if($tab === 'staff')
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Department</th>
+                        @endif
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Status</th>
                         <th class="text-right px-4 py-3 font-medium text-gray-500">Actions</th>
                     </tr>
@@ -48,7 +102,9 @@
                                 <span class="text-gray-400 text-xs">No role</span>
                             @endif
                         </td>
+                        @if($tab === 'staff')
                         <td class="px-4 py-3 text-gray-600">{{ $user->department ?? '-' }}</td>
+                        @endif
                         <td class="px-4 py-3">
                             @if($user->is_active)
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Active</span>
@@ -78,9 +134,9 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="px-4 py-12 text-center text-gray-400">
+                        <td colspan="{{ $tab === 'staff' ? 6 : 5 }}" class="px-4 py-12 text-center text-gray-400">
                             <i class="fas fa-users text-3xl mb-3"></i>
-                            <p>No users found</p>
+                            <p>No {{ $tab === 'client' ? 'online clients' : 'staff users' }} found</p>
                         </td>
                     </tr>
                     @endforelse

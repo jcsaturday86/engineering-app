@@ -237,12 +237,54 @@
                                         default => route('permits.generate.op', $app),
                                     };
                                 @endphp
-                                <form action="{{ $generateRoute }}" method="POST" class="inline" autocomplete="off">
-                                    @csrf
-                                    <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition">
+                                <div class="inline-flex items-center gap-1.5" x-data="{ showGenerateModal: false, generatePassword: '' }">
+                                    <button type="button" @click="showGenerateModal = true; generatePassword = ''"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition">
                                         <i class="fas fa-file-alt"></i> Generate
                                     </button>
-                                </form>
+
+                                    <div x-show="showGenerateModal" x-cloak
+                                        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+                                        @keydown.escape.window="showGenerateModal = false">
+                                        <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6 text-left" @click.outside="showGenerateModal = false">
+                                            <div class="flex items-center gap-3 mb-4">
+                                                <div class="inline-flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full">
+                                                    <i class="fas fa-lock text-blue-600"></i>
+                                                </div>
+                                                <div>
+                                                    <h3 class="text-lg font-semibold text-gray-900">Confirm Permit Generation</h3>
+                                                    <p class="text-sm text-gray-500">Enter your password to generate the permit for {{ $app->application_number }}.</p>
+                                                </div>
+                                            </div>
+
+                                            @if($errors->has('password'))
+                                                <div class="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                                                    {{ $errors->first('password') }}
+                                                </div>
+                                            @endif
+
+                                            <form action="{{ $generateRoute }}" method="POST" autocomplete="off">
+                                                @csrf
+                                                <div class="mb-4">
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
+                                                    <input type="password" name="password" x-model="generatePassword" required
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        placeholder="Enter your account password">
+                                                </div>
+                                                <div class="flex items-center justify-end gap-3">
+                                                    <button type="button" @click="showGenerateModal = false"
+                                                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                                                        Cancel
+                                                    </button>
+                                                    <button type="submit" :disabled="!generatePassword"
+                                                        class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                                        <i class="fas fa-file-alt"></i> Confirm & Generate
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
                             @else
                                 <div class="inline-flex items-center gap-1.5" x-data="{ showRevokeModal: false, revokePassword: '', revokeReason: '' }">
                                     @if($isMechanical)

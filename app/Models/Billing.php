@@ -17,6 +17,7 @@ class Billing extends Model
         'applicationable_type',
         'applicationable_id',
         'billing_number',
+        'collection_reference_no',
         'total_amount',
         'status',
         'generated_by',

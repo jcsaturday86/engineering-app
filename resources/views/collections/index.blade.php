@@ -23,7 +23,7 @@
             </label>
             <div class="flex gap-2">
                 <input type="text" name="search" value="{{ $search ?? '' }}" autofocus
-                    placeholder="Scan barcode or type application no. / applicant name (e.g. BP-2026-06-00014)"
+                    placeholder="Scan barcode or type application no. / reference no. / applicant name"
                     class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 <button type="submit" class="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition">
                     <i class="fas fa-search"></i> Search
@@ -58,6 +58,7 @@
                 <thead class="bg-gray-50 border-b border-gray-200">
                     <tr>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">App No.</th>
+                        <th class="text-left px-4 py-3 font-medium text-gray-500">Reference No.</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Type</th>
                         <th class="text-left px-4 py-3 font-medium text-gray-500">Applicant</th>
                         <th class="text-right px-4 py-3 font-medium text-gray-500">Amount Due</th>
@@ -69,6 +70,7 @@
                     @foreach($forPayment as $app)
                     <tr class="hover:bg-orange-50/30">
                         <td class="px-4 py-3 font-mono text-sm text-blue-600">{{ $app->application_number }}</td>
+                        <td class="px-4 py-3 font-mono text-xs text-gray-500">{{ $app->billings->where('status','unpaid')->first()?->collection_reference_no ?? '-' }}</td>
                         <td class="px-4 py-3">
                             @php
                                 $typeBadge = match($app->getPermitTypeCode()) {
@@ -151,9 +153,13 @@
                             {{ \Carbon\Carbon::parse($collection->or_date)->format('M d, Y') }}
                         </td>
                         <td class="px-4 py-3">
+                            @can('view-applications')
                             <a href="{{ route('applications.show', $collection->application) }}" class="font-mono text-blue-600 hover:text-blue-800 font-medium">
                                 {{ $collection->application->application_number }}
                             </a>
+                            @else
+                            <span class="font-mono text-gray-900 font-medium">{{ $collection->application->application_number }}</span>
+                            @endcan
                         </td>
                         <td class="px-4 py-3 text-gray-900">{{ $collection->paid_by }}</td>
                         <td class="px-4 py-3 text-right font-medium text-gray-900">

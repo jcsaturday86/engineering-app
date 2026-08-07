@@ -82,7 +82,7 @@
                         </td>
                         <td class="px-4 py-3 text-right">
                             @if(! $decisionNo)
-                                @can('generate-permits')
+                                @can('generate-zoning-permits')
                                 <form action="{{ route('permits.generateZoning', $app) }}" method="POST" class="inline" autocomplete="off"
                                     onsubmit="return confirm('Generate zoning documents for this application?');">
                                     @csrf

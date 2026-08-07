@@ -9,6 +9,7 @@ use App\Models\Application;
 use App\Models\Collection;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 use Spatie\Activitylog\Models\Activity;
 
@@ -61,6 +62,8 @@ class ReportController extends Controller
 
     public function revenue()
     {
+        abort_unless(Auth::user()->can('view-reports') || Auth::user()->can('view-revenue-report'), 403);
+
         return view('reports.revenue');
     }
 
@@ -77,6 +80,11 @@ class ReportController extends Controller
             'date_to' => 'required|date|after_or_equal:date_from',
             'format' => 'required|in:pdf,excel',
         ]);
+
+        $allowed = $validated['report_type'] === 'revenue'
+            ? (Auth::user()->can('view-reports') || Auth::user()->can('view-revenue-report'))
+            : Auth::user()->can('view-reports');
+        abort_unless($allowed, 403);
 
         $dateFrom = $validated['date_from'];
         $dateTo = $validated['date_to'];

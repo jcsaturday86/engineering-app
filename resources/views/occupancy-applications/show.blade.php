@@ -44,7 +44,7 @@
                 </div>
             </div>
             @if($portal === 'staff')
-            <div class="flex flex-wrap items-center gap-2" x-data="{ showRevertSubmitModal: false, revertSubmitPassword: '', showSubmitModal: false, submitPassword: '', showDisapprove: false, disapproveRemarks: '' }">
+            <div class="flex flex-wrap items-center gap-2" x-data="{ showRevertSubmitModal: false, revertSubmitPassword: '', showSubmitModal: false, submitPassword: '', showApproveModal: false, approvePassword: '', showDisapprove: false, disapproveRemarks: '', disapprovePassword: '' }">
                 @if($application->status === 'draft' && $application->source !== 'online')
                     <a href="{{ route('occupancy-applications.edit', $application) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
                         <i class="fas fa-edit"></i> Edit
@@ -98,12 +98,52 @@
                 @endif
                 @if($application->status === 'pending_approval')
                     @can('approve-applications')
-                    <form method="POST" action="{{ route('application-review.approve', ['type' => 'OP', 'id' => $application->id]) }}" class="inline" onsubmit="return confirm('Approve {{ $application->application_number }}? It will be routed into the normal assessment queue.');">
-                        @csrf
-                        <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition">
-                            <i class="fas fa-check"></i> Approve
-                        </button>
-                    </form>
+                    <button type="button" @click="showApproveModal = true; approvePassword = ''"
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition">
+                        <i class="fas fa-check"></i> Approve
+                    </button>
+
+                    <div x-show="showApproveModal" x-cloak
+                        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+                        @keydown.escape.window="showApproveModal = false">
+                        <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6" @click.outside="showApproveModal = false">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="inline-flex items-center justify-center w-10 h-10 bg-green-100 rounded-full">
+                                    <i class="fas fa-lock text-green-600"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900">Confirm Approval</h3>
+                                    <p class="text-sm text-gray-500">Enter your password to approve {{ $application->application_number }}. It will be routed into the normal assessment queue.</p>
+                                </div>
+                            </div>
+
+                            @if($errors->has('password'))
+                                <div class="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                                    {{ $errors->first('password') }}
+                                </div>
+                            @endif
+
+                            <form method="POST" action="{{ route('application-review.approve', ['type' => 'OP', 'id' => $application->id]) }}" autocomplete="off">
+                                @csrf
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
+                                    <input type="password" name="password" x-model="approvePassword" required
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                        placeholder="Enter your account password">
+                                </div>
+                                <div class="flex items-center justify-end gap-3">
+                                    <button type="button" @click="showApproveModal = false"
+                                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" :disabled="!approvePassword"
+                                        class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <i class="fas fa-check"></i> Confirm & Approve
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                     @endcan
                     @can('reject-applications')
                     <button type="button" @click="showDisapprove = true" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition">
@@ -127,6 +167,11 @@
                                     {{ $errors->first('review_remarks') }}
                                 </div>
                             @endif
+                            @if($errors->has('password'))
+                                <div class="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                                    {{ $errors->first('password') }}
+                                </div>
+                            @endif
 
                             <form method="POST" action="{{ route('application-review.disapprove', ['type' => 'OP', 'id' => $application->id]) }}" autocomplete="off">
                                 @csrf
@@ -136,9 +181,15 @@
                                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
                                         placeholder="Explain what the client needs to correct before resubmitting"></textarea>
                                 </div>
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
+                                    <input type="password" name="password" x-model="disapprovePassword" required
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                        placeholder="Enter your account password">
+                                </div>
                                 <div class="flex items-center justify-end gap-3">
                                     <button type="button" @click="showDisapprove = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">Cancel</button>
-                                    <button type="submit" :disabled="!disapproveRemarks" class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <button type="submit" :disabled="!disapproveRemarks || !disapprovePassword" class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
                                         <i class="fas fa-times"></i> Confirm Disapprove
                                     </button>
                                 </div>
@@ -624,9 +675,54 @@
                 </a>
             @endif
             @if($application->status === 'paid')
-                <a href="{{ route('permits.generate.op', $application) }}" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition">
-                    <i class="fas fa-certificate"></i> Generate Permit
-                </a>
+                <div class="inline-flex items-center" x-data="{ showGenerateModal: false, generatePassword: '' }">
+                    <button type="button" @click="showGenerateModal = true; generatePassword = ''"
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition">
+                        <i class="fas fa-certificate"></i> Generate Permit
+                    </button>
+
+                    <div x-show="showGenerateModal" x-cloak
+                        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+                        @keydown.escape.window="showGenerateModal = false">
+                        <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6" @click.outside="showGenerateModal = false">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="inline-flex items-center justify-center w-10 h-10 bg-indigo-100 rounded-full">
+                                    <i class="fas fa-lock text-indigo-600"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900">Confirm Permit Generation</h3>
+                                    <p class="text-sm text-gray-500">Enter your password to generate the permit for {{ $application->application_number }}.</p>
+                                </div>
+                            </div>
+
+                            @if($errors->has('password'))
+                                <div class="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                                    {{ $errors->first('password') }}
+                                </div>
+                            @endif
+
+                            <form method="POST" action="{{ route('permits.generate.op', $application) }}" autocomplete="off">
+                                @csrf
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
+                                    <input type="password" name="password" x-model="generatePassword" required
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                        placeholder="Enter your account password">
+                                </div>
+                                <div class="flex items-center justify-end gap-3">
+                                    <button type="button" @click="showGenerateModal = false"
+                                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" :disabled="!generatePassword"
+                                        class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <i class="fas fa-certificate"></i> Confirm & Generate
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             @endif
             @if(in_array($application->status, ['draft']))
                 <span class="text-sm text-gray-500 italic">Submit the application to begin the workflow.</span>

@@ -76,7 +76,7 @@ table.ft .sec-total-amt { text-align: right; font-weight: bold; border-top: 1px 
     $location = collect([$application->building_street ?? '', $barangayName, ($settings['general.city'] ?? ''), ($settings['general.province'] ?? '')])
                 ->filter()->join(', ');
     $printDate = now()->format('m/d/Y');
-    $barcodeVal = ($application->permitType?->code ?? 'BP') . '-' . $application->app_year . '-' . str_pad($application->app_month,2,'0',STR_PAD_LEFT) . '-' . str_pad($application->app_counter,5,'0',STR_PAD_LEFT);
+    $barcodeVal = $referenceNo ?? (($application->permitType?->code ?? 'BP') . '-' . $application->app_year . '-' . str_pad($application->app_month,2,'0',STR_PAD_LEFT) . '-' . str_pad($application->app_counter,5,'0',STR_PAD_LEFT));
 @endphp
 <table class="info-wrap" cellpadding="0" cellspacing="0">
     <tr>

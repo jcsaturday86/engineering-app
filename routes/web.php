@@ -44,7 +44,7 @@ Route::get('/', fn () => auth()->check()
     : redirect()->route('login'));
 
 // Client auth (guest only)
-Route::middleware('guest')->group(function () {
+Route::middleware(['guest', 'throttle:5,1'])->group(function () {
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [LoginController::class, 'login']);
     Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register');
@@ -331,21 +331,28 @@ Route::middleware('auth')->group(function () {
         Route::post('/ai/{annualInspectionApplication}/restore-permit', [PermitController::class, 'restoreRevokeAi'])->name('restorePermit.ai')->middleware('can:revert-permits');
         // Shared
         Route::get('/{permit}/print', [PermitController::class, 'print'])->name('print')->middleware('can:print-permits');
+    });
+
+    // Zoning documents (view-permits holders, plus Planning Office roles via generate-zoning-permits)
+    Route::prefix('permits')->name('permits.')->group(function () {
+        Route::get('/zoning', [PermitController::class, 'zoningIndex'])->name('zoning');
+        Route::post('/{application}/generate-zoning', [PermitController::class, 'generateZoningDocuments'])->name('generateZoning');
         Route::get('/{application}/zoning-cert', [PermitController::class, 'zoningCertification'])->name('zoningCert');
         Route::get('/{application}/locational', [PermitController::class, 'locationalClearance'])->name('locational');
         Route::get('/{application}/evaluation', [PermitController::class, 'evaluationReport'])->name('evaluation');
-        // Zoning documents
-        Route::get('/zoning', [PermitController::class, 'zoningIndex'])->name('zoning');
-        Route::post('/{application}/generate-zoning', [PermitController::class, 'generateZoningDocuments'])->name('generateZoning')->middleware('can:generate-permits');
     });
 
     // Reports
     Route::prefix('reports')->name('reports.')->middleware('can:view-reports')->group(function () {
         Route::get('/permits', [ReportController::class, 'permits'])->name('permits');
-        Route::get('/revenue', [ReportController::class, 'revenue'])->name('revenue');
         Route::get('/collections', [ReportController::class, 'collections'])->name('collections');
-        Route::post('/generate', [ReportController::class, 'generate'])->name('generate');
         Route::get('/audit-logs', [ReportController::class, 'auditLogs'])->middleware('can:view-audit-logs')->name('audit-logs');
+    });
+
+    // Revenue Report (view-reports holders, plus Treasury via view-revenue-report)
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::get('/revenue', [ReportController::class, 'revenue'])->name('revenue');
+        Route::post('/generate', [ReportController::class, 'generate'])->name('generate');
     });
 
     // Application Review (Engineering approve/disapprove of online submissions)
@@ -359,6 +366,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('settings')->name('settings.')->middleware('can:manage-settings')->group(function () {
         Route::get('/', [SettingsController::class, 'index'])->name('index');
         Route::post('/', [SettingsController::class, 'update'])->name('update');
+        Route::post('/api-key/regenerate', [SettingsController::class, 'regenerateApiKey'])->name('apiKey.regenerate');
 
         Route::get('/users', [SettingsController::class, 'users'])->name('users')->middleware('can:manage-users');
         Route::get('/users/create', [SettingsController::class, 'createUser'])->name('users.create')->middleware('can:manage-users');

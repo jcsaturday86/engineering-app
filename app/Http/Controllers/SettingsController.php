@@ -7,6 +7,7 @@ use App\Models\Signatory;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\Password;
@@ -17,7 +18,18 @@ class SettingsController extends Controller
     public function index()
     {
         $settings = Setting::all()->groupBy('group');
-        return view('settings.index', compact('settings'));
+        $apiKeySetting = Setting::where('key', 'general.api_key')->first();
+        return view('settings.index', compact('settings', 'apiKeySetting'));
+    }
+
+    public function regenerateApiKey()
+    {
+        $setting = Setting::where('key', 'general.api_key')->firstOrFail();
+        $setting->update(['value' => bin2hex(random_bytes(32))]);
+
+        activity()->causedBy(Auth::user())->log('API key regenerated');
+
+        return back()->with('success', 'API key regenerated. Update any connected systems with the new key.');
     }
 
     public function update(Request $request)
@@ -82,10 +94,44 @@ class SettingsController extends Controller
         Storage::disk('public')->put($path, $pngData);
     }
 
-    public function users()
+    public function users(Request $request)
     {
-        $users = User::with('roles')->latest()->paginate(20);
-        return view('settings.users', compact('users'));
+        $tab = $request->input('tab', 'staff') === 'client' ? 'client' : 'staff';
+
+        $query = User::with('roles');
+
+        if ($tab === 'client') {
+            $query->role('client');
+        } else {
+            $query->whereDoesntHave('roles', fn ($q) => $q->where('name', 'client'));
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                    ->orWhere('middle_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('role')) {
+            $role = $request->input('role');
+            $query->whereHas('roles', fn ($q) => $q->where('name', $role));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('is_active', $request->input('status') === 'active');
+        }
+
+        $users = $query->latest()->paginate(20)->withQueryString();
+
+        $roles = $tab === 'client'
+            ? Role::where('name', 'client')->get()
+            : Role::where('name', '!=', 'client')->orderBy('name')->get();
+
+        return view('settings.users', compact('users', 'tab', 'roles'));
     }
 
     public function createUser()

@@ -59,7 +59,7 @@
             @if(request()->hasAny(['search', 'status']) || $dateFrom != now()->startOfYear()->toDateString() || $dateTo != now()->toDateString())
                 <a href="{{ route('zoning.index') }}" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Clear</a>
             @endif
-            <a href="{{ route('zoning.report', request()->query()) }}" target="_blank" title="Generate PDF Report"
+            <a href="{{ route('zoning.report', array_merge(request()->query(), ['date_from' => $dateFrom, 'date_to' => $dateTo])) }}" target="_blank" title="Generate PDF Report"
                 class="inline-flex items-center justify-center w-10 h-10 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
                 <i class="fas fa-file-pdf"></i>
             </a>

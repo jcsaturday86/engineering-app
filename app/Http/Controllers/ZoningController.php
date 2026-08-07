@@ -104,15 +104,31 @@ class ZoningController extends Controller
 
     public function report(Request $request)
     {
+        if (! $request->filled('date_from') || ! $request->filled('date_to')) {
+            return view('zoning.report-form');
+        }
+
+        $request->validate([
+            'date_from' => 'required|date',
+            'date_to' => 'required|date|after_or_equal:date_from',
+            'status' => 'nullable|in:for_zoning_assessment,zoning_assessed,engineering_assessed,billed,paid,permit_generated,released',
+        ]);
+
         [$query, $dateFrom, $dateTo] = $this->filteredQuery($request);
 
         $data = $query->latest()->get();
+
+        $zoningTotals = Assessment::where('applicationable_type', 'bp')
+            ->where('assessment_type', 'zoning')
+            ->whereIn('applicationable_id', $data->pluck('id'))
+            ->pluck('total_amount', 'applicationable_id');
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.report', [
             'data' => $data,
             'reportType' => 'zoning',
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,
+            'zoningTotals' => $zoningTotals,
         ]);
         $pdf->setPaper('a4', 'landscape');
 

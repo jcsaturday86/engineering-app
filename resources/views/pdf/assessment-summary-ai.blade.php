@@ -71,7 +71,7 @@ table.ft .th { font-weight: normal; font-size: 10.5px; border-bottom: 1px solid 
     $location = collect([$application->location_street ?? '', $barangayName, ($settings['general.city'] ?? ''), ($settings['general.province'] ?? '')])
                 ->filter()->join(', ');
     $printDate = now()->format('m/d/Y');
-    $barcodeVal = 'AI-' . $application->app_year . '-' . str_pad($application->app_month,2,'0',STR_PAD_LEFT) . '-' . str_pad($application->app_counter,5,'0',STR_PAD_LEFT);
+    $barcodeVal = $referenceNo ?? ('AI-' . $application->app_year . '-' . str_pad($application->app_month,2,'0',STR_PAD_LEFT) . '-' . str_pad($application->app_counter,5,'0',STR_PAD_LEFT));
 @endphp
 <table class="info-wrap" cellpadding="0" cellspacing="0">
     <tr>

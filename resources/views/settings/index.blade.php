@@ -37,6 +37,9 @@
                 </div>
                 <div class="p-6 space-y-5">
                     @foreach($items as $setting)
+                    @if($setting->type === 'api_key')
+                        @continue
+                    @endif
                     <div>
                         <label for="setting_{{ $setting->key }}" class="block text-sm font-medium text-gray-700 mb-1">
                             {{ ucwords(str_replace(['_', '-'], ' ', $setting->key)) }}
@@ -103,5 +106,37 @@
             </button>
         </div>
     </form>
+
+    @if($apiKeySetting)
+    {{-- API Access — deliberately outside the main settings form so a stray form
+         submit can never blank/overwrite this secret. Regeneration is its own action. --}}
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h3 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">API Access</h3>
+        </div>
+        <div class="p-6 space-y-3">
+            <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+            <div class="flex items-center gap-2">
+                <input type="text" readonly id="api_key_value" value="{{ $apiKeySetting->value }}"
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono bg-gray-50 text-gray-700">
+                <button type="button"
+                    onclick="navigator.clipboard.writeText(document.getElementById('api_key_value').value); this.innerText='Copied!'; setTimeout(() => this.innerText='Copy', 1500);"
+                    class="px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition">
+                    Copy
+                </button>
+            </div>
+            @if($apiKeySetting->description)
+                <p class="text-xs text-gray-500">{{ $apiKeySetting->description }}</p>
+            @endif
+            <form method="POST" action="{{ route('settings.apiKey.regenerate') }}" autocomplete="off"
+                onsubmit="return confirm('Regenerate the API key? Any connected systems using the current key will stop working immediately.');">
+                @csrf
+                <button type="submit" class="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 text-sm font-medium rounded-lg hover:bg-red-100 transition border border-red-200">
+                    <i class="fas fa-rotate"></i> Regenerate Key
+                </button>
+            </form>
+        </div>
+    </div>
+    @endif
 </div>
 @endsection

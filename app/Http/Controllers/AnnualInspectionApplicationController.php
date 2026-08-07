@@ -246,7 +246,14 @@ class AnnualInspectionApplicationController extends Controller
 
     public function cancel(Request $request, AnnualInspectionApplication $annualInspectionApplication)
     {
-        $request->validate(['reason' => 'required|string|max:500']);
+        $request->validate([
+            'reason' => 'required|string|max:500',
+            'password' => 'required|string',
+        ]);
+
+        if (! Hash::check($request->input('password'), Auth::user()->password)) {
+            return back()->withErrors(['password' => 'Incorrect password. Please try again.']);
+        }
 
         if (in_array($annualInspectionApplication->status, ['paid', 'permit_generated', 'released'])) {
             return back()->with('error', 'Cannot cancel an application that has been paid or has a permit generated.');

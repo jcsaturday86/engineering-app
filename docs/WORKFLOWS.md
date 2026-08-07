@@ -327,9 +327,9 @@ All "Return to Zoning" / "Revert to Draft" buttons live in the page **header** o
 ## Collections / Payment
 
 ### Barcode Scan & Search
-`/collections` has a search box (auto-focused) for the collector to scan the barcode on a printed assessment or type an application number / applicant name:
-- **Exact match** on a billed application's `application_number` → redirects straight to that application's payment form (`collections.create` / `collections.create.op`)
-- **Partial match** → filters the "Awaiting Payment" list by application number or applicant first/last name
+`/collections` has a search box (auto-focused) for the collector to scan the barcode on a printed assessment or type an application number / Collection Reference Number / applicant name:
+- **Exact match** on a billed application's `application_number` **or** its unpaid billing's `collection_reference_no` → redirects straight to that application's payment form (`collections.create` / `collections.create.op` / `.dp`) — the Summary of Computation barcode now encodes the Reference Number (see `docs/PROJECT_CONTEXT.md`), so scanning it hits this same match
+- **Partial match** → filters the "Awaiting Payment" list by application number, Reference Number, or applicant first/last name
 - No match → amber "No application awaiting payment matches …" notice
 
 Both the exact-match redirect and the "Awaiting Payment" list query add `whereDoesntHave('collections', fn($q) => $q->where('status', 'active'))` on top of `status = 'billed'` — a defensive guard so an application never reappears in the payment queue once it already has an active (paid) collection, even if its `status` column didn't transition cleanly to `paid`.
@@ -364,9 +364,15 @@ The `/collections` Payment History table is scoped to the **logged-in collector 
 | Revert engineering finalize / return to zoning | `revert-assessments`, `return-to-zoning` | engineering-officer |
 | Revoke generated permit | `revert-permits` | engineering-officer |
 | Restore revoked permit | `revert-permits` | engineering-officer |
+| Generate zoning documents (Certification/Locational Clearance/Evaluation Report) | `generate-zoning-permits` | planning-officer, planning-staff (moved off Engineering — `generate-permits` no longer grants this) |
+| View/print already-generated zoning documents | `view-permits` OR `generate-zoning-permits` | engineering-officer/staff, planning-officer/staff |
+| View revenue report | `view-revenue-report` | treasury-officer, treasury-staff (their only report access — `view-reports` was removed from both treasury roles) |
+| Regenerate API key | `manage-settings` | super-admin, administrator |
 | View audit logs | `view-audit-logs` | super-admin only |
 | Approve online application | `approve-applications` | engineering-officer, engineering-staff, administrator, super-admin |
 | Disapprove (return) online application | `reject-applications` | engineering-officer, engineering-staff, administrator, super-admin |
+
+> **Route middleware note:** Laravel's `can:` route middleware has no OR syntax, so any step gated by "permission A OR permission B" (`generate-zoning-permits`/`view-revenue-report` above) is wired the same way: the route sits in a second, unguarded group under the same prefix rather than the blanket `can:X` group, and the OR-check is enforced with `abort_unless(...)` inside the controller method itself.
 
 ---
 

@@ -26,6 +26,9 @@
 | Session-expired (419) redirect | DONE | Redirects to login/staff.login with flash message instead of default Page Expired screen |
 | Password visibility toggles | DONE | Client login, staff login, registration, staff account creation |
 | Staff account password complexity | DONE | Admin-supplied password now enforced/used on Create User (was previously discarded, hardcoded to `password123`) |
+| Settings Users page: staff/client segregation + search/filter | DONE | `/settings/users` `?tab=staff\|clients` (staff default), text search (name/email), staff-tab-only role filter, paginated |
+| Role-scoped UI: Planning/Treasury/Engineering | DONE | `$isPlanningOnly`/`$isTreasuryOnly`/`$isEngineeringOnly` sidebar-nav flags restrict Planning to zoning-only nav+dashboard, Treasury to collections+revenue-report-only nav+dashboard (both new `dashboard/planning.blade.php`/`dashboard/treasury.blade.php`), Engineering to hiding just the Permits→Zoning sub-link. See `docs/PROJECT_CONTEXT.md` |
+| API Key setting | DONE | `general.api_key` (type `api_key`, 64-char random hex) — new "API Access" card on `/settings`, Copy + Regenerate (`SettingsController::regenerateApiKey()`), kept outside the main Settings form. Preparation for a future external API; no API layer/auth middleware exists yet |
 
 ---
 
@@ -224,6 +227,8 @@
 | Zoning certification PDF | DONE | Template exists |
 | Locational clearance PDF | DONE | Template exists |
 | Revert zoning finalize / send back to editing | DONE | `revertZoning()`, `sendBackForEditing()` — password-confirmed |
+| Zoning permit generation restricted to Planning | DONE | New `generate-zoning-permits` permission; `PermitController::generateZoningDocuments()` tightened from `generate-permits OR generate-zoning-permits` to `generate-zoning-permits` only — Engineering keeps read/print access to already-generated zoning documents, can no longer generate new ones |
+| Zoning report: mandatory date range + status filter | DONE | `ZoningController::report()` refuses to generate without both `date_from`/`date_to`, falling back to new `zoning/report-form.blade.php` (also offers a Status dropdown); PDF gained a "Total Zoning Assessment" column, narrower `#` column |
 
 ---
 
@@ -269,10 +274,11 @@
 | Official receipt generation | DONE | PDF, unique OR number, city seal header |
 | Void transaction | DONE | Password verify, void tracking; header button removed from /collections (route remains) |
 | Collection history | DONE | "My Collections": scoped to logged-in collector, month filter (default current month) |
-| Barcode scan / search on Collections | DONE | Exact app-number match → payment form; partial match filters list |
+| Barcode scan / search on Collections | DONE | Exact app-number **or Collection Reference Number** match → payment form; partial match filters list by either, or applicant name |
 | Cash change display | DONE | Live Alpine calc; server rejects insufficient cash amount |
-| No-scroll payment form redesign | DONE | POS-style 3-col amount strip, segmented payment mode, sticky action bar |
+| No-scroll payment form redesign | DONE | POS-style 3-col amount strip, segmented payment mode, sticky action bar; Reference No. shown alongside Application No./Applicant, OR Number/Paid By kept as their own clean 2-col row |
 | Awaiting Payment already-paid exclusion | DONE | `whereDoesntHave('collections', active)` guard, in addition to `status = billed` |
+| Official Receipt: peso sign + department header fix | DONE | Font switched to `'DejaVu Sans', Arial` (was rendering ₱ as a missing-glyph box); header department line corrected to "Office of the City Treasurer" |
 
 ---
 
@@ -282,8 +288,9 @@
 |---------|--------|-------|
 | Billing auto-generation | DONE | Auto on assessment finalize (BillingService::generateFor); BL-YYYY-MM-NNNNN; Billing menu/page removed |
 | Billing number counter bug fix | DONE (fixed) | Counter was `count(billings this month) + 1` — collided with an existing (soft-deleted) number whenever the sequence had a gap, blocking finalize mid-transaction; now derived from the actual max existing number for the year/month prefix |
-| Billing statement PDF | DONE | billing.print route kept; city seal + city/province from Settings |
+| Billing statement PDF | DONE | billing.print route kept; city seal + city/province from Settings; now shows Reference No. |
 | Billing status tracking | DONE | unpaid, partial, paid, void |
+| Collection Reference Number | DONE | `billings.collection_reference_no` — `40000` + `YYMM` + 4-digit monthly-reset sequence, one shared counter across all 6 permit types, generated in `BillingService::generateFor()`. Backfilled for pre-existing rows via `php artisan billings:backfill-reference-no`. Displayed on Collections "Awaiting Payment", the payment form, and the billing statement PDF; encoded in the Summary of Computation barcode (all 6 types); searchable on `/collections`. Preparation for a future external API integration |
 
 ---
 

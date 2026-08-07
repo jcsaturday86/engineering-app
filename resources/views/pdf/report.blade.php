@@ -221,7 +221,8 @@
     @elseif($reportType === 'zoning')
     <table class="report">
         <colgroup>
-            <col style="width: 25px">
+            <col style="width: 15px">
+            <col>
             <col>
             <col>
             <col>
@@ -238,6 +239,7 @@
                 <th>Building Location</th>
                 <th>Status</th>
                 <th>Date</th>
+                <th>Total Zoning Assessment</th>
             </tr>
         </thead>
         <tbody>
@@ -250,6 +252,7 @@
                 <td>{{ $app->building_street ?? '' }}{{ $app->building_street && $app->buildingBarangay ? ', ' : '' }}{{ $app->buildingBarangay->name ?? '' }}</td>
                 <td>{{ ucfirst(str_replace('_', ' ', $app->status)) }}</td>
                 <td>{{ $app->created_at->format('M d, Y') }}</td>
+                <td>&#8369;{{ number_format($zoningTotals[$app->id] ?? 0, 2) }}</td>
             </tr>
             @endforeach
         </tbody>

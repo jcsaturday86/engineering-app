@@ -41,6 +41,10 @@
             <td>{{ $billing->created_at->format('F d, Y') }}</td>
         </tr>
         <tr>
+            <td class="label">Reference No.:</td>
+            <td colspan="3"><strong>{{ $billing->collection_reference_no }}</strong></td>
+        </tr>
+        <tr>
             <td class="label">Application No.:</td>
             <td>{{ $billing->application?->application_number }}</td>
             <td class="label">Permit Type:</td>

@@ -133,6 +133,13 @@ class SettingsSeeder extends Seeder
                 'type' => 'string',
                 'description' => 'Planning office telephone number printed on the Zoning Certification PDF header',
             ],
+            [
+                'group' => 'general',
+                'key' => 'general.api_key',
+                'value' => bin2hex(random_bytes(32)),
+                'type' => 'api_key',
+                'description' => 'Secret key external systems must send to authenticate API requests to this system. Regenerating immediately invalidates the old key for all integrations.',
+            ],
 
             // Permit prefix settings
             [
@@ -196,9 +203,10 @@ class SettingsSeeder extends Seeder
         ];
 
         foreach ($settings as $setting) {
-            if ($setting['type'] === 'file') {
-                // File settings are uploaded via the Settings UI — never overwrite an
-                // already-uploaded value with the seeder's empty default on re-run.
+            if (in_array($setting['type'], ['file', 'api_key'], true)) {
+                // File settings are uploaded via the Settings UI, and the API key is
+                // generated/rotated via its own action — never overwrite an already-set
+                // value with the seeder's default on re-run.
                 Setting::firstOrCreate(['key' => $setting['key']], $setting);
                 continue;
             }

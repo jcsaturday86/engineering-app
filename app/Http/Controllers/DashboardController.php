@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\AnnualInspectionApplication;
 use App\Models\Application;
+use App\Models\Assessment;
 use App\Models\Collection;
 use App\Models\DemolitionApplication;
 use App\Models\FencingApplication;
 use App\Models\OccupancyApplication;
 use App\Models\SignageApplication;
+use App\Models\ZoningAssessment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -18,6 +20,21 @@ class DashboardController extends Controller
     {
         if (auth()->user()->hasRole('client')) {
             return redirect()->route('online.dashboard');
+        }
+
+        $user = auth()->user();
+        $isPlanningOnly = $user->hasAnyRole(['planning-officer', 'planning-staff'])
+            && ! $user->hasAnyRole(['super-admin', 'administrator', 'engineering-officer', 'engineering-staff']);
+
+        if ($isPlanningOnly) {
+            return $this->planningDashboard($request);
+        }
+
+        $isTreasuryOnly = $user->hasAnyRole(['treasury-officer', 'treasury-staff'])
+            && ! $user->hasAnyRole(['super-admin', 'administrator', 'engineering-officer', 'engineering-staff']);
+
+        if ($isTreasuryOnly) {
+            return $this->treasuryDashboard($request);
         }
 
         $currentYear = now()->year;
@@ -190,5 +207,145 @@ class DashboardController extends Controller
         $recentApplications = $bpRecent->concat($opRecent)->concat($extraRecent)->sortByDesc('created_at')->take(10);
 
         return view('dashboard.index', compact('stats', 'revenueData', 'bpTransactionData', 'opTransactionData', 'extraTransactionData', 'recentApplications', 'chartYear', 'currentYear'));
+    }
+
+    private function planningDashboard(Request $request)
+    {
+        $currentYear = now()->year;
+        $currentMonth = now()->month;
+
+        $chartYear = (int) $request->query('year', $currentYear);
+        if ($chartYear > $currentYear) {
+            $chartYear = $currentYear;
+        }
+
+        $excludeSkipLc = fn ($q) => $q->whereNull('applies_to')->orWhere('applies_to', '!=', 'SKIP_LC');
+
+        $zoningStatuses = [
+            'for_zoning_assessment', 'zoning_assessed', 'engineering_assessed',
+            'billed', 'paid', 'permit_generated', 'released',
+        ];
+
+        $stats = [
+            'pending_zoning_assessments' => Application::where('status', 'for_zoning_assessment')
+                ->where($excludeSkipLc)
+                ->count(),
+            'zoning_assessed_this_month' => Assessment::where('applicationable_type', 'bp')
+                ->where('assessment_type', 'zoning')
+                ->where('status', 'finalized')
+                ->whereMonth('finalized_at', $currentMonth)
+                ->whereYear('finalized_at', $currentYear)
+                ->count(),
+            'zoning_permits_generated_month' => ZoningAssessment::whereNotNull('decision_no')
+                ->whereMonth('certificate_date', $currentMonth)
+                ->whereYear('certificate_date', $currentYear)
+                ->count(),
+            'zoning_permits_generated_total' => ZoningAssessment::whereNotNull('decision_no')->count(),
+            'zoning_revenue_annual' => Assessment::where('applicationable_type', 'bp')
+                ->where('assessment_type', 'zoning')
+                ->whereYear('created_at', $currentYear)
+                ->sum('total_amount'),
+            'zoning_revenue_monthly' => Assessment::where('applicationable_type', 'bp')
+                ->where('assessment_type', 'zoning')
+                ->whereYear('created_at', $currentYear)
+                ->whereMonth('created_at', $currentMonth)
+                ->sum('total_amount'),
+        ];
+
+        $monthlyZoningAssessments = Assessment::where('applicationable_type', 'bp')
+            ->where('assessment_type', 'zoning')
+            ->where('status', 'finalized')
+            ->whereYear('finalized_at', $chartYear)
+            ->select(
+                DB::raw('MONTH(finalized_at) as month'),
+                DB::raw('COUNT(*) as total')
+            )
+            ->groupBy(DB::raw('MONTH(finalized_at)'))
+            ->pluck('total', 'month')
+            ->toArray();
+
+        $zoningChartData = [];
+        for ($i = 1; $i <= 12; $i++) {
+            $zoningChartData[] = $monthlyZoningAssessments[$i] ?? 0;
+        }
+
+        $recentZoningActivity = Application::with('permitType')
+            ->whereIn('status', $zoningStatuses)
+            ->where($excludeSkipLc)
+            ->latest('updated_at')
+            ->take(10)
+            ->get()
+            ->map(fn ($app) => (object) [
+                'id' => $app->id,
+                'application_number' => $app->application_number,
+                'applicant_full_name' => $app->applicant_full_name,
+                'status' => $app->status,
+                'updated_at' => $app->updated_at,
+                'route' => $app->status === 'for_zoning_assessment'
+                    ? route('zoning.assess', $app->id)
+                    : route('permits.zoning'),
+            ]);
+
+        return view('dashboard.planning', compact('stats', 'zoningChartData', 'recentZoningActivity', 'chartYear', 'currentYear'));
+    }
+
+    private function treasuryDashboard(Request $request)
+    {
+        $currentYear = now()->year;
+        $currentMonth = now()->month;
+
+        $chartYear = (int) $request->query('year', $currentYear);
+        if ($chartYear > $currentYear) {
+            $chartYear = $currentYear;
+        }
+
+        $stats = [
+            'daily_transactions' => Collection::where('status', 'active')
+                ->whereDate('created_at', today())
+                ->count(),
+            'daily_revenue' => Collection::where('status', 'active')
+                ->whereDate('created_at', today())
+                ->sum('amount_due'),
+            'monthly_revenue' => Collection::where('status', 'active')
+                ->whereYear('created_at', $currentYear)
+                ->whereMonth('created_at', $currentMonth)
+                ->sum('amount_due'),
+            'annual_revenue' => Collection::where('status', 'active')
+                ->whereYear('created_at', $currentYear)
+                ->sum('amount_due'),
+        ];
+
+        $monthlyRevenue = Collection::where('status', 'active')
+            ->whereYear('created_at', $chartYear)
+            ->select(
+                DB::raw('MONTH(created_at) as month'),
+                DB::raw('SUM(amount_due) as total')
+            )
+            ->groupBy(DB::raw('MONTH(created_at)'))
+            ->pluck('total', 'month')
+            ->toArray();
+
+        $revenueData = [];
+        for ($i = 1; $i <= 12; $i++) {
+            $revenueData[] = $monthlyRevenue[$i] ?? 0;
+        }
+
+        $recentCollections = Collection::where('status', 'active')
+            ->with('applicationable')
+            ->latest('created_at')
+            ->take(10)
+            ->get()
+            ->map(fn ($collection) => (object) [
+                'id' => $collection->id,
+                'or_number' => $collection->or_number,
+                'application_number' => $collection->application?->application_number,
+                'paid_by' => $collection->paid_by,
+                'amount_received' => $collection->amount_received,
+                'payment_mode' => $collection->payment_mode,
+                'created_at' => $collection->created_at,
+                'route' => route('collections.receipt', $collection->id),
+            ]);
+
+        return view('dashboard.treasury', compact('stats', 'revenueData', 'recentCollections', 'chartYear', 'currentYear'));
     }
 }

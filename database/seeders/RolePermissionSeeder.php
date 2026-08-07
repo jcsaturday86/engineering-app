@@ -63,11 +63,13 @@ class RolePermissionSeeder extends Seeder
             'print-permits',
             'release-permits',
             'revert-permits',
+            'generate-zoning-permits',
 
             // Reports
             'view-reports',
             'export-reports',
             'view-audit-logs',
+            'view-revenue-report',
 
             // Settings
             'manage-settings',
@@ -92,13 +94,10 @@ class RolePermissionSeeder extends Seeder
 
         // Define roles and their permissions
         $rolePermissions = [
-            'super-admin' => collect($permissions)
-                ->reject(fn (string $p) => $p === 'view-audit-logs')
-                ->values()
-                ->all(),
+            'super-admin' => $permissions,
 
             'administrator' => collect($permissions)
-                ->reject(fn (string $p) => str_starts_with($p, 'online-'))
+                ->reject(fn (string $p) => str_starts_with($p, 'online-') || $p === 'view-audit-logs')
                 ->values()
                 ->all(),
 
@@ -135,6 +134,8 @@ class RolePermissionSeeder extends Seeder
                 // Zoning (all)
                 'view-zoning', 'create-zoning', 'edit-zoning', 'finalize-zoning', 'skip-zoning',
                 'revert-zoning',
+                // Zoning permit/document generation
+                'generate-zoning-permits',
                 // Reports
                 'view-reports',
             ],
@@ -143,23 +144,25 @@ class RolePermissionSeeder extends Seeder
                 'view-applications',
                 // Zoning (view/create/edit)
                 'view-zoning', 'create-zoning', 'edit-zoning',
+                // Zoning permit/document generation
+                'generate-zoning-permits',
             ],
 
             'treasury-officer' => [
-                'view-applications',
                 'view-billing',
                 // Collections (all)
                 'view-collections', 'create-collections', 'void-collections', 'print-receipts',
-                // Reports
-                'view-reports',
+                // Reports (Revenue Report only)
+                'view-revenue-report',
             ],
 
             'treasury-staff' => [
-                'view-applications',
                 'view-billing',
                 // Collections (view/create)
                 'view-collections', 'create-collections',
                 'print-receipts',
+                // Reports (Revenue Report only)
+                'view-revenue-report',
             ],
 
             'client' => [

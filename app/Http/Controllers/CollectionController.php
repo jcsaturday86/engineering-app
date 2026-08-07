@@ -25,23 +25,30 @@ class CollectionController extends Controller
     {
         $search = trim((string) $request->get('search', ''));
 
-        // Barcode scan / exact application number: go straight to the payment form
+        // Barcode scan / exact application number or collection reference number:
+        // go straight to the payment form
         if ($search !== '') {
-            $bpExact = Application::where('application_number', $search)
+            $bpExact = Application::where(fn ($w) => $w
+                    ->where('application_number', $search)
+                    ->orWhereHas('billings', fn ($q) => $q->where('collection_reference_no', $search)))
                 ->where('status', 'billed')
                 ->whereDoesntHave('collections', fn ($q) => $q->where('status', 'active'))
                 ->first();
             if ($bpExact) {
                 return redirect()->route('collections.create', $bpExact);
             }
-            $opExact = OccupancyApplication::where('application_number', $search)
+            $opExact = OccupancyApplication::where(fn ($w) => $w
+                    ->where('application_number', $search)
+                    ->orWhereHas('billings', fn ($q) => $q->where('collection_reference_no', $search)))
                 ->where('status', 'billed')
                 ->whereDoesntHave('collections', fn ($q) => $q->where('status', 'active'))
                 ->first();
             if ($opExact) {
                 return redirect()->route('collections.create.op', $opExact);
             }
-            $dpExact = DemolitionApplication::where('application_number', $search)
+            $dpExact = DemolitionApplication::where(fn ($w) => $w
+                    ->where('application_number', $search)
+                    ->orWhereHas('billings', fn ($q) => $q->where('collection_reference_no', $search)))
                 ->where('status', 'billed')
                 ->whereDoesntHave('collections', fn ($q) => $q->where('status', 'active'))
                 ->first();
@@ -56,7 +63,8 @@ class CollectionController extends Controller
             ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
                 ->where('application_number', 'like', "%{$search}%")
                 ->orWhere('applicant_last_name', 'like', "%{$search}%")
-                ->orWhere('applicant_first_name', 'like', "%{$search}%")))
+                ->orWhere('applicant_first_name', 'like', "%{$search}%")
+                ->orWhereHas('billings', fn ($b) => $b->where('collection_reference_no', 'like', "%{$search}%"))))
             ->latest()
             ->get();
 
@@ -66,7 +74,8 @@ class CollectionController extends Controller
             ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
                 ->where('application_number', 'like', "%{$search}%")
                 ->orWhere('applicant_last_name', 'like', "%{$search}%")
-                ->orWhere('applicant_first_name', 'like', "%{$search}%")))
+                ->orWhere('applicant_first_name', 'like', "%{$search}%")
+                ->orWhereHas('billings', fn ($b) => $b->where('collection_reference_no', 'like', "%{$search}%"))))
             ->latest()
             ->get();
 
@@ -76,7 +85,8 @@ class CollectionController extends Controller
             ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
                 ->where('application_number', 'like', "%{$search}%")
                 ->orWhere('applicant_last_name', 'like', "%{$search}%")
-                ->orWhere('applicant_first_name', 'like', "%{$search}%")))
+                ->orWhere('applicant_first_name', 'like', "%{$search}%")
+                ->orWhereHas('billings', fn ($b) => $b->where('collection_reference_no', 'like', "%{$search}%"))))
             ->latest()
             ->get();
 
@@ -84,7 +94,8 @@ class CollectionController extends Controller
             ->whereDoesntHave('collections', fn ($q) => $q->where('status', 'active'))
             ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
                 ->where('application_number', 'like', "%{$search}%")
-                ->orWhere('owner_name', 'like', "%{$search}%")))
+                ->orWhere('owner_name', 'like', "%{$search}%")
+                ->orWhereHas('billings', fn ($b) => $b->where('collection_reference_no', 'like', "%{$search}%"))))
             ->latest()
             ->get();
 

@@ -640,6 +640,51 @@
 - `DATABASE_SCHEMA.md` gained a full `document_requirements` table section, an expanded `application_requirements` entry documenting the new FK and — answering a direct question from Jay — **where uploaded files actually live** (filesystem under `requirements/{type}-{id}/`, not the database; only `file_path` is stored), plus which code paths do and do not unlink files
 - `CODEBASE.md` gained `DocumentRequirementController`, `ApplicationRequirementController`, a new "Support Helpers" section covering `ApplicationTimeline` + `ClientWizard`, and the new partials. Corrected stale counts found while updating: controllers 19 → 31, models 34 → 42, seeders 9 → 11, and added the previously-undocumented `app/Support/` directory to the structure tree
 
+### Settings Users Page: Staff/Client Segregation & Search — COMPLETED
+
+- `/settings/users` split into `?tab=staff|clients` (staff default), replacing one mixed listing of internal staff + online client self-registrations
+- Added text search (name/email) and, on the staff tab only, a role filter — both server-side, paginated with `withQueryString()`
+
+### Role-Scoped Sidebar & Dashboard: Planning / Treasury / Engineering — COMPLETED
+
+- New `$isPlanningOnly`/`$isTreasuryOnly`/`$isEngineeringOnly` flags in `sidebar-nav.blade.php` (`hasAnyRole([officer,staff]) && !hasAnyRole(['super-admin','administrator'])`), gating which sections render
+- **Planning-only**: sidebar shows only Zoning Assessment (List, Report, and a "Zoning Permit Generation" link gated additionally on the new `generate-zoning-permits` permission); `DashboardController::planningDashboard()` renders a new `dashboard/planning.blade.php` with zoning-specific stats instead of the normal KPI dashboard
+- **Treasury-only**: sidebar shows only Collections + a standalone Revenue Report link; `treasury-officer`/`treasury-staff` lost `view-applications`/`view-reports` entirely at the permission layer (not just hidden UI), gaining a narrower new `view-revenue-report` permission instead; `DashboardController::treasuryDashboard()` renders a new `dashboard/treasury.blade.php` (today's/monthly/annual revenue + transaction counts, year-navigable Chart.js revenue chart, Recent Collections list). Bug caught during implementation: `Collection::with('application')` doesn't eager-load anything, since `application` is an accessor delegating to the real `applicationable()` relation — fixed to `with('applicationable')`
+- **Engineering-only**: narrower change — just hides the "Zoning" sub-link under the Permits sidebar section (Engineering no longer generates zoning documents), leaving `view-permits` and direct `/permits/zoning` URL access untouched; explicitly scoped as UI-only per the literal request ("remove on the system menu")
+- `generate-zoning-permits` also **removed from Engineering's effective access**: `PermitController::generateZoningDocuments()` tightened from `generate-permits OR generate-zoning-permits` to `generate-zoning-permits` only (Planning's job now); the other 4 zoning-document `PermitController` methods (view/print already-generated docs) still accept either permission, so Engineering keeps read access
+- `super-admin` permission set corrected to include ALL permissions (previously excluded `view-audit-logs`, an inconsistency with its "ALL permissions" documented scope); `administrator` now explicitly excludes both `online-*` and `view-audit-logs`
+
+### Zoning Report: Mandatory Date Range & Status Filter — COMPLETED
+
+- `ZoningController::report()` now requires both `date_from`/`date_to`; falls back to a new `zoning/report-form.blade.php` picker (date range + Status dropdown) whenever either is missing, instead of an unbounded/implicit-range PDF
+- `pdf/report.blade.php`'s zoning table gained a "Total Zoning Assessment" column (sourced from a `zoningTotals` map keyed by application id) after Date, and a narrowed `#` row-number column (25px → 15px)
+- `zoning/index.blade.php`'s one-click "Generate PDF Report" link still works without hitting the new picker, by passing its own already-selected date range through
+
+### Collection Reference Number (All 6 Permit Types, Preparation for External API) — COMPLETED
+
+- New `billings.collection_reference_no` column (string(20), nullable, unique); format `40000` (fixed system code) + `YYMM` + a 4-digit sequence resetting every month (e.g. `4000026080001`) — one shared monthly counter across all 6 permit types, since `billings` is the one table already unified via `applicationable_type`/`applicationable_id`
+- Generated in `BillingService::generateFor()` (the single choke-point already shared by every permit type at the moment an application becomes `billed`), in the same transaction and same prefix+`LIKE`+suffix-increment pattern already used for `billing_number`
+- New `php artisan billings:backfill-reference-no` command assigned numbers to pre-existing billed/paid rows, chronologically, bucketed by each row's own `created_at` month, so the sequence stayed gap-free relative to newly-generated numbers
+- Displayed on: Collections "Awaiting Payment" list (new column), the payment-recording page (`collections/create.blade.php`), and the billing statement PDF
+- `/collections`' search box and exact-match barcode-scan-to-pay shortcut now also match against it (`orWhereHas('billings', ...)`, carefully grouped in a closure to avoid an operator-precedence bug that would otherwise have bypassed the `status='billed'`/no-active-collection filters)
+- The Summary of Computation PDF barcode (all 6 `doPrint*()` methods in `AssessmentController`) now encodes the Reference Number instead of the application number — closing the loop with the search change above, since scanning that barcode previously stopped matching anything the moment the barcode's payload changed
+
+### API Key Setting (Preparation for External API) — COMPLETED
+
+- New `general.api_key` setting (type `api_key`, 64-char `bin2hex(random_bytes(32))` hex value), inserted via a data migration for the existing dev DB and added to `SettingsSeeder` (treated like `file` in the reseed-overwrite guard — `firstOrCreate`, never reset by a reseed) for fresh installs
+- New "API Access" card on `/settings`: read-only key display + Copy button (plain JS `navigator.clipboard`) + "Regenerate Key" button (`SettingsController::regenerateApiKey()`, confirmed via `confirm()` since rotation immediately breaks any connected system)
+- Deliberately kept **outside** the main Settings `<form>` (which does a blanket `Setting::where('key',$key)->update()` for every submitted key) — verified live that saving an unrelated setting via the main form leaves the API key completely untouched
+- Scoped to just the credential per explicit decision — no `routes/api.php`/Sanctum/auth-middleware exists yet; wiring enforcement is deferred until the API itself is built
+
+### Official Receipt: Peso Sign & Department Header Fixes — COMPLETED
+
+- Font switched from `Arial, sans-serif` to `'DejaVu Sans', Arial, sans-serif` — DomPDF's core Helvetica/Arial substitute has no ₱ (U+20B1) glyph, so every peso amount was rendering as a missing-glyph box; verified the regenerated PDF now embeds `DejaVuSans`/`DejaVuSans-Bold`/`DejaVuSans-Oblique`
+- Header department line corrected from "Office of the Building Official — Engineering Department" to "Office of the City Treasurer"
+
+### Collections Payment Form: OR Number / Paid By Layout Fix — COMPLETED
+
+- Adding Reference No. to the "Identifiers" row had pushed Paid By onto its own row alone (3 fields in a 2-column grid); moved Reference No. up into the first row (now 3 columns, alongside Application No./Applicant), leaving OR Number and Paid By as the only two fields in their own 2-column row, side by side as intended
+
 ---
 
 ## Upcoming Tasks

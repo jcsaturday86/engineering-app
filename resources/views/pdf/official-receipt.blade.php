@@ -11,7 +11,7 @@
             box-sizing: border-box;
         }
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'DejaVu Sans', Arial, sans-serif;
             font-size: 12px;
             color: #333;
             line-height: 1.5;
@@ -149,7 +149,7 @@
                 <img src="{{ $sealImage }}" class="seal" alt="Official Seal">
             @endif
             <p class="municipality">Republic of the Philippines</p>
-            <p class="department">Office of the Building Official — Engineering Department</p>
+            <p class="department">Office of the City Treasurer</p>
             <p class="title">Official Receipt</p>
         </div>
 

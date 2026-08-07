@@ -39,7 +39,7 @@
             <input type="hidden" name="billing_id" value="{{ $billing->id }}">
 
             {{-- Row 1: Application context --}}
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                     <p class="text-xs font-medium text-gray-500">Application No.</p>
                     <p class="text-sm font-mono font-medium text-gray-900">{{ $application->application_number }}</p>
@@ -47,6 +47,10 @@
                 <div>
                     <p class="text-xs font-medium text-gray-500">Applicant</p>
                     <p class="text-sm text-gray-900">{{ $payerName ?: '—' }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-gray-500">Reference No.</p>
+                    <p class="text-sm font-mono font-medium text-gray-900">{{ $billing->collection_reference_no ?? '-' }}</p>
                 </div>
             </div>
 
